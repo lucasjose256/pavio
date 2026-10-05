@@ -10,14 +10,19 @@ const ALLOW_BASE = 1000;
 export const blockedPageUrl = (domain: string, why?: string) =>
   chrome.runtime.getURL(`src/ui/blocked/index.html?site=${encodeURIComponent(domain)}${why ? `&why=${why}` : ''}`);
 
-/** `next` vai por último e SEM codificar (o DNR não codifica); a página lê tudo depois de "next=". */
+/**
+ * Página "o que você vai fazer aqui?". `next` (opcional) é a URL a abrir depois da resposta; só é usado ao levar
+ * abas JÁ abertas (onde sabemos a URL). Nas regras de rede o redirecionamento é simples, igual ao do bloqueio:
+ * um redirect com `regexSubstitution` para página da extensão não é garantido pelo Chrome, e sem ele o site
+ * abriria sem perguntar nada.
+ */
 export const intentPageUrl = (domain: string, next?: string) =>
-  chrome.runtime.getURL(`src/ui/intent/index.html?site=${encodeURIComponent(domain)}${next ? `&next=${next}` : ''}`);
+  chrome.runtime.getURL(`src/ui/intent/index.html?site=${encodeURIComponent(domain)}${next ? `&next=${encodeURIComponent(next)}` : ''}`);
 
 type Rule = chrome.declarativeNetRequest.Rule;
 const main = ['main_frame'] as chrome.declarativeNetRequest.ResourceType[];
 
-function buildRules(plan: BlockPlan): Rule[] {
+export function buildRules(plan: BlockPlan): Rule[] {
   const block = plan.block.map((domain, i): Rule => ({
     id: BLOCK_BASE + i,
     priority: 1,
@@ -27,9 +32,8 @@ function buildRules(plan: BlockPlan): Rule[] {
   const intent = plan.intent.map((domain, i): Rule => ({
     id: INTENT_BASE + i,
     priority: 2,
-    // leva a URL original junto, para voltar a ela depois que o usuário responder
-    action: { type: 'redirect', redirect: { regexSubstitution: `${intentPageUrl(domain)}&next=\\1` } },
-    condition: { requestDomains: [domain], regexFilter: '^(https?://.*)$', resourceTypes: main },
+    action: { type: 'redirect', redirect: { url: intentPageUrl(domain) } },
+    condition: { requestDomains: [domain], resourceTypes: main },
   }));
   const allow = plan.allow.map((domain, i): Rule => ({
     id: ALLOW_BASE + i,

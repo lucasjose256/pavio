@@ -11,7 +11,9 @@ const { storage, sessions, intents, blocker, scheduleService, intentService } = 
 
 // Serializa: várias mudanças seguidas não podem mexer em regras/sessões ao mesmo tempo.
 let queue: Promise<unknown> = Promise.resolve();
-const enqueue = (task: () => Promise<unknown>) => (queue = queue.then(task, task));
+// Um erro (ex.: regra de rede recusada pelo Chrome) aparece no console do service worker em vez de sumir.
+const enqueue = (task: () => Promise<unknown>) =>
+  (queue = queue.then(task).catch((error) => console.error('[Pavio] falhou ao sincronizar:', error)));
 
 /** Alinha as regras de rede com a sessão e as permissões de intenção atuais. */
 async function syncBlocking() {
@@ -57,5 +59,18 @@ chrome.storage.onChanged.addListener((changes, area) => {
   if (changes.activeSession || changes.schedule) void syncAll();
   else if (changes.intents) void enqueue(syncBlocking);
 });
+
+// Diagnóstico: no console do service worker (chrome://extensions › Pavio › service worker), rode `await __pavio.state()`.
+(self as unknown as { __pavio: unknown }).__pavio = {
+  /** Regras de rede ativas agora. */
+  rules: () => chrome.declarativeNetRequest.getDynamicRules(),
+  /** Sessão, permissões de intenção e o plano de bloqueio que deveria estar valendo. */
+  state: async () => {
+    const session = await sessions.get();
+    const grants = await intents.list();
+    return { session, intents: grants, plan: planFor(session?.status === 'active' ? session : undefined, grants), rules: await chrome.declarativeNetRequest.getDynamicRules() };
+  },
+  sync: syncAll,
+};
 
 void boot();

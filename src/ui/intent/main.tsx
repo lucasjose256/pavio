@@ -18,7 +18,7 @@ initTheme();
 
 const search = location.search;
 const site = new URLSearchParams(search).get('site') ?? '';
-// `next` é a última parte e chega sem codificação (ver platform/chrome/blocking.ts).
+// `next` só vem ao levar abas já abertas (codificada). Pelas regras de rede não vem: aí abrimos a página inicial do site.
 const rawNext = search.includes('next=') ? search.slice(search.indexOf('next=') + 5) : '';
 
 /** Só volta para o mesmo site (evita virar redirecionador aberto). */
