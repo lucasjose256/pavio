@@ -1,32 +1,55 @@
-import type { RestrictedKind, Session } from './models';
-import { findRule } from './matching';
-import { enforcing } from './pomodoro';
+type Features = ReadonlySet<string>;
 
-/** Há sessão ativa cujo ambiente trata algum destes domínios como `restricted` do tipo `kind`? */
-export function restrictedKindActive(
-  session: Pick<Session, 'status' | 'environmentSnapshot' | 'pomodoro'> | undefined,
-  kind: RestrictedKind,
-  domains: string[],
-): boolean {
-  if (!session || !enforcing(session)) return false;
-  return domains.some((d) => {
-    const rule = findRule(session.environmentSnapshot, d);
-    return rule?.mode === 'restricted' && rule.restrictedKind === kind;
-  });
-}
+/** Caminhos de entrada na conta: nunca bloqueados. */
+const INSTAGRAM_AUTH = ['/accounts/login', '/accounts/logout', '/accounts/password', '/accounts/onetap', '/challenge', '/auth_platform'];
 
-export type InstagramDecision =
+export type SiteDecision =
   | { action: 'allow' }
-  /** Início do Instagram: leva direto à caixa de mensagens, que é o que o modo permite. */
-  | { action: 'redirect-inbox' }
-  | { action: 'block'; reason: 'dm-only' };
+  /** Em vez de bloquear, leva a uma área permitida (ex.: início do Instagram → caixa de mensagens). */
+  | { action: 'redirect'; to: string }
+  | { action: 'block'; reason: string };
 
-/** Caminhos que o modo "só mensagens" deixa passar (mensagens + o necessário para entrar na conta). */
-const INSTAGRAM_ALLOWED_PREFIXES = ['/direct', '/accounts/login', '/accounts/logout', '/accounts/password', '/accounts/onetap', '/challenge', '/auth_platform'];
+const norm = (pathname: string) => pathname.replace(/\/+$/, '') || '/';
+const under = (path: string, prefix: string) => path === prefix || path.startsWith(`${prefix}/`);
 
-export function instagramDecision(pathname: string): InstagramDecision {
-  const path = pathname.replace(/\/+$/, '') || '/';
-  if (path === '/') return { action: 'redirect-inbox' };
-  const allowed = INSTAGRAM_ALLOWED_PREFIXES.some((p) => path === p || path.startsWith(`${p}/`));
-  return allowed ? { action: 'allow' } : { action: 'block', reason: 'dm-only' };
+/**
+ * Instagram: cada recurso escondido bloqueia a sua parte. Início = feed. `posts` (perfis e publicações de
+ * outros) é o modo mais rígido: só passa o que não é conteúdo (mensagens e entrada na conta).
+ */
+export function instagramDecision(pathname: string, features: Features): SiteDecision {
+  const path = norm(pathname);
+  if (INSTAGRAM_AUTH.some((p) => under(path, p))) return { action: 'allow' };
+
+  if (path === '/') {
+    if (!features.has('feed')) return { action: 'allow' };
+    return features.has('messages') ? { action: 'block', reason: 'feed' } : { action: 'redirect', to: '/direct/inbox/' };
+  }
+  if (under(path, '/direct')) return features.has('messages') ? { action: 'block', reason: 'messages' } : { action: 'allow' };
+  if ((under(path, '/reels') || under(path, '/reel')) && features.has('reels')) return { action: 'block', reason: 'reels' };
+  if (under(path, '/explore') && features.has('explore')) return { action: 'block', reason: 'explore' };
+  if (under(path, '/stories') && features.has('stories')) return { action: 'block', reason: 'stories' };
+  if (features.has('posts')) return { action: 'block', reason: 'posts' }; // perfis, /p/…, etc.
+  return { action: 'allow' };
 }
+
+/** X: a aba "Para você" é tratada no DOM; aqui só a página Explorar/tendências. */
+export function xDecision(pathname: string, features: Features): SiteDecision {
+  const path = norm(pathname);
+  if (features.has('explore') && (under(path, '/explore') || under(path, '/i/trends'))) return { action: 'block', reason: 'explore' };
+  return { action: 'allow' };
+}
+
+/**
+ * LinkedIn: o feed é só `/feed` (as publicações individuais, `/feed/update/…`, continuam abrindo).
+ * Sem o feed, o início leva às mensagens (se liberadas).
+ */
+export function linkedinDecision(pathname: string, features: Features): SiteDecision {
+  const path = norm(pathname);
+  if ((path === '/feed' || path === '/') && features.has('feed')) {
+    return features.has('messages') ? { action: 'block', reason: 'feed' } : { action: 'redirect', to: '/messaging/' };
+  }
+  if (under(path, '/video') && features.has('videos')) return { action: 'block', reason: 'videos' };
+  if (under(path, '/messaging') && features.has('messages')) return { action: 'block', reason: 'messages' };
+  return { action: 'allow' };
+}
+

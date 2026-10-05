@@ -4,7 +4,7 @@
 export type RuleMode = 'allowed' | 'blocked' | 'restricted';
 
 /** Como um site `restricted` é tratado. `intent` = modo intenção genérico. */
-export type RestrictedKind = 'youtube' | 'instagram' | 'x' | 'intent';
+export type RestrictedKind = 'youtube' | 'instagram' | 'x' | 'linkedin' | 'intent';
 
 export interface Rule {
   id: string;
@@ -13,6 +13,11 @@ export interface Rule {
   mode: RuleMode;
   /** Obrigatório quando mode === 'restricted'. */
   restrictedKind?: RestrictedKind;
+  /**
+   * Partes do serviço que ficam ESCONDIDAS (ids de `core/restrictions.ts`). Ausente = padrão do serviço.
+   * Só vale para youtube/instagram/x/linkedin.
+   */
+  features?: string[];
 }
 
 export interface Environment {

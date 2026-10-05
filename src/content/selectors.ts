@@ -47,28 +47,42 @@ export const youtube = {
 
 export const FEED_FREE_MESSAGE = 'O feed está escondido pela sua vela. Use a busca ou cole links permitidos.';
 
-/** CSS do modo restrito do YouTube. `feedFree` = sem lista de links (a home mostra um aviso no lugar do feed). */
-export function youtubeCss(): string {
+/**
+ * CSS do modo restrito do YouTube, só para os recursos escondidos (`features`).
+ * Com `home`, o feed da página inicial dá lugar a um aviso (se não houver lista de links).
+ */
+export function youtubeCss(features: ReadonlySet<string>): string {
   return [
-    hide(youtube.homeFeed),
-    hide(youtube.related),
-    hide(youtube.comments),
-    hide(youtube.shorts),
-    hide(youtube.endScreen),
+    features.has('home') && hide(youtube.homeFeed),
+    features.has('related') && hide(youtube.related),
+    features.has('related') && hide(youtube.endScreen),
+    features.has('comments') && hide(youtube.comments),
+    features.has('shorts') && hide(youtube.shorts),
     'html.pavio-yt-pending body { visibility: hidden !important; }',
-    `html.pavio-yt-feedfree ytd-browse[page-subtype="home"]::before {
+    features.has('home') &&
+      `html.pavio-yt-feedfree ytd-browse[page-subtype="home"]::before {
        content: "${FEED_FREE_MESSAGE}"; display: block; padding: 96px 24px; text-align: center;
        font: 500 18px/1.5 system-ui, sans-serif; color: var(--yt-spec-text-secondary, #888);
      }`,
-  ].join('\n');
+  ]
+    .filter(Boolean)
+    .join('\n');
 }
 
 export const instagram = {
-  /** Atalhos do menu para Reels e Explorar (as páginas em si já são bloqueadas por URL). */
-  navLinks: ['a[href="/reels/"]', 'a[href^="/reels/"]', 'a[href="/explore/"]', 'a[href^="/explore"]'],
+  /** Atalhos do menu por recurso (as páginas em si já são bloqueadas por URL). */
+  navLinks: {
+    reels: ['a[href="/reels/"]', 'a[href^="/reels/"]'],
+    explore: ['a[href="/explore/"]', 'a[href^="/explore"]'],
+    messages: ['a[href^="/direct/inbox"]', 'a[href="/direct/"]'],
+  },
 } as const;
 
-export const instagramCss = (): string => hide(instagram.navLinks);
+export const instagramCss = (features: ReadonlySet<string>): string =>
+  (['reels', 'explore', 'messages'] as const)
+    .filter((f) => features.has(f))
+    .map((f) => hide(instagram.navLinks[f]))
+    .join('\n');
 
 export const x = {
   /** Abas do topo da timeline ("Para você" / "Seguindo"). Textos por idioma da interface. */
@@ -95,3 +109,24 @@ export const xCss = (): string =>
     `[${x.hiddenAttr}="for-you"] { display: none !important; }`,
     `html.pavio-x-pending ${x.timeline} { visibility: hidden !important; }`,
   ].join('\n');
+
+/**
+ * LinkedIn. ATENÇÃO: o LinkedIn exige login e usa classes ofuscadas; só o bloqueio por URL (feed, vídeos,
+ * mensagens) é confiável. Os seletores abaixo são o melhor esforço e NÃO foram validados no site real.
+ */
+export const linkedin = {
+  /** Módulo "LinkedIn Notícias" na lateral do feed. */
+  news: ['#feed-news-module', '.news-module', 'aside[aria-label*="notícias" i]', 'aside[aria-label*="news" i]'],
+  videoLinks: ['a[href*="linkedin.com/video/"]', 'a[href^="/video/"]'],
+  /** Atalho e janela flutuante de mensagens. */
+  messages: ['a[href*="/messaging/"]', '#msg-overlay', '.msg-overlay-container'],
+} as const;
+
+export const linkedinCss = (features: ReadonlySet<string>): string =>
+  [
+    features.has('news') && hide(linkedin.news),
+    features.has('videos') && hide(linkedin.videoLinks),
+    features.has('messages') && hide(linkedin.messages),
+  ]
+    .filter(Boolean)
+    .join('\n');

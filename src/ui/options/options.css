@@ -182,3 +182,12 @@ input[type="range"] { accent-color: var(--accent); }
 .switch input:focus-visible + span { outline: 3px solid color-mix(in srgb, var(--accent) 55%, transparent); outline-offset: 2px; }
 @media (max-width: 780px) { .week { grid-template-columns: 30px repeat(7, 1fr); gap: 3px; } .seg span { display: none; } }
 .tag.sched { margin-left: 8px; padding: 1px 8px; border-radius: 999px; background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent-text); }
+
+/* ---- recursos escondidos por serviço ---- */
+.features { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 2px 4px 4px 44px; }
+.features-label { font-size: 12px; font-weight: 700; color: var(--muted); margin-right: 2px; }
+.feat { background: var(--surface); border: 1px solid var(--border); border-radius: 999px; padding: 3px 12px; font-size: 12px; color: var(--muted); transition: all .15s; }
+.feat:hover { border-color: var(--muted); color: var(--text); }
+.feat[aria-pressed="true"] { background: color-mix(in srgb, var(--mode-restricted) 22%, var(--surface)); border-color: var(--mode-restricted); color: var(--text); font-weight: 600; }
+.feat[aria-pressed="true"]::before { content: '✓ '; }
+.features-note { grid-column: 1 / -1; margin: 0; padding: 0 4px 4px 44px; font-size: 12px; color: var(--muted); }

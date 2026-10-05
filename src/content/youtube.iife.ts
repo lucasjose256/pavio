@@ -13,13 +13,14 @@ let restriction: ReturnType<typeof youtubeRestriction> = null;
 let lastHref = '';
 let run = 0; // invalida checagens de canal antigas quando a página muda
 
-function setStyle(on: boolean, feedFree: boolean) {
+function setStyle(features: ReadonlySet<string> | null, feedFree: boolean) {
+  const on = features !== null;
   document.getElementById(STYLE_ID)?.remove();
-  root.classList.toggle('pavio-yt-feedfree', on && feedFree);
+  root.classList.toggle('pavio-yt-feedfree', on && feedFree && features.has('home'));
   if (!on) return void root.classList.remove('pavio-yt-pending');
   const style = document.createElement('style');
   style.id = STYLE_ID;
-  style.textContent = youtubeCss();
+  style.textContent = youtubeCss(features);
   root.appendChild(style);
 }
 
@@ -52,7 +53,7 @@ async function evaluate() {
   lastHref = location.href;
   if (!restriction) return pending(false);
 
-  const decision = youtubeDecision(location, restriction.allowlist);
+  const decision = youtubeDecision(location, restriction.allowlist, restriction.features);
   if (decision.action === 'allow') return pending(false);
   if (decision.action === 'block') return leave(decision.reason);
 
@@ -68,7 +69,7 @@ async function evaluate() {
 
 function apply(session: Session | undefined) {
   restriction = youtubeRestriction(session);
-  setStyle(restriction !== null, restriction?.allowlist.length === 0);
+  setStyle(restriction?.features ?? null, restriction?.allowlist.length === 0);
   void evaluate();
 }
 

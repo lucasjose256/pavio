@@ -6,12 +6,37 @@ export const modeLabel: Record<RuleMode, string> = {
   restricted: 'Restrito',
 };
 
+export const serviceName: Record<string, string> = { youtube: 'YouTube', instagram: 'Instagram', x: 'X', linkedin: 'LinkedIn' };
+
 export const kindLabel: Record<RestrictedKind, string> = {
-  youtube: 'YouTube (sem feed)',
-  instagram: 'Instagram (só mensagens)',
-  x: 'X (sem "Para você")',
+  youtube: 'Esconder partes',
+  instagram: 'Esconder partes',
+  x: 'Esconder partes',
+  linkedin: 'Esconder partes',
   intent: 'Modo intenção',
 };
+
+/** Partes que dá para esconder em cada serviço (ids em core/restrictions.ts). */
+export const featureLabel: Record<string, Record<string, string>> = {
+  youtube: {
+    home: 'Feed (Início, Inscrições, Em alta)',
+    shorts: 'Shorts',
+    related: 'Recomendados (ao lado e no fim do vídeo)',
+    comments: 'Comentários',
+  },
+  instagram: {
+    feed: 'Feed',
+    reels: 'Reels',
+    explore: 'Explorar',
+    stories: 'Stories',
+    messages: 'Mensagens',
+    posts: 'Perfis e publicações de outras pessoas',
+  },
+  x: { forYou: 'Aba "Para você"', explore: 'Explorar e tendências' },
+  linkedin: { feed: 'Feed', videos: 'Vídeos', news: 'LinkedIn Notícias', messages: 'Mensagens' },
+};
+
+export const featureHelp = 'Marque o que fica escondido durante a sessão. O que não estiver marcado continua liberado.';
 
 export const modeHelp: Record<RuleMode, string> = {
   allowed: 'Acesso normal.',
@@ -110,6 +135,12 @@ export const blockedWhy: Record<string, string> = {
   feed: 'Esse feed fica escondido durante a sessão.',
   'not-allowed': 'Esse endereço não está na sua lista de hoje.',
   'dm-only': 'No Instagram, só as mensagens ficam disponíveis durante a sessão.',
+  reels: 'Os Reels ficam de fora durante a sessão.',
+  explore: 'Explorar fica de fora durante a sessão.',
+  stories: 'Os Stories ficam de fora durante a sessão.',
+  messages: 'As mensagens ficam de fora durante a sessão.',
+  posts: 'Perfis e publicações ficam de fora durante a sessão.',
+  videos: 'Os vídeos ficam de fora durante a sessão.',
 };
 
 export const youtubeUi = {

@@ -24,12 +24,28 @@ describe('migrate', () => {
   it('semeia 3 ambientes de exemplo e é idempotente', async () => {
     await migrate(storage, clock);
     expect((await envs.list()).map((e) => e.name)).toEqual(['Estudo', 'Trabalho profundo', 'Noite']);
-    expect(await storage.get(KEYS.schemaVersion)).toBe(1);
+    expect(await storage.get(KEYS.schemaVersion)).toBe(2);
 
     const edited = (await envs.list())[0]!;
     await envs.save({ ...edited, name: 'Meu estudo' });
     await migrate(storage, clock); // não pode sobrescrever edição do usuário
     expect((await envs.get(edited.id))?.name).toBe('Meu estudo');
+  });
+});
+
+describe('migração v2 (LinkedIn)', () => {
+  it('acrescenta o LinkedIn aos ambientes de exemplo antigos, sem mexer no resto', async () => {
+    const old = createBuiltinEnvironments(0).map((e) => ({ ...e, rules: e.rules.filter((r) => r.domain !== 'linkedin.com') }));
+    old[0]!.rules.push({ id: 'meu', domain: 'meusite.com', mode: 'blocked' });
+    await storage.set(KEYS.environments, old);
+    await storage.set(KEYS.schemaVersion, 1);
+    await migrate(storage, clock);
+    const after = await envs.list();
+    for (const e of after) expect(e.rules.some((r) => r.domain === 'linkedin.com')).toBe(true);
+    expect(after[0]!.rules.some((r) => r.domain === 'meusite.com')).toBe(true);
+    expect(after[0]!.rules.filter((r) => r.domain === 'linkedin.com')).toHaveLength(1);
+    await migrate(storage, clock); // idempotente
+    expect((await envs.list())[0]!.rules.filter((r) => r.domain === 'linkedin.com')).toHaveLength(1);
   });
 });
 
@@ -55,7 +71,7 @@ describe('EnvironmentRepository', () => {
     await migrate(storage, clock);
     await envs.save({ ...(await envs.get('builtin-study'))!, rules: [] });
     const restored = await envs.restoreBuiltin('builtin-study');
-    expect(restored?.rules).toHaveLength(6);
+    expect(restored?.rules).toHaveLength(7);
     expect(await envs.restoreBuiltin('nao-existe')).toBeUndefined();
   });
 });
@@ -79,6 +95,8 @@ describe('createRule', () => {
     expect(createRule('https://youtube.com', 'restricted', newId)?.restrictedKind).toBe('youtube');
     expect(createRule('tiktok.com', 'restricted', newId)?.restrictedKind).toBe('intent');
     expect(createRule('foo.com', 'blocked', newId)?.restrictedKind).toBeUndefined();
+    expect(createRule('linkedin.com', 'restricted', newId)).toMatchObject({ restrictedKind: 'linkedin', features: ['feed', 'videos', 'news'] });
+    expect(createRule('reddit.com', 'restricted', newId)?.features).toBeUndefined();
     expect(createRule('lixo', 'blocked', newId)).toBeNull();
   });
 });
@@ -105,7 +123,7 @@ describe('Settings e History', () => {
 
 describe('helpers de ambiente', () => {
   it('ruleCounts conta por tipo', () => {
-    expect(ruleCounts(createBuiltinEnvironment('builtin-study', 0)!)).toEqual({ allowed: 0, blocked: 5, restricted: 1 });
+    expect(ruleCounts(createBuiltinEnvironment('builtin-study', 0)!)).toEqual({ allowed: 0, blocked: 5, restricted: 2 });
   });
   it('duplicateEnvironment gera cópia editável com ids novos', () => {
     const original = createBuiltinEnvironment('builtin-study', 0)!;
@@ -117,6 +135,6 @@ describe('helpers de ambiente', () => {
     expect(validateEnvironment(copy)).toEqual([]);
   });
   it('accessDomains pede acesso só ao que o DNR precisa (YouTube/Instagram/X restritos não)', () => {
-    expect(accessDomains(createBuiltinEnvironment('builtin-night', 0)!)).toEqual(['facebook.com', 'tiktok.com', 'reddit.com']);
+    expect(accessDomains(createBuiltinEnvironment('builtin-night', 0)!)).toEqual(['facebook.com', 'linkedin.com', 'tiktok.com', 'reddit.com']);
   });
 });

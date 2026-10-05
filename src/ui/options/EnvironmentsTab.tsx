@@ -5,12 +5,12 @@ import {
 } from '../../core/environments';
 import type { Environment, RestrictedKind, Rule, RuleMode } from '../../core/models';
 import { randomId } from '../../core/ports';
+import { FEATURE_DEFS, defaultFeatures, featuresOf, serviceKindFor } from '../../core/restrictions';
 import { ensureHostAccess, hostPattern } from '../../platform/chrome/permissions';
-import { kindLabel, modeHelp, modeLabel, validationMessage } from '../i18n/pt-BR';
+import { featureHelp, featureLabel, kindLabel, modeHelp, modeLabel, validationMessage } from '../i18n/pt-BR';
 import { services } from './shared';
 
 const MODES: RuleMode[] = ['allowed', 'blocked', 'restricted'];
-const KINDS: RestrictedKind[] = ['youtube', 'instagram', 'x', 'intent'];
 
 type Notice = { kind: 'ok' | 'warn' | 'error'; text: string };
 
@@ -128,8 +128,32 @@ export function EnvironmentsTab({ active }: { active: boolean }) {
     edit((env) => {
       const r = env.rules.find((x) => x.id === rule.id)!;
       r.mode = mode;
-      if (mode === 'restricted') r.restrictedKind = r.restrictedKind ?? defaultRestrictedKind(r.domain);
-      else delete r.restrictedKind;
+      if (mode === 'restricted') {
+        r.restrictedKind = r.restrictedKind ?? defaultRestrictedKind(r.domain);
+        if (r.restrictedKind !== 'intent') r.features = r.features ?? defaultFeatures(r.restrictedKind);
+      } else {
+        delete r.restrictedKind;
+        delete r.features;
+      }
+    });
+  }
+
+  /** Troca entre "esconder partes do serviço" e "modo intenção". */
+  function setKind(rule: Rule, kind: RestrictedKind) {
+    edit((env) => {
+      const r = env.rules.find((x) => x.id === rule.id)!;
+      r.restrictedKind = kind;
+      if (kind === 'intent') delete r.features;
+      else r.features = defaultFeatures(kind);
+    });
+  }
+
+  function toggleFeature(rule: Rule, id: string) {
+    edit((env) => {
+      const r = env.rules.find((x) => x.id === rule.id)!;
+      const set = featuresOf(r);
+      if (!set.delete(id)) set.add(id);
+      r.features = FEATURE_DEFS[r.restrictedKind as keyof typeof FEATURE_DEFS].map((f) => f.id).filter((f) => set.has(f));
     });
   }
 
@@ -189,6 +213,7 @@ export function EnvironmentsTab({ active }: { active: boolean }) {
             ))}
           </ul>
 
+          <p class="hint">{featureHelp}</p>
           {draft.rules.length === 0 && <p class="empty">Nenhum site por aqui ainda. Adicione o primeiro abaixo, ou toque numa sugestão.</p>}
           <ul class="rules">
             {draft.rules.map((r) => (
@@ -201,13 +226,27 @@ export function EnvironmentsTab({ active }: { active: boolean }) {
                   ))}
                 </div>
                 {r.mode === 'restricted' ? (
-                  <select class="field kind" aria-label={`Tipo de restrição de ${r.domain}`} value={r.restrictedKind}
-                    onChange={(e) => edit((env) => { env.rules.find((x) => x.id === r.id)!.restrictedKind = e.currentTarget.value as RestrictedKind; })}>
-                    {KINDS.map((k) => <option value={k}>{kindLabel[k]}</option>)}
+                  <select class="field kind" aria-label={`Como restringir ${r.domain}`} value={r.restrictedKind}
+                    onChange={(e) => setKind(r, e.currentTarget.value as RestrictedKind)}>
+                    {[...new Set([serviceKindFor(r.domain), r.restrictedKind, 'intent'].filter(Boolean) as RestrictedKind[])]
+                      .map((k) => <option value={k}>{kindLabel[k]}</option>)}
                   </select>
                 ) : <span class="kind" />}
                 <button class="btn btn-ghost x" aria-label={`Remover ${r.domain}`}
                   onClick={() => edit((env) => { env.rules = env.rules.filter((x) => x.id !== r.id); })}>✕</button>
+                {r.mode === 'restricted' && r.restrictedKind && r.restrictedKind !== 'intent' && (
+                  <div class="features" role="group" aria-label={`O que esconder em ${r.domain}`}>
+                    <span class="features-label">Esconder:</span>
+                    {FEATURE_DEFS[r.restrictedKind].map((f) => (
+                      <button key={f.id} type="button" class="feat" aria-pressed={featuresOf(r).has(f.id)} onClick={() => toggleFeature(r, f.id)}>
+                        {featureLabel[r.restrictedKind!]?.[f.id] ?? f.id}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {r.mode === 'restricted' && r.restrictedKind === 'intent' && (
+                  <p class="features-note">Ao abrir o site, pergunta o que você vai fazer e por quanto tempo.</p>
+                )}
               </li>
             ))}
           </ul>

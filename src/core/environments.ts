@@ -1,5 +1,6 @@
 import type { Environment, RestrictedKind, Rule, RuleMode } from './models';
 import { normalizeDomain } from './matching';
+import { defaultFeatures, serviceKindFor } from './restrictions';
 import type { IdGenerator } from './ports';
 
 /** Sites populares sugeridos na página de opções. */
@@ -10,6 +11,7 @@ export const SUGGESTED_SITES: { name: string; domain: string; restrictedKind: Re
   { name: 'X', domain: 'x.com', restrictedKind: 'x' },
   { name: 'Facebook', domain: 'facebook.com', restrictedKind: 'intent' },
   { name: 'Reddit', domain: 'reddit.com', restrictedKind: 'intent' },
+  { name: 'LinkedIn', domain: 'linkedin.com', restrictedKind: 'linkedin' },
 ];
 
 type PresetRule = [domain: string, mode: RuleMode, kind?: RestrictedKind];
@@ -25,6 +27,7 @@ const PRESETS: { id: string; name: string; rules: PresetRule[] }[] = [
       ['x.com', 'blocked'],
       ['facebook.com', 'blocked'],
       ['reddit.com', 'blocked'],
+      ['linkedin.com', 'restricted', 'linkedin'],
     ],
   },
   {
@@ -37,6 +40,7 @@ const PRESETS: { id: string; name: string; rules: PresetRule[] }[] = [
       ['x.com', 'restricted', 'x'],
       ['facebook.com', 'blocked'],
       ['reddit.com', 'restricted', 'intent'],
+      ['linkedin.com', 'restricted', 'linkedin'],
     ],
   },
   {
@@ -49,6 +53,7 @@ const PRESETS: { id: string; name: string; rules: PresetRule[] }[] = [
       ['x.com', 'restricted', 'x'],
       ['facebook.com', 'blocked'],
       ['reddit.com', 'restricted', 'intent'],
+      ['linkedin.com', 'blocked'],
     ],
   },
 ];
@@ -89,14 +94,16 @@ export function createRule(
   const domain = normalizeDomain(input);
   if (!domain) return null;
   const rule: Rule = { id: newId(), domain, mode };
-  if (mode === 'restricted') rule.restrictedKind = restrictedKind ?? defaultRestrictedKind(domain);
+  if (mode === 'restricted') {
+    rule.restrictedKind = restrictedKind ?? defaultRestrictedKind(domain);
+    if (rule.restrictedKind !== 'intent') rule.features = defaultFeatures(rule.restrictedKind);
+  }
   return rule;
 }
 
-/** youtube/instagram/x têm tratamento dedicado; o resto cai no modo intenção. */
+/** youtube/instagram/x/linkedin têm tratamento dedicado (recursos); o resto cai no modo intenção. */
 export function defaultRestrictedKind(domain: string): RestrictedKind {
-  const known = SUGGESTED_SITES.find((s) => s.domain === domain);
-  return known ? known.restrictedKind : 'intent';
+  return serviceKindFor(domain) ?? 'intent';
 }
 
 /** Retorna lista de erros (vazia = válido). Mensagens técnicas; a UI traduz. */

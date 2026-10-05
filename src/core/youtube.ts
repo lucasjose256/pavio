@@ -1,6 +1,7 @@
 import type { AllowedLink, Session } from './models';
 import { findRule } from './matching';
 import { enforcing } from './pomodoro';
+import { featuresOf } from './restrictions';
 
 /** Id de canal estável: "@handle" (minúsculo), "UCxxxx", "c/nome" ou "user/nome". */
 export function channelIdFromPath(pathname: string): string | null {
@@ -73,13 +74,17 @@ export function channelAllowed(href: string, allowlist: AllowedLink[]): boolean 
 
 /**
  * Pode ver esta página do YouTube? Só `pathname` e `search` entram (rodam no navegador e no futuro app).
- * Lista vazia: YouTube "sem feed" (busca e vídeos liberados; Shorts e feeds de descoberta não).
+ * Lista vazia: só os recursos escondidos (`features`) são bloqueados: Shorts (`shorts`) e feeds de descoberta (`home`).
  * Lista com itens: só o que está nela (vídeo, playlist, canal e os vídeos de canais permitidos).
  */
-export function youtubeDecision(loc: { pathname: string; search: string }, allowlist: AllowedLink[]): YouTubeDecision {
+export function youtubeDecision(
+  loc: { pathname: string; search: string },
+  allowlist: AllowedLink[],
+  features: ReadonlySet<string> = new Set(['home', 'shorts', 'related', 'comments']),
+): YouTubeDecision {
   const path = loc.pathname.replace(/\/+$/, '') || '/';
-  if (path.startsWith('/shorts')) return { action: 'block', reason: 'shorts' };
-  if (BLOCKED_FEEDS.some((f) => path.startsWith(f))) return { action: 'block', reason: 'feed' };
+  if (path.startsWith('/shorts') && features.has('shorts')) return { action: 'block', reason: 'shorts' };
+  if (features.has('home') && BLOCKED_FEEDS.some((f) => path.startsWith(f))) return { action: 'block', reason: 'feed' };
   if (allowlist.length === 0) return { action: 'allow' };
 
   const params = new URLSearchParams(loc.search);
@@ -99,8 +104,10 @@ export function youtubeDecision(loc: { pathname: string; search: string }, allow
 /** A sessão pede o modo restrito do YouTube? Devolve a allowlist da sessão, ou null se não. */
 export function youtubeRestriction(
   session: Pick<Session, 'status' | 'environmentSnapshot' | 'youtubeAllowlist' | 'pomodoro'> | undefined,
-): { allowlist: AllowedLink[] } | null {
+): { allowlist: AllowedLink[]; features: Set<string> } | null {
   if (!session || !enforcing(session)) return null;
   const rule = findRule(session.environmentSnapshot, 'www.youtube.com');
-  return rule?.mode === 'restricted' && rule.restrictedKind === 'youtube' ? { allowlist: session.youtubeAllowlist } : null;
+  return rule?.mode === 'restricted' && rule.restrictedKind === 'youtube'
+    ? { allowlist: session.youtubeAllowlist, features: featuresOf(rule) }
+    : null;
 }

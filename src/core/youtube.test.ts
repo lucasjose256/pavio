@@ -44,6 +44,15 @@ describe('youtubeDecision sem lista (YouTube sem feed)', () => {
   });
 });
 
+describe('youtubeDecision por recurso (sem lista)', () => {
+  it('Shorts e feeds só bloqueiam se o recurso estiver escondido', () => {
+    expect(youtubeDecision(at('/shorts/abc'), [], new Set(['home'])).action).toBe('allow');
+    expect(youtubeDecision(at('/shorts/abc'), [], new Set(['shorts'])).action).toBe('block');
+    expect(youtubeDecision(at('/feed/subscriptions'), [], new Set(['shorts'])).action).toBe('allow');
+    expect(youtubeDecision(at('/feed/subscriptions'), [], new Set(['home'])).action).toBe('block');
+  });
+});
+
 describe('youtubeDecision com lista', () => {
   const list = [video('vid1'), playlist('PL1'), channel('@canal')];
   it('libera item da lista', () => {

@@ -31,6 +31,11 @@ export default defineManifest({
       run_at: 'document_start',
     },
     {
+      matches: ['https://www.linkedin.com/*'],
+      js: ['src/content/linkedin.iife.ts'],
+      run_at: 'document_start',
+    },
+    {
       matches: ['https://x.com/*', 'https://twitter.com/*', 'https://mobile.twitter.com/*'],
       js: ['src/content/x.iife.ts'],
       run_at: 'document_start',

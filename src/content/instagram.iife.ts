@@ -1,23 +1,27 @@
 import type { Session } from '../core/models';
-import { instagramDecision, restrictedKindActive } from '../core/sites';
+import { restrictionFor } from '../core/restrictions';
+import { instagramDecision } from '../core/sites';
 import { onNavigate, setStyle } from './navigation';
 import { instagramCss } from './selectors';
 
-/** Instagram "só mensagens": só /direct (e o login) passam; Reels, Explorar, feed e perfis vão para a vela. */
+/**
+ * Instagram por recursos: cada parte escondida (feed, Reels, Explorar, Stories, mensagens, perfis e
+ * publicações) bloqueia a sua página; o feed (início) leva às mensagens. Menu: atalhos escondidos por CSS.
+ */
 
-let active = false;
+let features: ReadonlySet<string> | null = null;
 
 function evaluate() {
-  if (!active) return;
-  const decision = instagramDecision(location.pathname);
-  if (decision.action === 'redirect-inbox') location.replace('/direct/inbox/');
+  if (!features) return;
+  const decision = instagramDecision(location.pathname, features);
+  if (decision.action === 'redirect') location.replace(decision.to);
   else if (decision.action === 'block')
     location.replace(chrome.runtime.getURL(`src/ui/blocked/index.html?site=instagram.com&why=${decision.reason}`));
 }
 
 function apply(session: Session | undefined) {
-  active = restrictedKindActive(session, 'instagram', ['instagram.com']);
-  setStyle('pavio-instagram-style', active ? instagramCss() : null);
+  features = restrictionFor(session, 'instagram', ['instagram.com'])?.features ?? null;
+  setStyle('pavio-instagram-style', features ? instagramCss(features) : null);
   evaluate();
 }
 

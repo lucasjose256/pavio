@@ -5,7 +5,7 @@ import type { HistoryEntry } from './models';
 import { HistoryRepository, ScheduleRepository, SessionRepository } from './repositories';
 import { POMODORO_ALARM, SESSION_ALARM, SessionAlreadyActiveError, SessionService } from './session-service';
 import { planFor } from './blocking';
-import { restrictedKindActive } from './sites';
+import { restrictionFor } from './restrictions';
 
 const env = createBuiltinEnvironment('builtin-study', 0)!;
 let now: number;
@@ -120,7 +120,7 @@ describe('Pomodoro automático', () => {
     expect(phases).toEqual(['break']);
     expect(alarms.get(POMODORO_ALARM)).toBe(s.startedAt + 30 * 60_000);
     expect(planFor(during)).toEqual({ block: [], intent: [], allow: [] });
-    expect(restrictedKindActive(during, 'instagram', ['instagram.com'])).toBe(false);
+    expect(restrictionFor(during, 'youtube', ['youtube.com'])).toBeNull();
     expect((await sessions.get())?.pomodoro?.phase).toBe('break'); // gravado: content scripts e DNR reagem ao storage
   });
 
