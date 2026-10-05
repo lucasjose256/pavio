@@ -1,3 +1,5 @@
+import type { HistoryEntry } from './models';
+
 /**
  * Ports: o que o domínio precisa do mundo exterior.
  * O Chrome implementa em platform/chrome; o app macOS implementará os seus.
@@ -17,3 +19,13 @@ export const systemClock: Clock = { now: () => Date.now() };
 
 export type IdGenerator = () => string;
 export const randomId: IdGenerator = () => crypto.randomUUID();
+
+/** Agenda um disparo único (no Chrome: chrome.alarms). Mesmo `name` substitui o anterior. */
+export interface SchedulerPort {
+  schedule(name: string, when: number): Promise<void>;
+  cancel(name: string): Promise<void>;
+}
+
+export interface NotifierPort {
+  sessionCompleted(entry: HistoryEntry): Promise<void>;
+}

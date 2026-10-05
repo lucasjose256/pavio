@@ -27,6 +27,12 @@ Vite + `@crxjs/vite-plugin` (manifest tipado em `manifest.ts`), TypeScript stric
 - Editar ambiente durante sessão não afeta a sessão (snapshot).
 - Fricção = lista ordenada de passos (`confirm`, `wait`, `typePhrase`, `challenge` reservado) para encaixar desafios depois.
 
+## Sessão e timer (`core/session.ts`, `core/session-service.ts`)
+- `SessionService` (start / reconcile / abandon) usa ports (`SchedulerPort`, `NotifierPort`, `Clock`); no Chrome: alarms + notifications.
+- `reconcile()` é idempotente e roda: ao acordar o service worker, no `onStartup`/`onInstalled`, quando o alarme `session-end` dispara e ao abrir o popup. Se `now >= endsAt`: grava histórico (concluída = tempo planejado inteiro), limpa a sessão, cancela alarme e notifica. Senão, reagenda o alarme (alarmes se perdem ao reiniciar o navegador).
+- Quem inicia a sessão só grava no storage; reações (ex.: sincronizar regras DNR na etapa 4) vêm de `chrome.storage.onChanged` no background, não de chamadas diretas.
+- **Pendência temporária:** "Encerrar antes da hora" no popup usa `confirm()` para os dois modos; a etapa 5 troca por uma aba de fricção (modo `focus`: 10s + frase).
+
 ## Storage (`chrome.storage.local`)
 Chaves em `KEYS` (`repositories.ts`): `schemaVersion`, `environments`, `settings`, `activeSession`, `history` (máx. 1000).
 Mudou o formato? Suba `CURRENT_SCHEMA_VERSION` e adicione um passo em `core/migrations.ts`.
@@ -36,8 +42,8 @@ Estado do modo intenção irá em `chrome.storage.session`.
 | Permissão | Motivo | Status |
 |---|---|---|
 | `storage` | Ambientes, sessão ativa, histórico, tudo local | ✅ etapa 1 |
-| `alarms` | Fim da sessão e aviso do modo intenção com service worker suspenso | planejada (etapa 3) |
-| `notifications` | Avisar que a vela acabou | planejada (etapa 3) |
+| `alarms` | Fim da sessão e aviso do modo intenção com service worker suspenso | ✅ etapa 3 |
+| `notifications` | Avisar que a vela acabou | ✅ etapa 3 |
 | `declarativeNetRequest` | Bloquear/redirecionar sites sem ler conteúdo | planejada (etapa 4) |
 | `host_permissions` youtube/instagram/x | Content scripts do modo restrito | planejada (etapas 6-7) |
 | `optional_host_permissions: <all_urls>` | Redirect do DNR exige acesso ao host; pedido por site (`*://*.dominio/*`), no clique em Salvar da página de opções (`platform/chrome/permissions.ts`) | ✅ etapa 2 |
@@ -56,7 +62,7 @@ Agenda recorrente, desafios, compartilhamento, loja de skins, Safari/Firefox, ap
 ## Roadmap (uma etapa = um commit)
 1. ✅ Modelos + storage (+ testes do core)
 2. ✅ Página de opções (ambientes/regras, sugestões, permissão por site) + identidade visual da vela
-3. Sessão + timer (alarms) + iniciar sessão no popup (a vela do popup já existe)
+3. ✅ Sessão + timer (alarms) + iniciar sessão no popup + notificação
 4. Bloqueio (DNR) + página de bloqueio
 5. Página de fricção
 6. Modo restrito do YouTube (+ allowlist)

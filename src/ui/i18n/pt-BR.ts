@@ -39,3 +39,9 @@ export const validationMessage = (code: string): string => {
   if (type === 'missing-kind') return `Escolha o tipo de restrição de ${domain}.`;
   return 'Ambiente inválido.';
 };
+
+export const notifications = {
+  completedTitle: 'A vela acabou 🕯️',
+  completedMessage: (env: string, minutes: number) =>
+    `Sessão "${env}" concluída: ${minutes} min de foco. Você devolveu esse tempo a você.`,
+};
