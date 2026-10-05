@@ -29,7 +29,7 @@ beforeEach(() => {
       schedule: async (n, w) => void alarms.set(n, w),
       cancel: async (n) => void alarms.delete(n),
     },
-    notifier: { sessionCompleted: async (e) => void notified.push(e) },
+    notifier: { sessionCompleted: async (e) => void notified.push(e), intentTimeUp: async () => {} },
   });
 });
 

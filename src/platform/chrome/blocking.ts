@@ -2,52 +2,75 @@ import type { BlockPlan } from '../../core/models';
 import type { BlockerPort } from '../../core/ports';
 import { hostPattern } from './permissions';
 
+// Faixas de id por tipo de regra (permite ler o estado atual a partir dos ids).
 const BLOCK_BASE = 1;
+const INTENT_BASE = 500;
 const ALLOW_BASE = 1000;
 
-export const blockedPageUrl = (domain: string) =>
-  chrome.runtime.getURL(`src/ui/blocked/index.html?site=${encodeURIComponent(domain)}`);
+export const blockedPageUrl = (domain: string, why?: string) =>
+  chrome.runtime.getURL(`src/ui/blocked/index.html?site=${encodeURIComponent(domain)}${why ? `&why=${why}` : ''}`);
 
-function buildRules(plan: BlockPlan): chrome.declarativeNetRequest.Rule[] {
-  const block = plan.block.map((domain, i): chrome.declarativeNetRequest.Rule => ({
+/** `next` vai por último e SEM codificar (o DNR não codifica); a página lê tudo depois de "next=". */
+export const intentPageUrl = (domain: string, next?: string) =>
+  chrome.runtime.getURL(`src/ui/intent/index.html?site=${encodeURIComponent(domain)}${next ? `&next=${next}` : ''}`);
+
+type Rule = chrome.declarativeNetRequest.Rule;
+const main = ['main_frame'] as chrome.declarativeNetRequest.ResourceType[];
+
+function buildRules(plan: BlockPlan): Rule[] {
+  const block = plan.block.map((domain, i): Rule => ({
     id: BLOCK_BASE + i,
     priority: 1,
     action: { type: 'redirect', redirect: { url: blockedPageUrl(domain) } },
-    condition: { requestDomains: [domain], resourceTypes: ['main_frame'] },
+    condition: { requestDomains: [domain], resourceTypes: main },
   }));
-  const allow = plan.allow.map((domain, i): chrome.declarativeNetRequest.Rule => ({
-    id: ALLOW_BASE + i,
+  const intent = plan.intent.map((domain, i): Rule => ({
+    id: INTENT_BASE + i,
     priority: 2,
-    action: { type: 'allow' },
-    condition: { requestDomains: [domain], resourceTypes: ['main_frame'] },
+    // leva a URL original junto, para voltar a ela depois que o usuário responder
+    action: { type: 'redirect', redirect: { regexSubstitution: `${intentPageUrl(domain)}&next=\\1` } },
+    condition: { requestDomains: [domain], regexFilter: '^(https?://.*)$', resourceTypes: main },
   }));
-  return [...block, ...allow];
+  const allow = plan.allow.map((domain, i): Rule => ({
+    id: ALLOW_BASE + i,
+    priority: 3,
+    action: { type: 'allow' },
+    condition: { requestDomains: [domain], resourceTypes: main },
+  }));
+  return [...block, ...intent, ...allow];
 }
 
-const domainsOf = (rules: chrome.declarativeNetRequest.Rule[], type: string) =>
-  rules.filter((r) => r.action.type === type).map((r) => r.condition.requestDomains?.[0] ?? '').sort();
+const domainsIn = (rules: Rule[], from: number, to: number) =>
+  rules.filter((r) => r.id >= from && r.id < to).map((r) => r.condition.requestDomains?.[0] ?? '').sort();
 
 /**
- * Regras dinâmicas do declarativeNetRequest. Só main_frame: o site inteiro é redirecionado
- * para a página da vela. O redirect exige permissão de host (pedida no clique do usuário).
+ * Regras dinâmicas do declarativeNetRequest (só main_frame). O redirect exige permissão de host,
+ * pedida no clique do usuário. Idempotente: só mexe se o plano mudou.
  */
 export class ChromeBlocker implements BlockerPort {
   async apply(plan: BlockPlan): Promise<void> {
     const current = await chrome.declarativeNetRequest.getDynamicRules();
-    const wasBlocked = domainsOf(current, 'redirect');
-    const sameBlock = JSON.stringify(wasBlocked) === JSON.stringify(plan.block);
-    const sameAllow = JSON.stringify(domainsOf(current, 'allow')) === JSON.stringify(plan.allow);
-    if (sameBlock && sameAllow) return; // nada mudou (ex.: só o contador de tentativas)
+    const was = {
+      block: domainsIn(current, BLOCK_BASE, INTENT_BASE),
+      intent: domainsIn(current, INTENT_BASE, ALLOW_BASE),
+      allow: domainsIn(current, ALLOW_BASE, Infinity),
+    };
+    if (JSON.stringify(was) === JSON.stringify(plan)) return;
 
     await chrome.declarativeNetRequest.updateDynamicRules({
       removeRuleIds: current.map((r) => r.id),
       addRules: buildRules(plan),
     });
 
-    // Abas já abertas nesses sites não passam pelo DNR: leva-as para a página da vela.
-    for (const domain of plan.block.filter((d) => !wasBlocked.includes(d))) {
+    // Abas já abertas não passam pelo DNR: leva-as para o destino certo.
+    await this.redirectOpenTabs(plan.block.filter((d) => !was.block.includes(d)), (d) => blockedPageUrl(d));
+    await this.redirectOpenTabs(plan.intent.filter((d) => !was.intent.includes(d)), (d, tab) => intentPageUrl(d, tab.url));
+  }
+
+  private async redirectOpenTabs(domains: string[], target: (domain: string, tab: chrome.tabs.Tab) => string) {
+    for (const domain of domains) {
       const tabs = await chrome.tabs.query({ url: hostPattern(domain) });
-      for (const tab of tabs) if (tab.id !== undefined) await chrome.tabs.update(tab.id, { url: blockedPageUrl(domain) });
+      for (const tab of tabs) if (tab.id !== undefined) await chrome.tabs.update(tab.id, { url: target(domain, tab) });
     }
   }
 }

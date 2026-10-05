@@ -9,6 +9,9 @@ import {
 import type { Environment, Session, Settings, Strictness } from '../../core/models';
 import { DEFAULT_SETTINGS } from '../../core/models';
 import { planForEnvironment } from '../../core/blocking';
+import { findRule } from '../../core/matching';
+import { parseYouTubeLinks } from '../../core/youtube';
+import { youtubeUi } from '../i18n/pt-BR';
 import { ensureHostAccess } from '../../platform/chrome/permissions';
 import { createServices } from '../../platform/chrome/services';
 import { initTheme } from '../shared/theme';
@@ -25,6 +28,7 @@ function StartForm({ skin }: { skin: string }) {
   const [custom, setCustom] = useState(false);
   const [strictness, setStrictness] = useState<Strictness>('focus');
   const [error, setError] = useState('');
+  const [links, setLinks] = useState('');
 
   useEffect(() => {
     void services.environments.list().then((list) => {
@@ -33,17 +37,23 @@ function StartForm({ skin }: { skin: string }) {
     });
   }, []);
 
+  const selected = envs.find((e) => e.id === envId);
+  const youtubeRule = selected && findRule(selected, 'www.youtube.com');
+  const usesYouTube = youtubeRule?.mode === 'restricted' && youtubeRule.restrictedKind === 'youtube';
+
   async function start() {
     const environment = envs.find((e) => e.id === envId);
     if (!environment) return setError('Crie um ambiente nas opções primeiro.');
     if (!isValidDuration(minutes)) return setError(`Escolha entre ${MIN_DURATION_MIN} e ${MAX_DURATION_MIN} minutos.`);
+    const parsed = parseYouTubeLinks(usesYouTube ? links : '');
+    if (parsed.invalid.length) return setError(youtubeUi.invalid(parsed.invalid));
     // O redirect do bloqueio precisa de acesso aos sites. Pedido aqui, direto do clique.
-    const { block } = planForEnvironment(environment);
-    if (!(await ensureHostAccess(block))) {
+    const plan = planForEnvironment(environment);
+    if (!(await ensureHostAccess([...plan.block, ...plan.intent]))) {
       return setError('Sem acesso aos sites bloqueados, a vela não conseguiria protegê-lo. Permita o acesso ou use outro ambiente.');
     }
     try {
-      await services.sessionService.start({ environment, minutes, strictness });
+      await services.sessionService.start({ environment, minutes, strictness, youtubeAllowlist: parsed.links });
     } catch {
       setError('Não foi possível acender a vela.');
     }
@@ -75,6 +85,15 @@ function StartForm({ skin }: { skin: string }) {
               aria-label="Minutos" onInput={(e) => setMinutes(Number(e.currentTarget.value))} />
           )}
         </div>
+
+        {usesYouTube && (
+          <details class="yt">
+            <summary>{youtubeUi.summary}</summary>
+            <textarea class="field full" rows={4} placeholder={youtubeUi.placeholder} value={links}
+              onInput={(e) => setLinks(e.currentTarget.value)} spellcheck={false} />
+            <p class="hint">{youtubeUi.help}</p>
+          </details>
+        )}
 
         <div>
           <span class="lbl">Modo</span>

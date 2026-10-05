@@ -72,8 +72,21 @@ export interface Settings {
 
 export const DEFAULT_SETTINGS: Settings = { candleSkin: 'classic', theme: 'cream' };
 
-/** O que deve estar bloqueado agora. `allow` = exceções (subdomínios de um domínio bloqueado). */
+/** Regras de rede desejadas agora. `allow` = exceções (subdomínios de um domínio bloqueado/com intenção). */
 export interface BlockPlan {
+  /** Redireciona para a página da vela. */
   block: string[];
+  /** Redireciona para "o que você vai fazer aqui?" (modo intenção), exceto se já houver permissão. */
+  intent: string[];
   allow: string[];
+}
+
+/** Permissão temporária para um site `restricted` (modo intenção). */
+export interface IntentGrant {
+  domain: string;
+  /** "O que você vai fazer aqui?" */
+  text: string;
+  minutes: number;
+  startedAt: number;
+  endsAt: number;
 }

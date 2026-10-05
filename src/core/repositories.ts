@@ -1,6 +1,6 @@
 import { createBuiltinEnvironment, validateEnvironment } from './environments';
 import { DEFAULT_SETTINGS } from './models';
-import type { Environment, HistoryEntry, Session, Settings } from './models';
+import type { Environment, HistoryEntry, IntentGrant, Session, Settings } from './models';
 import type { Clock, StoragePort } from './ports';
 
 export const KEYS = {
@@ -9,6 +9,7 @@ export const KEYS = {
   settings: 'settings',
   activeSession: 'activeSession',
   history: 'history',
+  intents: 'intents',
 } as const;
 
 export const HISTORY_LIMIT = 1000;
@@ -97,5 +98,27 @@ export class HistoryRepository {
   async append(entry: HistoryEntry): Promise<void> {
     const all = [...(await this.list()), entry];
     await this.storage.set(KEYS.history, all.slice(-HISTORY_LIMIT));
+  }
+}
+
+/** Permissões do modo intenção da sessão atual. Limpas quando a sessão termina. */
+export class IntentRepository {
+  constructor(private storage: StoragePort) {}
+
+  async list(): Promise<IntentGrant[]> {
+    return (await this.storage.get<IntentGrant[]>(KEYS.intents)) ?? [];
+  }
+  async get(domain: string): Promise<IntentGrant | undefined> {
+    return (await this.list()).find((g) => g.domain === domain);
+  }
+  async put(grant: IntentGrant): Promise<void> {
+    const others = (await this.list()).filter((g) => g.domain !== grant.domain);
+    await this.storage.set(KEYS.intents, [...others, grant]);
+  }
+  async remove(domain: string): Promise<void> {
+    await this.storage.set(KEYS.intents, (await this.list()).filter((g) => g.domain !== domain));
+  }
+  async clear(): Promise<void> {
+    await this.storage.remove(KEYS.intents);
   }
 }

@@ -6,7 +6,7 @@ import { Candle } from '../candle/Candle';
 import { candleProgress, formatRemaining, remainingMs } from '../../core/session';
 import type { Session, Settings } from '../../core/models';
 import { DEFAULT_SETTINGS } from '../../core/models';
-import { quotes } from '../i18n/pt-BR';
+import { blockedWhy, quotes } from '../i18n/pt-BR';
 import { createServices } from '../../platform/chrome/services';
 import { initTheme } from '../shared/theme';
 import { useNow } from '../shared/useNow';
@@ -21,7 +21,9 @@ function goBack() {
 }
 
 function Blocked() {
-  const site = new URLSearchParams(location.search).get('site');
+  const params = new URLSearchParams(location.search);
+  const site = params.get('site');
+  const why = blockedWhy[params.get('why') ?? ''];
   const { value: session, loaded } = useStorageValue<Session>('activeSession');
   const { value: settings } = useStorageValue<Settings>('settings');
   const now = useNow(1000);
@@ -42,7 +44,8 @@ function Blocked() {
         />
       </div>
       <p class="quote">{quote}</p>
-      {site && <p class="site">{site} está fora do seu ambiente agora. Tudo bem, ele espera.</p>}
+      {why && <p class="site">{why}</p>}
+      {!why && site && <p class="site">{site} está fora do seu ambiente agora. Tudo bem, ele espera.</p>}
       {active && <p class="time">{formatRemaining(remainingMs(active, now))} até a vela acabar</p>}
       {!active && loaded && <p class="time">A vela acabou. Você chegou até o fim. 🕯️</p>}
       <div class="actions">

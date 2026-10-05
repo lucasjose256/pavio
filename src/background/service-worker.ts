@@ -1,18 +1,24 @@
 import { systemClock } from '../core/ports';
 import { migrate } from '../core/migrations';
 import { planFor } from '../core/blocking';
+import { domainFromIntentAlarm } from '../core/intent-service';
 import { SESSION_ALARM } from '../core/session-service';
+import { INTENT_NOTIFICATION_PREFIX } from '../platform/chrome/notifications';
 import { createServices } from '../platform/chrome/services';
 
-const { storage, sessions, blocker, sessionService } = createServices();
+const { storage, sessions, intents, blocker, sessionService, intentService } = createServices();
 
 // Serializa: várias mudanças seguidas não podem aplicar regras ao mesmo tempo.
 let queue: Promise<unknown> = Promise.resolve();
 const enqueue = (task: () => Promise<unknown>) => (queue = queue.then(task, task));
 
-/** Alinha as regras de bloqueio com a sessão atual (sem sessão ativa = nada bloqueado). */
+/** Alinha as regras de rede com a sessão e as permissões de intenção atuais. */
 const syncBlocking = () =>
-  enqueue(async () => blocker.apply(planFor(await sessions.get())));
+  enqueue(async () => {
+    const session = await sessions.get();
+    if (session?.status !== 'active') await intentService.clearAll(); // fim da sessão: sem permissões penduradas
+    await blocker.apply(planFor(session?.status === 'active' ? session : undefined, await intents.list()));
+  });
 
 /** Idempotente: roda sempre que o service worker acorda. */
 async function boot() {
@@ -25,11 +31,20 @@ async function boot() {
 chrome.runtime.onInstalled.addListener(() => void boot());
 chrome.runtime.onStartup.addListener(() => void boot());
 chrome.alarms.onAlarm.addListener((alarm) => {
-  if (alarm.name === SESSION_ALARM) void sessionService.reconcile();
+  if (alarm.name === SESSION_ALARM) return void sessionService.reconcile();
+  const domain = domainFromIntentAlarm(alarm.name);
+  if (domain) void intentService.timeUp(domain);
 });
-// Início, fim e abandono de sessão só gravam no storage; o bloqueio reage aqui.
+// Aviso gentil do modo intenção: botão 0 = mais 5 min, 1 = já terminei.
+chrome.notifications.onButtonClicked.addListener((id, button) => {
+  if (!id.startsWith(INTENT_NOTIFICATION_PREFIX)) return;
+  const domain = id.slice(INTENT_NOTIFICATION_PREFIX.length);
+  void (button === 0 ? intentService.extend(domain) : intentService.revoke(domain));
+  void chrome.notifications.clear(id);
+});
+// Sessão e permissões de intenção só gravam no storage; o bloqueio reage aqui.
 chrome.storage.onChanged.addListener((changes, area) => {
-  if (area === 'local' && changes.activeSession) void syncBlocking();
+  if (area === 'local' && (changes.activeSession || changes.intents)) void syncBlocking();
 });
 
 void boot();

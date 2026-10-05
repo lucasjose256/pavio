@@ -1,0 +1,19 @@
+body { min-height: 100vh; }
+.intent {
+  min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 8px; padding: 40px 20px; text-align: center;
+  background: radial-gradient(ellipse 55% 50% at 50% 28%, var(--glow), transparent 72%), var(--bg);
+}
+.intent-candle { width: min(190px, 46vw); margin-bottom: 8px; }
+h1 { margin: 0; font-family: var(--font-display); font-weight: 600; font-size: clamp(28px, 4vw, 38px); }
+.sub { margin: 0 0 12px; color: var(--muted); max-width: 40ch; }
+form { width: min(440px, 100%); display: flex; flex-direction: column; gap: 10px; text-align: left; }
+.full { width: 100%; }
+.lbl { font-size: 13px; color: var(--muted); font-weight: 600; margin-top: 4px; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.chip { background: var(--surface); border: 1px solid var(--border); border-radius: 999px; padding: 5px 14px; font-size: 14px; transition: all .15s; }
+.chip:hover { border-color: var(--muted); }
+.chip[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: transparent; font-weight: 650; }
+.minutes { width: 90px; }
+.error { margin: 0; color: var(--danger); font-size: 14px; }
+.buttons { display: flex; gap: 10px; justify-content: center; margin-top: 10px; }

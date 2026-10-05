@@ -44,6 +44,10 @@ export const notifications = {
   completedTitle: 'A vela acabou 🕯️',
   completedMessage: (env: string, minutes: number) =>
     `Sessão "${env}" concluída: ${minutes} min de foco. Você devolveu esse tempo a você.`,
+  intentTitle: 'Ainda está na tarefa?',
+  intentMessage: (domain: string, text: string) => `Você veio ao ${domain} para: "${text}". O tempo combinado acabou.`,
+  intentMore: 'Preciso de mais 5 min',
+  intentDone: 'Já terminei',
 };
 
 export const friction = {
@@ -61,4 +65,32 @@ export const friction = {
   close: 'Fechar',
   noSessionTitle: 'Não há vela acesa.',
   noSessionMessage: 'A sessão já terminou. Pode fechar esta aba.',
+};
+
+export const intentPage = {
+  title: 'O que você vai fazer aqui?',
+  subtitle: (site: string) => `${site} está no modo intenção. Diga seu propósito e por quanto tempo.`,
+  placeholder: 'Ex.: responder uma dúvida da faculdade',
+  duration: 'Por quanto tempo?',
+  other: 'Outro',
+  enter: 'Entrar com calma',
+  back: 'Voltar',
+  errors: {
+    text: 'Escreva em poucas palavras o que você vai fazer.',
+    minutes: 'Escolha entre 1 e 180 minutos.',
+    generic: 'Não consegui liberar o site agora. Tente de novo.',
+  },
+};
+
+export const blockedWhy: Record<string, string> = {
+  shorts: 'Os Shorts ficam de fora durante a sessão.',
+  feed: 'Esse feed fica escondido durante a sessão.',
+  'not-allowed': 'Esse endereço não está na sua lista de hoje.',
+};
+
+export const youtubeUi = {
+  summary: 'Links permitidos do YouTube (opcional)',
+  help: 'Cole vídeos, playlists ou canais, um por linha. Com a lista, todo o resto do YouTube fica bloqueado. Sem lista, o YouTube fica sem feed, mas com busca.',
+  placeholder: 'https://www.youtube.com/watch?v=...\nhttps://www.youtube.com/@canal',
+  invalid: (lines: string[]) => `Não entendi estes links: ${lines.join(', ')}`,
 };
