@@ -53,12 +53,6 @@ export interface Session {
   youtubeAllowlist: AllowedLink[];
   status: SessionStatus;
   blockedAttempts: number;
-  /** Quem acendeu a vela. Ausente = manual (sessões antigas). */
-  source?: 'manual' | 'schedule';
-  /** Só em sessões de horário: a faixa, a ocorrência (`faixa:dia`) e o nome para exibir. */
-  scheduleBlockId?: string;
-  occurrenceKey?: string;
-  scheduleName?: string;
   /** Pomodoro automático: alterna foco e pausa dentro da sessão. Na pausa os bloqueios ficam desligados. */
   pomodoro?: PomodoroSession;
 }
@@ -73,7 +67,6 @@ export interface HistoryEntry {
   actualMs: number;
   outcome: 'completed' | 'abandoned';
   blockedAttempts: number;
-  source?: 'manual' | 'schedule';
 }
 
 /** creme = claro e quente (padrão); noite = escuro e quente. */
@@ -82,9 +75,11 @@ export type ThemeName = 'cream' | 'night';
 export interface Settings {
   candleSkin: string;
   theme: ThemeName;
+  /** Rotina por site ligada? Vem desligada: o usuário ativa depois de conferir. */
+  routineEnabled: boolean;
 }
 
-export const DEFAULT_SETTINGS: Settings = { candleSkin: 'classic', theme: 'cream' };
+export const DEFAULT_SETTINGS: Settings = { candleSkin: 'classic', theme: 'cream', routineEnabled: false };
 
 /** Regras de rede desejadas agora. `allow` = exceções (subdomínios de um domínio bloqueado/com intenção). */
 export interface BlockPlan {
@@ -105,25 +100,6 @@ export interface IntentGrant {
   endsAt: number;
 }
 
-/**
- * Faixa de horário: nos `days` (0 = domingo … 6 = sábado), de `startMin` a `endMin` (minutos desde 00:00),
- * o `environmentId` vale automaticamente. `endMin <= startMin` = termina no dia seguinte (ex.: 22:00 → 06:00).
- */
-export interface ScheduleBlock {
-  id: string;
-  name: string;
-  environmentId: string;
-  days: number[];
-  startMin: number;
-  endMin: number;
-  strictness: Strictness;
-  enabled: boolean;
-  /** Se definido, as sessões desta faixa usam Pomodoro automático. */
-  pomodoro?: PomodoroConfig;
-  createdAt: number;
-  updatedAt: number;
-}
-
 /** Ciclos de foco/pausa. `longBreakMin = 0` desliga a pausa longa. */
 export interface PomodoroConfig {
   focusMin: number;
@@ -142,4 +118,45 @@ export interface PomodoroSession extends PomodoroConfig {
   cycle: number;
   long: boolean;
   phaseEndsAt: number;
+}
+
+/** Como um site é tratado numa faixa da rotina (subconjunto de `Rule`). Fora das faixas o site fica liberado. */
+export interface RestrictionSpec {
+  mode: 'blocked' | 'restricted';
+  restrictedKind?: RestrictedKind;
+  features?: string[];
+}
+
+/**
+ * Faixa de uma rotina: nos `days` (0 = domingo … 6 = sábado), de `startMin` a `endMin` (minutos desde 00:00),
+ * o site recebe a restrição. `endMin <= startMin` = termina no dia seguinte (22:00 → 06:00); `endMin = 1440`
+ * = até o fim do dia. Dia todo, todos os dias = "para sempre".
+ */
+export interface RoutineSlot extends RestrictionSpec {
+  id: string;
+  days: number[];
+  startMin: number;
+  endMin: number;
+}
+
+export interface RoutineSite {
+  id: string;
+  /** Domínio normalizado (youtube.com). */
+  domain: string;
+  enabled: boolean;
+  slots: RoutineSlot[];
+}
+
+/**
+ * O que vale AGORA: regras da rotina (pelas faixas ativas) somadas às do Timer (ambiente da sessão).
+ * Derivada e gravada pelo service worker; bloqueio e content scripts só leem isto.
+ */
+export interface Policy {
+  rules: Rule[];
+  /** Lista de links do YouTube da sessão do Timer (vazia fora dela). */
+  youtubeAllowlist: AllowedLink[];
+  /** Quando a política muda de novo (fim de faixa, fim da vela, fim da pausa…), para avisar "volta a liberar às…". */
+  nextChange?: number;
+  routineActive: boolean;
+  timerActive: boolean;
 }

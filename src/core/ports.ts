@@ -30,8 +30,6 @@ export interface NotifierPort {
   sessionCompleted(entry: HistoryEntry): Promise<void>;
   /** O Pomodoro mudou de fase (`until` = fim da nova fase). */
   pomodoroPhase(session: Session, phase: PomodoroPhase, until: number): Promise<void>;
-  /** Uma faixa de horário começou e acendeu a vela sozinha. */
-  scheduledStarted(session: Session): Promise<void>;
   /** Aviso gentil: o tempo declarado no modo intenção acabou. */
   intentTimeUp(grant: IntentGrant): Promise<void>;
 }

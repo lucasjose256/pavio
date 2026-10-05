@@ -1,13 +1,14 @@
+import type { Settings } from '../core/models';
 import { systemClock } from '../core/ports';
 import { migrate } from '../core/migrations';
 import { planFor } from '../core/blocking';
 import { domainFromIntentAlarm } from '../core/intent-service';
-import { SCHEDULE_ALARM } from '../core/schedule-service';
+import { ROUTINE_ALARM } from '../core/policy-service';
 import { POMODORO_ALARM, SESSION_ALARM } from '../core/session-service';
 import { INTENT_NOTIFICATION_PREFIX } from '../platform/chrome/notifications';
 import { createServices } from '../platform/chrome/services';
 
-const { storage, sessions, intents, blocker, scheduleService, intentService } = createServices();
+const { storage, policies, intents, blocker, policyService, intentService } = createServices();
 
 // Serializa: várias mudanças seguidas não podem mexer em regras/sessões ao mesmo tempo.
 let queue: Promise<unknown> = Promise.resolve();
@@ -15,20 +16,18 @@ let queue: Promise<unknown> = Promise.resolve();
 const enqueue = (task: () => Promise<unknown>) =>
   (queue = queue.then(task).catch((error) => console.error('[Pavio] falhou ao sincronizar:', error)));
 
-/** Alinha as regras de rede com a sessão e as permissões de intenção atuais. */
+/** Alinha as regras de rede com a política atual (rotina + Timer) e as permissões de intenção. */
 async function syncBlocking() {
-  const session = await sessions.get();
-  if (session?.status !== 'active') await intentService.clearAll(); // fim da sessão: sem permissões penduradas
-  await blocker.apply(planFor(session?.status === 'active' ? session : undefined, await intents.list()));
+  await blocker.apply(planFor(await policies.get(), await intents.list()));
 }
 
 /**
- * Tudo que depende do relógio e das configurações, em ordem: conclui o que venceu, acende a vela se uma
- * faixa de horário estiver valendo, agenda o início da próxima e aplica o bloqueio. Idempotente.
+ * Tudo que depende do relógio e das configurações, em ordem: conclui a vela que venceu, recalcula o que vale
+ * agora (rotina + Timer), agenda a próxima virada e aplica o bloqueio. Idempotente.
  */
 const syncAll = () =>
   enqueue(async () => {
-    await scheduleService.sync();
+    await policyService.sync();
     await syncBlocking();
   });
 
@@ -38,11 +37,15 @@ async function boot() {
 }
 
 // Listeners precisam ser registrados de forma síncrona, no topo do módulo.
-chrome.runtime.onInstalled.addListener(() => void boot());
+chrome.runtime.onInstalled.addListener((details) => {
+  void boot();
+  // Primeira instalação: abre as opções na Rotina para o usuário conferir a programação pronta e ligá-la.
+  if (details.reason === 'install') void chrome.tabs.create({ url: chrome.runtime.getURL('src/ui/options/index.html#rotina') });
+});
 chrome.runtime.onStartup.addListener(() => void boot());
 chrome.alarms.onAlarm.addListener((alarm) => {
-  // Fim da vela, início de faixa e troca de fase do Pomodoro: tudo passa pelo mesmo sync idempotente.
-  if (alarm.name === SESSION_ALARM || alarm.name === SCHEDULE_ALARM || alarm.name === POMODORO_ALARM) return void syncAll();
+  // Fim da vela, troca de fase do Pomodoro e virada de faixa da rotina: tudo passa pelo mesmo sync idempotente.
+  if (alarm.name === SESSION_ALARM || alarm.name === POMODORO_ALARM || alarm.name === ROUTINE_ALARM) return void syncAll();
   const domain = domainFromIntentAlarm(alarm.name);
   if (domain) void intentService.timeUp(domain);
 });
@@ -53,10 +56,12 @@ chrome.notifications.onButtonClicked.addListener((id, button) => {
   void (button === 0 ? intentService.extend(domain) : intentService.revoke(domain));
   void chrome.notifications.clear(id);
 });
-// Sessão (iniciada/encerrada), permissões de intenção e faixas de horário só gravam no storage; a reação é aqui.
+// Vela (iniciada/encerrada), rotina e o interruptor da rotina só gravam no storage; a reação é aqui.
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'local') return;
-  if (changes.activeSession || changes.schedule) void syncAll();
+  const flag = (v: unknown) => (v as Partial<Settings> | undefined)?.routineEnabled;
+  const routineToggled = !!changes.settings && flag(changes.settings.oldValue) !== flag(changes.settings.newValue);
+  if (changes.activeSession || changes.routine || routineToggled) void syncAll();
   else if (changes.intents) void enqueue(syncBlocking);
 });
 
@@ -64,11 +69,11 @@ chrome.storage.onChanged.addListener((changes, area) => {
 (self as unknown as { __pavio: unknown }).__pavio = {
   /** Regras de rede ativas agora. */
   rules: () => chrome.declarativeNetRequest.getDynamicRules(),
-  /** Sessão, permissões de intenção e o plano de bloqueio que deveria estar valendo. */
+  /** A política que vale agora, as permissões de intenção, o plano de bloqueio esperado e as regras reais do Chrome. */
   state: async () => {
-    const session = await sessions.get();
+    const policy = await policies.get();
     const grants = await intents.list();
-    return { session, intents: grants, plan: planFor(session?.status === 'active' ? session : undefined, grants), rules: await chrome.declarativeNetRequest.getDynamicRules() };
+    return { policy, intents: grants, plan: planFor(policy, grants), rules: await chrome.declarativeNetRequest.getDynamicRules() };
   },
   sync: syncAll,
 };

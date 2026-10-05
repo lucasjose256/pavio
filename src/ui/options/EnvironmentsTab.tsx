@@ -100,10 +100,6 @@ export function EnvironmentsTab({ active }: { active: boolean }) {
 
   async function remove() {
     if (!draft || draft.builtin) return;
-    const using = (await services.schedule.list()).filter((b) => b.environmentId === draft.id);
-    if (using.length) {
-      return setNotice({ kind: 'error', text: `Este ambiente é usado por ${using.length === 1 ? 'uma faixa' : `${using.length} faixas`} de horário (${using.map((b) => b.name || 'sem nome').join(', ')}). Troque o ambiente delas antes de apagar.` });
-    }
     if (!confirm(`Apagar o ambiente "${draft.name}"?`)) return;
     await services.environments.remove(draft.id);
     await reload(envs.find((e) => e.id !== draft.id)?.id);
@@ -162,8 +158,8 @@ export function EnvironmentsTab({ active }: { active: boolean }) {
       {sessionActive && <p class="notice warn">Há uma sessão em andamento: o que você mudar vale a partir da próxima.</p>}
 
       <section aria-label="Escolha o ambiente">
-        <h2 class="section-title">Seus ambientes</h2>
-        <p class="section-sub">Um ambiente é um jeito de organizar seu dia. Escolha um para ver e editar as regras.</p>
+        <h2 class="section-title">Ambientes do Timer</h2>
+        <p class="section-sub">Ao acender a vela no popup, você escolhe um ambiente: as regras dele valem por cima da sua rotina, pelo tempo do Timer, para um foco a mais. Escolha um para ver e editar.</p>
         <ul class="env-grid">
           {envs.map((e) => {
             const c = ruleCounts(e);

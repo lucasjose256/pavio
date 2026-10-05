@@ -64,6 +64,12 @@ export const pomodoroError = (code: string): string =>
     'pomodoro:cycles': 'A pausa longa vem a cada 2 a 10 focos.',
   })[code] ?? 'Pomodoro inválido.';
 
+export const releasedUi = {
+  title: 'Liberado agora',
+  message: (site: string | null) => `${site ?? 'O site'} não está mais bloqueado. Pode abrir.`,
+  until: (when: string) => `Volta a liberar ${when}`,
+};
+
 export const breakUi = {
   title: 'Hora da pausa',
   message: (site: string | null, until: string) => `${site ? `O ${site} está liberado` : 'Os sites estão liberados'} até ${until}. Respire, levante, beba água.`,
@@ -109,8 +115,6 @@ export const friction = {
   doneTitle: 'Vela apagada.',
   doneMessage: 'Sem culpa. Foi o que deu hoje, e amanhã a gente acende de novo.',
   close: 'Fechar',
-  scheduledBadge: (name?: string) => `Seu horário${name ? ` “${name}”` : ''} acendeu esta vela.`,
-  scheduledNote: 'Só por hoje: amanhã, no mesmo horário, a vela acende de novo.',
   noSessionTitle: 'Não há vela acesa.',
   noSessionMessage: 'A sessão já terminou. Pode fechar esta aba.',
 };

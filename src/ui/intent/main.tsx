@@ -4,9 +4,8 @@ import '../theme.css';
 import './intent.css';
 import { Candle } from '../candle/Candle';
 import { INTENT_MAX_MINUTES, INTENT_MAX_TEXT, INTENT_MIN_MINUTES, INTENT_PRESETS_MIN, validateIntent } from '../../core/intent-service';
-import { hostMatchesDomain } from '../../core/matching';
-import { onBreak } from '../../core/pomodoro';
-import type { Session, Settings } from '../../core/models';
+import { findRule, hostMatchesDomain } from '../../core/matching';
+import type { Policy, Settings } from '../../core/models';
 import { DEFAULT_SETTINGS } from '../../core/models';
 import { createServices } from '../../platform/chrome/services';
 import { intentPage as t } from '../i18n/pt-BR';
@@ -51,7 +50,7 @@ function goBack() {
 }
 
 function Intent() {
-  const { value: session } = useStorageValue<Session>('activeSession');
+  const { value: policy, loaded } = useStorageValue<Policy>('policy');
   const { value: settings } = useStorageValue<Settings>('settings');
   const [text, setText] = useState('');
   const [minutes, setMinutes] = useState(15);
@@ -74,8 +73,9 @@ function Intent() {
     }
   }
 
-  // Sem sessão ativa não há o que perguntar: segue para o site.
-  if (session !== undefined && (session.status !== 'active' || onBreak(session))) location.replace(destination());
+  // Se a política não pede mais intenção para este site (acabou a faixa/a vela, ou é a pausa), não há o que perguntar.
+  const rule = policy && findRule(policy, site);
+  if (loaded && !(rule?.mode === 'restricted' && rule.restrictedKind === 'intent')) location.replace(destination());
 
   return (
     <main class="intent">

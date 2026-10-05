@@ -1,4 +1,4 @@
-import type { Session } from '../core/models';
+import type { Policy } from '../core/models';
 import { channelAllowed, youtubeDecision, youtubeRestriction } from '../core/youtube';
 import { youtube, youtubeCss } from './selectors';
 
@@ -67,15 +67,15 @@ async function evaluate() {
   else leave('not-allowed');
 }
 
-function apply(session: Session | undefined) {
-  restriction = youtubeRestriction(session);
+function apply(policy: Policy | undefined) {
+  restriction = youtubeRestriction(policy);
   setStyle(restriction?.features ?? null, restriction?.allowlist.length === 0);
   void evaluate();
 }
 
-void chrome.storage.local.get('activeSession').then((r) => apply(r.activeSession as Session | undefined));
+void chrome.storage.local.get('policy').then((r) => apply(r.policy as Policy | undefined));
 chrome.storage.onChanged.addListener((changes, area) => {
-  if (area === 'local' && changes.activeSession) apply(changes.activeSession.newValue as Session | undefined);
+  if (area === 'local' && changes.policy) apply(changes.policy.newValue as Policy | undefined);
 });
 
 // YouTube é uma SPA: a URL muda sem recarregar. Eventos próprios + verificação leve de segurança.

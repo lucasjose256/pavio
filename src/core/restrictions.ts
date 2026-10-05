@@ -1,6 +1,5 @@
-import type { RestrictedKind, Rule, Session } from './models';
+import type { Policy, RestrictedKind, RestrictionSpec, Rule } from './models';
 import { findRule, hostMatchesDomain } from './matching';
-import { enforcing } from './pomodoro';
 
 export type ServiceKind = Exclude<RestrictedKind, 'intent'>;
 
@@ -62,17 +61,66 @@ export function featuresOf(rule: Pick<Rule, 'restrictedKind' | 'features'>): Set
 
 /**
  * O serviço `kind` está restrito agora? Devolve os recursos a esconder, ou null.
- * Só vale com sessão ativa e fora da pausa do Pomodoro. `domains`: os domínios do serviço (ex.: x.com e twitter.com).
+ * `domains`: os domínios do serviço (ex.: x.com e twitter.com). Quem decide se vale agora é a `Policy`
+ * (rotina + Timer, fora da pausa do Pomodoro), calculada pelo service worker.
  */
 export function restrictionFor(
-  session: Pick<Session, 'status' | 'environmentSnapshot' | 'pomodoro'> | undefined,
+  policy: Pick<Policy, 'rules'> | undefined,
   kind: ServiceKind,
   domains: string[],
 ): { features: Set<string> } | null {
-  if (!session || !enforcing(session)) return null;
+  if (!policy) return null;
   for (const d of domains) {
-    const rule = findRule(session.environmentSnapshot, d);
+    const rule = findRule(policy, d);
     if (rule?.mode === 'restricted' && rule.restrictedKind === kind) return { features: featuresOf(rule) };
   }
   return null;
+}
+
+// ---------- como um site é tratado: especificação, rigor e combinação ----------
+
+type SpecLike = Pick<Rule, 'mode' | 'restrictedKind' | 'features'>;
+
+/** Rigor: liberado 0 < intenção 2 < esconder partes do serviço 3 < bloqueado 4. */
+export function strictness(spec: SpecLike): number {
+  if (spec.mode === 'blocked') return 4;
+  if (spec.mode === 'restricted') return spec.restrictedKind && spec.restrictedKind !== 'intent' ? 3 : 2;
+  return 0;
+}
+
+/** Junta dois tratamentos do mesmo site: vale o mais rigoroso; esconder partes do mesmo serviço soma os recursos. */
+export function combineSpecs<T extends SpecLike>(a: T, b: T): T {
+  const [ra, rb] = [strictness(a), strictness(b)];
+  if (ra !== rb) return ra > rb ? a : b;
+  if (ra === 3 && a.restrictedKind === b.restrictedKind) {
+    const features = new Set([...featuresOf(a), ...featuresOf(b)]);
+    const kind = a.restrictedKind as ServiceKind;
+    return { ...a, features: FEATURE_DEFS[kind].map((f) => f.id).filter((id) => features.has(id)) };
+  }
+  return a;
+}
+
+/** Tratamento padrão ao escolher "bloqueado"/"restrito" para um site. */
+export function defaultSpec(domain: string, mode: RestrictionSpec['mode']): RestrictionSpec {
+  if (mode === 'blocked') return { mode };
+  const kind = serviceKindFor(domain) ?? 'intent';
+  return kind === 'intent' ? { mode, restrictedKind: kind } : { mode, restrictedKind: kind, features: defaultFeatures(kind) };
+}
+
+export function specWithMode(spec: RestrictionSpec, domain: string, mode: RestrictionSpec['mode']): RestrictionSpec {
+  return spec.mode === mode ? spec : defaultSpec(domain, mode);
+}
+
+/** Troca entre "esconder partes do serviço" e "modo intenção". */
+export function specWithKind(_spec: RestrictionSpec, kind: RestrictedKind): RestrictionSpec {
+  return kind === 'intent' ? { mode: 'restricted', restrictedKind: 'intent' } : { mode: 'restricted', restrictedKind: kind, features: defaultFeatures(kind) };
+}
+
+/** Liga/desliga um recurso escondido. */
+export function specToggleFeature(spec: RestrictionSpec, id: string): RestrictionSpec {
+  const kind = spec.restrictedKind;
+  if (spec.mode !== 'restricted' || !kind || kind === 'intent') return spec;
+  const set = featuresOf(spec);
+  if (!set.delete(id)) set.add(id);
+  return { ...spec, features: FEATURE_DEFS[kind].map((f) => f.id).filter((f) => set.has(f)) };
 }

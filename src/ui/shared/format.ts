@@ -1,5 +1,5 @@
-import { crossesMidnight, formatMinutes } from '../../core/schedule';
-import type { ScheduleBlock } from '../../core/models';
+import { crossesMidnight, formatMinutes } from '../../core/timeslots';
+import type { TimeSlot } from '../../core/timeslots';
 
 /** 0 = domingo … 6 = sábado. */
 export const DAY_SHORT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
@@ -16,7 +16,7 @@ export function formatDays(days: number[]): string {
 }
 
 /** "09:00 – 12:00" ou "22:00 – 06:00 (dia seguinte)". */
-export function formatRange(b: Pick<ScheduleBlock, 'startMin' | 'endMin'>): string {
+export function formatRange(b: Pick<TimeSlot, 'startMin' | 'endMin'>): string {
   return `${formatMinutes(b.startMin)} – ${formatMinutes(b.endMin)}${crossesMidnight(b) ? ' (dia seguinte)' : ''}`;
 }
 

@@ -1,8 +1,8 @@
 import { createBuiltinEnvironment, validateEnvironment } from './environments';
 import { DEFAULT_SETTINGS } from './models';
-import type { Environment, HistoryEntry, IntentGrant, ScheduleBlock, Session, Settings } from './models';
+import type { Environment, HistoryEntry, IntentGrant, Policy, RoutineSite, Session, Settings } from './models';
 import type { Clock, StoragePort } from './ports';
-import { validateBlock } from './schedule';
+import { validateSite } from './routine';
 
 export const KEYS = {
   schemaVersion: 'schemaVersion',
@@ -11,8 +11,8 @@ export const KEYS = {
   activeSession: 'activeSession',
   history: 'history',
   intents: 'intents',
-  schedule: 'schedule',
-  skippedOccurrences: 'skippedOccurrences',
+  routine: 'routine',
+  policy: 'policy',
 } as const;
 
 export const HISTORY_LIMIT = 1000;
@@ -130,47 +130,40 @@ export class IntentRepository {
   }
 }
 
-export class InvalidScheduleBlockError extends Error {
-  constructor(public readonly errors: string[]) {
-    super(`Invalid schedule block: ${errors.join(', ')}`);
+/** A rotina: sites com suas faixas (quando cada um fica restrito). */
+export class RoutineRepository {
+  constructor(private storage: StoragePort) {}
+
+  async list(): Promise<RoutineSite[]> {
+    return (await this.storage.get<RoutineSite[]>(KEYS.routine)) ?? [];
+  }
+
+  /** Grava a rotina inteira (a tela edita a lista toda e salva de uma vez). Valida antes. */
+  async save(sites: RoutineSite[]): Promise<void> {
+    const errors = sites.flatMap((s) => validateSite(s).map((e) => `${s.domain}:${e}`));
+    if (errors.length) throw new InvalidRoutineError(errors);
+    await this.storage.set(KEYS.routine, sites);
   }
 }
 
-/** Faixas de horário + ocorrências que o usuário pulou ao desistir ("só por hoje"). */
-export class ScheduleRepository {
-  constructor(
-    private storage: StoragePort,
-    private clock: Clock,
-  ) {}
+export class InvalidRoutineError extends Error {
+  constructor(public readonly errors: string[]) {
+    super(`Invalid routine: ${errors.join(', ')}`);
+  }
+}
 
-  async list(): Promise<ScheduleBlock[]> {
-    return (await this.storage.get<ScheduleBlock[]>(KEYS.schedule)) ?? [];
+/** O que vale agora (derivado pelo service worker; bloqueio e content scripts só leem). */
+export class PolicyRepository {
+  constructor(private storage: StoragePort) {}
+
+  get(): Promise<Policy | undefined> {
+    return this.storage.get<Policy>(KEYS.policy);
   }
 
-  async save(block: ScheduleBlock, knownEnvironmentIds?: string[]): Promise<ScheduleBlock> {
-    const errors = validateBlock(block, knownEnvironmentIds);
-    if (errors.length) throw new InvalidScheduleBlockError(errors);
-    const all = await this.list();
-    const saved: ScheduleBlock = { ...block, name: block.name.trim(), updatedAt: this.clock.now() };
-    const i = all.findIndex((b) => b.id === block.id);
-    if (i >= 0) all[i] = saved;
-    else all.push(saved);
-    await this.storage.set(KEYS.schedule, all);
-    return saved;
-  }
-
-  async remove(id: string): Promise<void> {
-    await this.storage.set(KEYS.schedule, (await this.list()).filter((b) => b.id !== id));
-  }
-
-  async skipped(): Promise<string[]> {
-    return (await this.storage.get<string[]>(KEYS.skippedOccurrences)) ?? [];
-  }
-
-  /** Pula só esta ocorrência (amanhã a faixa volta). Guarda poucas chaves recentes. */
-  async skip(key: string): Promise<void> {
-    const keys = new Set(await this.skipped());
-    keys.add(key);
-    await this.storage.set(KEYS.skippedOccurrences, [...keys].slice(-50));
+  /** Só grava se mudou (cada gravação acorda quem escuta o storage). */
+  async set(policy: Policy): Promise<boolean> {
+    if (JSON.stringify(await this.get()) === JSON.stringify(policy)) return false;
+    await this.storage.set(KEYS.policy, policy);
+    return true;
   }
 }

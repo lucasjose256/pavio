@@ -28,7 +28,6 @@ function Friction() {
   const [typed, setTyped] = useState('');
   const [confirmed, setConfirmed] = useState(false);
   const [ended, setEnded] = useState(false);
-  const [endedScheduled, setEndedScheduled] = useState(false);
   const skin = (settings ?? DEFAULT_SETTINGS).candleSkin;
 
   const active = session?.status === 'active' && remainingMs(session, now) > 0 ? session : undefined;
@@ -40,9 +39,7 @@ function Friction() {
 
   async function giveUp() {
     if (!status.done) return; // a UI já desabilita; reforço contra Enter/atalhos
-    const scheduled = active?.source === 'schedule';
     await services.sessionService.abandon();
-    setEndedScheduled(scheduled);
     setEnded(true);
   }
 
@@ -54,7 +51,6 @@ function Friction() {
         <div class="friction-candle"><Candle skin={skin} progress={ended ? 0 : 1} lit={false} label="Vela apagada" /></div>
         <h1>{ended ? t.doneTitle : t.noSessionTitle}</h1>
         <p class="msg">{ended ? t.doneMessage : t.noSessionMessage}</p>
-        {ended && endedScheduled && <p class="time">{t.scheduledNote}</p>}
         <button class="btn btn-primary" onClick={closeThisTab}>{t.close}</button>
       </main>
     );
@@ -66,7 +62,6 @@ function Friction() {
       <div class="friction-candle"><Candle skin={skin} progress={candleProgress(active, now)} label="Vela acesa" /></div>
       <h1>{t.title}</h1>
       <p class="msg">{light ? t.lightMessage : t.focusMessage}</p>
-      {active.source === 'schedule' && <p class="sched">{t.scheduledBadge(active.scheduleName)}</p>}
       <p class="time">{formatRemaining(Math.min(remainingMs(active, now), active.plannedMs))} até a vela acabar</p>
 
       <form class="steps" onSubmit={(e) => { e.preventDefault(); void giveUp(); }}>

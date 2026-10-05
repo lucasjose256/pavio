@@ -1,5 +1,5 @@
 import type { HistoryEntry, IntentGrant, PomodoroPhase, Session } from '../../core/models';
-import { formatMinutes } from '../../core/schedule';
+import { formatMinutes } from '../../core/timeslots';
 import type { NotifierPort } from '../../core/ports';
 import { notifications } from '../../ui/i18n/pt-BR';
 
@@ -27,19 +27,6 @@ export class ChromeNotifier implements NotifierPort {
       message: phase === 'break'
         ? notifications.breakMessage(Math.max(1, Math.round((until - Date.now()) / 60_000)), time, session.pomodoro?.long ?? false)
         : notifications.focusMessage(cycle),
-    });
-  }
-
-  async scheduledStarted(session: Session): Promise<void> {
-    const end = new Date(session.endsAt);
-    await chrome.notifications.create(`sched-${session.id}`, {
-      type: 'basic',
-      iconUrl: icon(),
-      title: notifications.scheduledTitle,
-      message: notifications.scheduledMessage(
-        session.scheduleName || session.environmentSnapshot.name,
-        formatMinutes(end.getHours() * 60 + end.getMinutes()),
-      ),
     });
   }
 

@@ -1,4 +1,4 @@
-import type { Session } from '../core/models';
+import type { Policy } from '../core/models';
 import { restrictionFor } from '../core/restrictions';
 import { xDecision } from '../core/sites';
 import { onNavigate, setStyle } from './navigation';
@@ -40,8 +40,8 @@ function evaluate() {
     location.replace(chrome.runtime.getURL(`src/ui/blocked/index.html?site=x.com&why=${decision.reason}`));
 }
 
-function apply(session: Session | undefined) {
-  features = restrictionFor(session, 'x', ['x.com', 'twitter.com'])?.features ?? null;
+function apply(policy: Policy | undefined) {
+  features = restrictionFor(policy, 'x', ['x.com', 'twitter.com'])?.features ?? null;
   setStyle('pavio-x-style', features?.has('forYou') ? xCss() : null);
   if (features) {
     schedule();
@@ -51,9 +51,9 @@ function apply(session: Session | undefined) {
   document.querySelectorAll(`[${x.hiddenAttr}]`).forEach((el) => el.removeAttribute(x.hiddenAttr));
 }
 
-void chrome.storage.local.get('activeSession').then((r) => apply(r.activeSession as Session | undefined));
+void chrome.storage.local.get('policy').then((r) => apply(r.policy as Policy | undefined));
 chrome.storage.onChanged.addListener((changes, area) => {
-  if (area === 'local' && changes.activeSession) apply(changes.activeSession.newValue as Session | undefined);
+  if (area === 'local' && changes.policy) apply(changes.policy.newValue as Policy | undefined);
 });
 onNavigate(evaluate);
 // A timeline é montada aos poucos: observa o DOM (agrupando as mudanças para não pesar).

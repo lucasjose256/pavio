@@ -69,9 +69,15 @@ export class IntentService {
     await this.d.notifier.intentTimeUp(grant);
   }
 
-  /** Fim da sessão: nada de permissões penduradas. */
-  async clearAll(): Promise<void> {
-    for (const g of await this.d.intents.list()) await this.d.scheduler.cancel(intentAlarm(g.domain));
-    await this.d.intents.clear();
+  /**
+   * Mantém só as permissões de sites que AINDA estão em modo intenção na política atual
+   * (acabou a faixa da rotina ou a vela: nada de permissões penduradas).
+   */
+  async prune(stillIntent: string[]): Promise<void> {
+    for (const g of await this.d.intents.list()) {
+      if (stillIntent.includes(g.domain)) continue;
+      await this.d.scheduler.cancel(intentAlarm(g.domain));
+      await this.d.intents.remove(g.domain);
+    }
   }
 }

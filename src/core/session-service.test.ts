@@ -1,10 +1,11 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { createBuiltinEnvironment } from './environments';
 import { MemoryStorage } from './memory-storage';
-import type { HistoryEntry } from './models';
-import { HistoryRepository, ScheduleRepository, SessionRepository } from './repositories';
+import type { HistoryEntry, Session } from './models';
+import { HistoryRepository, SessionRepository } from './repositories';
 import { POMODORO_ALARM, SESSION_ALARM, SessionAlreadyActiveError, SessionService } from './session-service';
 import { planFor } from './blocking';
+import { computePolicy } from './policy';
 import { restrictionFor } from './restrictions';
 
 const env = createBuiltinEnvironment('builtin-study', 0)!;
@@ -27,17 +28,17 @@ beforeEach(() => {
   service = new SessionService({
     sessions,
     history,
-    schedule: new ScheduleRepository(storage, { now: () => now }),
     clock: { now: () => now },
     newId: () => 'sid',
     scheduler: {
       schedule: async (n, w) => void alarms.set(n, w),
       cancel: async (n) => void alarms.delete(n),
     },
-    notifier: { sessionCompleted: async (e) => void notified.push(e), intentTimeUp: async () => {}, scheduledStarted: async () => {}, pomodoroPhase: async (_s, phase) => void phases.push(phase) },
+    notifier: { sessionCompleted: async (e) => void notified.push(e), intentTimeUp: async () => {}, pomodoroPhase: async (_s, phase) => void phases.push(phase) },
   });
 });
 
+const policyOf = (session: Session | undefined) => computePolicy({ routine: [], routineEnabled: false, session, now });
 const input = { environment: env, minutes: 25, strictness: 'focus' as const };
 
 describe('SessionService', () => {
@@ -109,7 +110,7 @@ describe('Pomodoro automático', () => {
     expect(s.pomodoro).toMatchObject({ phase: 'focus', cycle: 1, phaseEndsAt: now + 25 * 60_000 });
     expect(alarms.get(POMODORO_ALARM)).toBe(now + 25 * 60_000);
     expect(phases).toEqual([]);
-    expect(planFor(s).block.length).toBeGreaterThan(0); // foco: bloqueando
+    expect(planFor(policyOf(s)).block.length).toBeGreaterThan(0); // foco: bloqueando
   });
 
   it('na hora da pausa: troca a fase, notifica, desliga os bloqueios e agenda a volta', async () => {
@@ -119,8 +120,8 @@ describe('Pomodoro automático', () => {
     expect(during?.pomodoro).toMatchObject({ phase: 'break', phaseEndsAt: s.startedAt + 30 * 60_000 });
     expect(phases).toEqual(['break']);
     expect(alarms.get(POMODORO_ALARM)).toBe(s.startedAt + 30 * 60_000);
-    expect(planFor(during)).toEqual({ block: [], intent: [], allow: [] });
-    expect(restrictionFor(during, 'youtube', ['youtube.com'])).toBeNull();
+    expect(planFor(policyOf(during))).toEqual({ block: [], intent: [], allow: [] });
+    expect(restrictionFor(policyOf(during), 'youtube', ['youtube.com'])).toBeNull();
     expect((await sessions.get())?.pomodoro?.phase).toBe('break'); // gravado: content scripts e DNR reagem ao storage
   });
 
@@ -129,7 +130,7 @@ describe('Pomodoro automático', () => {
     now = s.startedAt + 31 * 60_000;
     const back = await service.reconcile();
     expect(back?.pomodoro).toMatchObject({ phase: 'focus', cycle: 2 });
-    expect(planFor(back).block.length).toBeGreaterThan(0);
+    expect(planFor(policyOf(back)).block.length).toBeGreaterThan(0);
   });
 
   it('é idempotente: reconciliar de novo na mesma fase não notifica outra vez', async () => {

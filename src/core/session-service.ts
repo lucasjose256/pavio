@@ -1,9 +1,8 @@
-import type { Environment, HistoryEntry, Session } from './models';
+import type { HistoryEntry, Session } from './models';
 import { pomodoroAt } from './pomodoro';
 import type { Clock, IdGenerator, NotifierPort, SchedulerPort } from './ports';
-import type { Occurrence } from './schedule';
-import type { HistoryRepository, ScheduleRepository, SessionRepository } from './repositories';
-import { buildScheduledSession, buildSession, isExpired, toHistoryEntry } from './session';
+import type { HistoryRepository, SessionRepository } from './repositories';
+import { buildSession, isExpired, toHistoryEntry } from './session';
 import type { StartInput } from './session';
 
 export const SESSION_ALARM = 'session-end';
@@ -18,7 +17,6 @@ export class SessionAlreadyActiveError extends Error {
 interface Deps {
   sessions: SessionRepository;
   history: HistoryRepository;
-  schedule: ScheduleRepository;
   scheduler: SchedulerPort;
   notifier: NotifierPort;
   clock: Clock;
@@ -40,19 +38,6 @@ export class SessionService {
     await this.d.scheduler.schedule(SESSION_ALARM, session.endsAt);
     await this.syncPomodoro(session);
     return session;
-  }
-
-  /**
-   * Acende a vela de uma faixa de horário. Não interrompe uma sessão em andamento (retorna undefined).
-   * Chamado pelo ScheduleService.
-   */
-  async startScheduled(env: Environment, occurrence: Occurrence): Promise<Session | undefined> {
-    if (await this.reconcile()) return undefined;
-    const built = buildScheduledSession(env, occurrence, this.d.newId);
-    await this.d.sessions.set(built);
-    await this.d.scheduler.schedule(SESSION_ALARM, built.endsAt);
-    await this.d.notifier.scheduledStarted(built);
-    return this.syncPomodoro(built); // começou atrasada? já cai na fase certa
   }
 
   /** Encerra sessão vencida (concluída) e garante o alarme da ativa. Retorna a sessão ainda ativa. */
@@ -98,8 +83,6 @@ export class SessionService {
   async abandon(): Promise<HistoryEntry | undefined> {
     const session = await this.d.sessions.get();
     if (!session || session.status !== 'active') return undefined;
-    // Desistir de uma faixa vale só por hoje: marca antes de limpar, para ela não reacender na hora.
-    if (session.source === 'schedule' && session.occurrenceKey) await this.d.schedule.skip(session.occurrenceKey);
     return this.finish(session, 'abandoned');
   }
 

@@ -34,7 +34,7 @@ Vite + `@crxjs/vite-plugin` (manifest tipado em `manifest.ts`), TypeScript stric
 - Encerrar antes da hora: o popup abre a aba `ui/friction/` (o popup fecha ao perder foco). Só essa aba chama `sessionService.abandon()`.
 
 ## Bloqueio (`core/blocking.ts`, `platform/chrome/blocking.ts`)
-- `planFor(session)` → `BlockPlan { block, allow }`: só `blocked` vira regra de rede (`restricted` passa; é dos content scripts). Subdomínio não bloqueado de um domínio bloqueado vira exceção `allow` (prioridade maior).
+- `planFor(policy)` (política = rotina + Timer; ver seção Rotina) → `BlockPlan { block, intent, allow }`: só `blocked` vira regra de rede (`restricted` passa; é dos content scripts). Subdomínio não bloqueado de um domínio bloqueado vira exceção `allow` (prioridade maior).
 - `ChromeBlocker.apply` troca as regras dinâmicas (só `main_frame`, `redirect` para `blocked/index.html?site=...`), é idempotente e, ao bloquear um domínio novo, redireciona as abas já abertas (usa `chrome.tabs.query` por padrão de host; não precisa da permissão `tabs`).
 - O background chama `syncBlocking()` ao acordar e em todo `storage.onChanged` de `activeSession`. Sem sessão ativa não há regras.
 - O redirect exige permissão de host: o popup chama `ensureHostAccess` no clique de "Acender vela"; se negada, a sessão não inicia.
@@ -58,7 +58,7 @@ Vite + `@crxjs/vite-plugin` (manifest tipado em `manifest.ts`), TypeScript stric
 ## Recursos por serviço (`core/restrictions.ts`) — substitui o "tudo ou nada" do modo restrito
 - Uma regra `restricted` de YouTube/Instagram/X/LinkedIn tem `features`: os **recursos escondidos** (ids de `FEATURE_DEFS`). Sem lista = padrão do serviço (`defaultFeatures`). A UI mostra cada recurso como botão liga/desliga na regra (`EnvironmentsTab`); "Modo intenção" continua sendo a alternativa (select "Como restringir").
 - YouTube: `home` (feed Início/Inscrições/Em alta), `shorts`, `related` (lateral + fim do vídeo), `comments`. Instagram: `feed`, `reels`, `explore`, `stories` (padrão) + `messages` e `posts` (perfis e publicações; é o modo rígido de antes: marque tudo menos mensagens). X: `forYou`, `explore`. LinkedIn: `feed`, `videos`, `news` (padrão) + `messages`. Só entram coisas que o site realmente tem; para um recurso novo: adicionar em `FEATURE_DEFS`, rótulo em `i18n/pt-BR.ts` (`featureLabel`), regra em `core/sites.ts`/`selectors.ts`.
-- Os content scripts leem `restrictionFor(session, kind, domains)` → `{ features }` (null fora de sessão/na pausa do Pomodoro). Decisões por URL são puras (`instagramDecision`, `xDecision`, `linkedinDecision`, `youtubeDecision`) e testadas.
+- Os content scripts leem a chave `policy` e usam `restrictionFor(policy, kind, domains)` → `{ features }` (null se a política não restringe o serviço agora). Decisões por URL são puras (`instagramDecision`, `xDecision`, `linkedinDecision`, `youtubeDecision`) e testadas.
 - **LinkedIn é padrão** nos ambientes de exemplo (restrito em Estudo e Trabalho profundo; bloqueado em Noite). Migração de schema v2 acrescenta o LinkedIn aos exemplos já salvos. LinkedIn: o feed é só `/feed` (publicações `/feed/update/…` abrem) e, sem feed, o início leva a `/messaging/`. **Seletores de CSS do LinkedIn (notícias etc.) não foram validados** (exige login); o bloqueio por URL é o confiável.
 
 ## Instagram e X (`core/sites.ts`, `content/instagram.iife.ts`, `content/x.iife.ts`)
@@ -104,20 +104,22 @@ Evitar: `tabs`, `history`, `webNavigation`, `scripting`, `<all_urls>` obrigatór
 - Permissão de host opcional é pedida só para `accessDomains(env)` (bloqueados + intenção); YouTube/Instagram/X restritos usam content scripts e não precisam.
 - Cores dos tipos de regra: tokens `--mode-allowed|blocked|restricted`. Textos das páginas grandes ficam nos componentes; os compartilhados, em `i18n/pt-BR.ts`.
 
-## Horários / faixas recorrentes (`core/schedule.ts`, `core/schedule-service.ts`, `ui/options/ScheduleTab.tsx`)
-- Recurso adicionado depois da V1 original (antes estava "fora do escopo"). **Faixa** (`ScheduleBlock`) = dias da semana (0 = dom) + `startMin`/`endMin` + **um ambiente** (a grade de permissões do momento) + modo `focus|light` + ativa/inativa. `endMin <= startMin` = vira a noite. O **Timer** "bloquear agora" é a sessão manual do popup.
-- `scheduleState(blocks, now, skipped)` (puro) devolve a faixa valendo agora e a próxima; sobreposição → vale a que **começou por último**; a UI avisa (`findOverlaps`). `weekSegments` divide faixas noturnas para a grade semanal.
-- `ScheduleService.sync()` (idempotente): conclui o que venceu, **acende a vela sozinho** (`Session.source = 'schedule'`, de `start` ao `end` da faixa, snapshot do ambiente, sem allowlist do YouTube) e agenda o alarme `schedule-next` para a próxima. Não interrompe sessão manual; quando ela acaba dentro da faixa, a faixa assume.
-- **Desistir de uma faixa vale só por hoje**: `SessionService.abandon` grava a `occurrenceKey` (`idFaixa:AAAA-MM-DD`) em `skippedOccurrences` antes de limpar; amanhã volta.
-- Background: `syncAll()` roda ao acordar, nos alarmes `session-end`/`schedule-next` e em mudanças de `activeSession`/`schedule` no storage (editar faixas tem efeito imediato).
-- Ambiente em uso por faixa não pode ser apagado. Permissão de host do ambiente é pedida ao salvar a faixa.
-- Não há permissão nova (usa alarms/notifications). Notificação "Seu horário começou".
+## Rotina por site e horário (`core/routine.ts`, `core/policy.ts`, `core/policy-service.ts`, `ui/options/RoutineTab.tsx`)
+- **Rotina** = lista de sites (`RoutineSite`), cada um com **faixas** (`RoutineSlot`: dias da semana + `startMin`/`endMin` + o que fazer: `blocked` ou `restricted` com `restrictedKind`/`features`). Fora das faixas o site fica liberado. `endMin <= startMin` vira a noite; `endMin = 1440` = até o fim do dia; **dia todo + todos os dias = "para sempre"**. Funciona **sozinha, sem vela**, e substitui as antigas "faixas de horário" (migração v3 converte as faixas existentes; quem não tinha recebe a programação pronta).
+- **Programação pronta** (`routine-defaults.ts`): dias úteis 9h–18h (redes restritas/bloqueadas; LinkedIn sem feed) e todos os dias 22h–6h (noite sem telas). Vem **DESLIGADA** (`Settings.routineEnabled = false`); a aba Rotina mostra um aviso para conferir e ligar. Na primeira instalação o service worker abre `options#rotina`.
+- **Timer = foco extra:** a vela (sessão) com um **Ambiente** continua existindo; as regras do ambiente valem **por cima** da rotina durante o Timer. Ambientes agora servem só ao Timer (aba "Ambientes (Timer)").
+- **Política** (`Policy`, chave `policy`): `computePolicy({routine, routineEnabled, session, now})` = regras da rotina ativas agora + regras do Timer (se `enforcing`), por site **vale a mais rigorosa** (`combineSpecs`: bloqueado > esconder partes (soma os recursos) > intenção). Na pausa do Pomodoro some só a parte do Timer; a rotina continua firme. Também traz `youtubeAllowlist` (da vela) e `nextChange` (para "volta a liberar às…").
+- **Quem escreve/quem lê:** `PolicyService.sync()` (idempotente) conclui a vela vencida, calcula e grava a política (só se mudou), descarta permissões de intenção que não valem mais (`IntentService.prune`) e agenda o alarme `routine-boundary` para a próxima virada de faixa. Bloqueio (DNR, `planFor(policy)`) e **content scripts** só **leem `policy`** (`restrictionFor(policy, …)`, `youtubeRestriction(policy)`), nunca a sessão.
+- Background (`syncAll`): ao acordar, nos alarmes `session-end`/`pomodoro-phase`/`routine-boundary` e em mudanças de `activeSession`, `routine` ou do interruptor `routineEnabled`.
+- **Editar a rotina com regra ativa:** `loosensNow(antes, depois, agora)` detecta mudança que afrouxa o que protege **agora** (apagar/desligar site ou faixa, mudar horário, bloqueado→esconder partes, esconder menos partes); a UI pede `confirm()` (decisão do dono: confirmação simples).
+- UI da Rotina: barra de 24 h por site (um dia por vez, abas Seg…Dom), faixas coloridas por tipo (bloqueado/restrito), linha do "agora"; clicar numa faixa edita, clicar num espaço vazio cria uma de 2 h; atalhos de horário (`SLOT_PRESETS`); `RestrictionPicker` escolhe o que fazer (recursos escondidos). Permissão de host opcional é pedida ao ligar/salvar (`rulesAnyTime` = tratamento mais rigoroso de cada site em qualquer faixa).
+- A página de bloqueio lê a política: se o site já não está restrito (faixa acabou, pausa), libera sozinha (`blockStillApplies`).
 
 ## Pomodoro automático (`core/pomodoro.ts`)
 - Opção de qualquer sessão (manual no popup, ou por faixa de horário via `ScheduleBlock.pomodoro`). Alterna **foco** (bloqueios ligados) e **pausa** (bloqueios desligados) sozinho, até o fim da vela; o tempo total da vela corre durante as pausas. Pausa longa opcional a cada N focos (padrão 25/5, longa 15 a cada 4).
 - `pomodoroAt(config, startedAt, endsAt, now)` é puro e determinístico (por isso vale mesmo com o navegador fechado). A fase atual fica gravada em `Session.pomodoro` (`phase`, `cycle`, `long`, `phaseEndsAt`).
-- `SessionService.syncPomodoro` (chamado em `start`, `startScheduled` e `reconcile`) mantém a fase gravada em dia, notifica a troca ("Hora da pausa" / "De volta ao foco") e agenda o alarme `pomodoro-phase` para a próxima troca. Quem bloqueia/restringe **só lê a fase gravada**: `enforcing(session)` (sessão ativa e fora da pausa) é usado por `planFor` (DNR), `restrictedKindActive` (Instagram/X) e `youtubeRestriction`. Gravar a nova fase dispara a reação via `storage.onChanged` (DNR, content scripts).
-- Na pausa: regras DNR são removidas, content scripts desligam, a página de bloqueio mostra "Hora da pausa" com botão para abrir o site e a de intenção segue direto. Concedidas permissões de intenção são mantidas.
+- `SessionService.syncPomodoro` (chamado em `start`, `startScheduled` e `reconcile`) mantém a fase gravada em dia, notifica a troca ("Hora da pausa" / "De volta ao foco") e agenda o alarme `pomodoro-phase` para a próxima troca. Quem bloqueia/restringe **só lê a política**: `computePolicy` usa `enforcing(session)` (sessão ativa e fora da pausa) para incluir ou não a parte do Timer. Gravar a nova fase dispara `syncAll` via `storage.onChanged`, que regrava a política.
+- Na pausa: as regras **do Timer** saem da política (a rotina continua), então DNR e content scripts soltam só o que o Timer acrescentava, a página de bloqueio mostra "Hora da pausa" com botão para abrir o site e a de intenção segue direto. Concedidas permissões de intenção são mantidas.
 - Popup: mostra "Foco N · pausa em mm:ss" / "Pausa · mm:ss · bloqueios liberados" (calculado pelo relógio local). Campos compartilhados: `ui/shared/PomodoroFields.tsx`. O popup tem limite de ~600 px de altura (Chrome): cuidado ao adicionar campos.
 
 ## Chrome Web Store (`store/`, `scripts/`)
@@ -138,8 +140,9 @@ Desafios, compartilhamento, loja de skins, Safari/Firefox, app macOS, contas, ba
 6. ✅ Modo restrito do YouTube (+ allowlist) e modo intenção
 7. ✅ Instagram (só DMs) e X (sem "Para você")
 8. ✅ Histórico (+ redesenho da página de opções)
-9. ✅ Horários recorrentes (faixas por dia/hora, cada uma com seu ambiente)
+9. ✅ Horários recorrentes por faixas de ambiente (SUBSTITUÍDO pela Rotina por site, item 12)
 10. ✅ Pomodoro automático (pausas que desligam os bloqueios)
 
 ## Decisões em aberto / assumidas
 - "Fora de sessão = confirmação simples" foi interpretado como `strictness: 'light'` (confirmação simples) vs `'focus'` (10s + frase). Confirmar com o dono.
+12. ✅ **Rotina por site e horário** (programação pronta desligada, política efetiva, Timer como foco extra)

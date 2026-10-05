@@ -19,7 +19,7 @@ beforeEach(() => {
     intents: repo,
     clock: { now: () => now },
     scheduler: { schedule: async (n, w) => void alarms.set(n, w), cancel: async (n) => void alarms.delete(n) },
-    notifier: { sessionCompleted: async () => {}, intentTimeUp: async (g) => void warned.push(g), scheduledStarted: async () => {}, pomodoroPhase: async () => {} },
+    notifier: { sessionCompleted: async () => {}, intentTimeUp: async (g) => void warned.push(g), pomodoroPhase: async () => {} },
   });
 });
 
@@ -60,10 +60,13 @@ describe('IntentService', () => {
     expect(await service.extend('reddit.com')).toBeUndefined();
   });
 
-  it('clearAll apaga tudo e cancela alarmes', async () => {
+  it('prune descarta só as permissões de sites que deixaram de estar em modo intenção', async () => {
     await service.grant('reddit.com', 'a', 5);
     await service.grant('tiktok.com', 'b', 5);
-    await service.clearAll();
+    await service.prune(['reddit.com']);
+    expect((await repo.list()).map((g) => g.domain)).toEqual(['reddit.com']);
+    expect([...alarms.keys()]).toEqual([intentAlarm('reddit.com')]);
+    await service.prune([]);
     expect(await repo.list()).toEqual([]);
     expect(alarms.size).toBe(0);
   });

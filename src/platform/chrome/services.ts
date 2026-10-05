@@ -1,9 +1,9 @@
 import { randomId, systemClock } from '../../core/ports';
 import {
-  EnvironmentRepository, HistoryRepository, IntentRepository, ScheduleRepository, SessionRepository, SettingsRepository,
+  EnvironmentRepository, HistoryRepository, IntentRepository, PolicyRepository, RoutineRepository, SessionRepository, SettingsRepository,
 } from '../../core/repositories';
 import { IntentService } from '../../core/intent-service';
-import { ScheduleService } from '../../core/schedule-service';
+import { PolicyService } from '../../core/policy-service';
 import { SessionService } from '../../core/session-service';
 import { ChromeScheduler } from './alarms';
 import { ChromeBlocker } from './blocking';
@@ -17,25 +17,27 @@ export function createServices() {
   const history = new HistoryRepository(storage);
   const intents = new IntentRepository(storage);
   const environments = new EnvironmentRepository(storage, systemClock);
-  const schedule = new ScheduleRepository(storage, systemClock);
+  const routine = new RoutineRepository(storage);
+  const settings = new SettingsRepository(storage);
+  const policies = new PolicyRepository(storage);
   const scheduler = new ChromeScheduler();
   const notifier = new ChromeNotifier();
 
-  const sessionService = new SessionService({
-    sessions, history, schedule, scheduler, notifier, clock: systemClock, newId: randomId,
-  });
+  const sessionService = new SessionService({ sessions, history, scheduler, notifier, clock: systemClock, newId: randomId });
+  const intentService = new IntentService({ intents, scheduler, notifier, clock: systemClock });
 
   return {
     storage,
     environments,
-    schedule,
-    settings: new SettingsRepository(storage),
+    routine,
+    settings,
     sessions,
     history,
     intents,
+    policies,
     blocker: new ChromeBlocker(),
     sessionService,
-    scheduleService: new ScheduleService({ schedule, environments, sessionService, scheduler, clock: systemClock }),
-    intentService: new IntentService({ intents, scheduler, notifier, clock: systemClock }),
+    intentService,
+    policyService: new PolicyService({ routine, settings, policies, sessionService, intentService, scheduler, clock: systemClock }),
   };
 }

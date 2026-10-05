@@ -2,17 +2,17 @@ import { useEffect, useState } from 'preact/hooks';
 import { AppearanceTab } from './AppearanceTab';
 import { EnvironmentsTab } from './EnvironmentsTab';
 import { HistoryTab } from './HistoryTab';
-import { ScheduleTab } from './ScheduleTab';
+import { RoutineTab } from './RoutineTab';
 
 const TABS = [
-  { id: 'ambientes', label: 'Ambientes' },
-  { id: 'horarios', label: 'Horários' },
+  { id: 'rotina', label: 'Rotina' },
+  { id: 'ambientes', label: 'Ambientes (Timer)' },
   { id: 'historico', label: 'Histórico' },
   { id: 'aparencia', label: 'Aparência' },
 ] as const;
 type TabId = (typeof TABS)[number]['id'];
 
-const fromHash = (): TabId => TABS.find((t) => `#${t.id}` === location.hash)?.id ?? 'ambientes';
+const fromHash = (): TabId => TABS.find((t) => `#${t.id}` === location.hash)?.id ?? 'rotina';
 
 export function App() {
   const [tab, setTab] = useState<TabId>(fromHash());
@@ -39,8 +39,8 @@ export function App() {
         </nav>
       </header>
       {/* Todas ficam montadas: trocar de aba não perde alterações não salvas. */}
+      <RoutineTab active={tab === 'rotina'} />
       <EnvironmentsTab active={tab === 'ambientes'} />
-      <ScheduleTab active={tab === 'horarios'} />
       <HistoryTab active={tab === 'historico'} />
       <AppearanceTab active={tab === 'aparencia'} />
     </div>

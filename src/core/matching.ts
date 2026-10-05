@@ -1,4 +1,4 @@
-import type { Environment, Rule } from './models';
+import type { Rule } from './models';
 
 /**
  * Normaliza entrada do usuário ("https://www.YouTube.com/watch?v=1") para
@@ -22,7 +22,7 @@ export function hostMatchesDomain(host: string, domain: string): boolean {
 }
 
 /** Regra mais específica (domínio mais longo) vence. Sem regra → undefined (liberado). */
-export function findRule(env: Environment, host: string): Rule | undefined {
+export function findRule(env: { rules: Rule[] }, host: string): Rule | undefined {
   return env.rules
     .filter((r) => hostMatchesDomain(host, r.domain))
     .sort((a, b) => b.domain.length - a.domain.length)[0];

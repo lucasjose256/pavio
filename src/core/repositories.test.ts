@@ -24,7 +24,7 @@ describe('migrate', () => {
   it('semeia 3 ambientes de exemplo e é idempotente', async () => {
     await migrate(storage, clock);
     expect((await envs.list()).map((e) => e.name)).toEqual(['Estudo', 'Trabalho profundo', 'Noite']);
-    expect(await storage.get(KEYS.schemaVersion)).toBe(2);
+    expect(await storage.get(KEYS.schemaVersion)).toBe(3);
 
     const edited = (await envs.list())[0]!;
     await envs.save({ ...edited, name: 'Meu estudo' });

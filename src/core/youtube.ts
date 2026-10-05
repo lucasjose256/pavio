@@ -1,6 +1,5 @@
-import type { AllowedLink, Session } from './models';
+import type { AllowedLink, Policy } from './models';
 import { findRule } from './matching';
-import { enforcing } from './pomodoro';
 import { featuresOf } from './restrictions';
 
 /** Id de canal estável: "@handle" (minúsculo), "UCxxxx", "c/nome" ou "user/nome". */
@@ -101,13 +100,13 @@ export function youtubeDecision(
   return { action: 'block', reason: 'not-allowed' };
 }
 
-/** A sessão pede o modo restrito do YouTube? Devolve a allowlist da sessão, ou null se não. */
+/** A política atual pede o modo restrito do YouTube? Devolve a lista de links permitidos e os recursos escondidos, ou null. */
 export function youtubeRestriction(
-  session: Pick<Session, 'status' | 'environmentSnapshot' | 'youtubeAllowlist' | 'pomodoro'> | undefined,
+  policy: Pick<Policy, 'rules' | 'youtubeAllowlist'> | undefined,
 ): { allowlist: AllowedLink[]; features: Set<string> } | null {
-  if (!session || !enforcing(session)) return null;
-  const rule = findRule(session.environmentSnapshot, 'www.youtube.com');
+  if (!policy) return null;
+  const rule = findRule(policy, 'www.youtube.com');
   return rule?.mode === 'restricted' && rule.restrictedKind === 'youtube'
-    ? { allowlist: session.youtubeAllowlist, features: featuresOf(rule) }
+    ? { allowlist: policy.youtubeAllowlist, features: featuresOf(rule) }
     : null;
 }

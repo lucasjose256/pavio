@@ -1,6 +1,5 @@
 import type { AllowedLink, Environment, HistoryEntry, PomodoroConfig, Session, Strictness } from './models';
 import { pomodoroState } from './pomodoro';
-import type { Occurrence } from './schedule';
 import type { IdGenerator } from './ports';
 
 export const DURATION_PRESETS_MIN = [25, 50, 90];
@@ -38,27 +37,6 @@ export function buildSession(input: StartInput, now: number, newId: IdGenerator)
   };
 }
 
-/** Sessão iniciada por uma faixa de horário: vai do começo da faixa até o fim dela. */
-export function buildScheduledSession(env: Environment, occurrence: Occurrence, newId: IdGenerator): Session {
-  const { block, start, end, key } = occurrence;
-  return {
-    id: newId(),
-    environmentSnapshot: structuredClone(env),
-    startedAt: start,
-    endsAt: end,
-    plannedMs: end - start,
-    strictness: block.strictness,
-    youtubeAllowlist: [],
-    status: 'active',
-    blockedAttempts: 0,
-    source: 'schedule',
-    scheduleBlockId: block.id,
-    occurrenceKey: key,
-    scheduleName: block.name,
-    ...(block.pomodoro && { pomodoro: pomodoroState(block.pomodoro, start, end, start) }),
-  };
-}
-
 export const isExpired = (session: Pick<Session, 'endsAt'>, now: number): boolean => now >= session.endsAt;
 
 /**
@@ -76,7 +54,6 @@ export function toHistoryEntry(session: Session, outcome: HistoryEntry['outcome'
     actualMs: endedAt - session.startedAt,
     outcome,
     blockedAttempts: session.blockedAttempts,
-    source: session.source ?? 'manual',
   };
 }
 

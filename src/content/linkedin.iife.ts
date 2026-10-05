@@ -1,4 +1,4 @@
-import type { Session } from '../core/models';
+import type { Policy } from '../core/models';
 import { restrictionFor } from '../core/restrictions';
 import { linkedinDecision } from '../core/sites';
 import { onNavigate, setStyle } from './navigation';
@@ -16,14 +16,14 @@ function evaluate() {
     location.replace(chrome.runtime.getURL(`src/ui/blocked/index.html?site=linkedin.com&why=${decision.reason}`));
 }
 
-function apply(session: Session | undefined) {
-  features = restrictionFor(session, 'linkedin', ['linkedin.com'])?.features ?? null;
+function apply(policy: Policy | undefined) {
+  features = restrictionFor(policy, 'linkedin', ['linkedin.com'])?.features ?? null;
   setStyle('pavio-linkedin-style', features ? linkedinCss(features) : null);
   evaluate();
 }
 
-void chrome.storage.local.get('activeSession').then((r) => apply(r.activeSession as Session | undefined));
+void chrome.storage.local.get('policy').then((r) => apply(r.policy as Policy | undefined));
 chrome.storage.onChanged.addListener((changes, area) => {
-  if (area === 'local' && changes.activeSession) apply(changes.activeSession.newValue as Session | undefined);
+  if (area === 'local' && changes.policy) apply(changes.policy.newValue as Policy | undefined);
 });
 onNavigate(evaluate);

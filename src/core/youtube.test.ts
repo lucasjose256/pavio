@@ -79,13 +79,15 @@ describe('youtubeDecision com lista', () => {
 });
 
 describe('youtubeRestriction', () => {
-  it('só ativa com sessão ativa e regra restrita do tipo youtube', () => {
+  it('só ativa se a política tratar o YouTube como "restrito" do tipo youtube; devolve a lista e os recursos', () => {
     const study = createBuiltinEnvironment('builtin-study', 0)!;
     const deep = createBuiltinEnvironment('builtin-deep-work', 0)!;
-    const base = { status: 'active' as const, youtubeAllowlist: [video('a')] };
-    expect(youtubeRestriction({ ...base, environmentSnapshot: study })?.allowlist).toHaveLength(1);
-    expect(youtubeRestriction({ ...base, environmentSnapshot: deep })).toBeNull(); // youtube bloqueado, não restrito
-    expect(youtubeRestriction({ ...base, status: 'completed' as never, environmentSnapshot: study })).toBeNull();
+    const allowlist = [video('a')];
+    const r = youtubeRestriction({ rules: study.rules, youtubeAllowlist: allowlist });
+    expect(r?.allowlist).toHaveLength(1);
+    expect([...r!.features]).toEqual(['home', 'shorts', 'related', 'comments']);
+    expect(youtubeRestriction({ rules: deep.rules, youtubeAllowlist: allowlist })).toBeNull(); // youtube bloqueado, não restrito
+    expect(youtubeRestriction({ rules: [], youtubeAllowlist: [] })).toBeNull();
     expect(youtubeRestriction(undefined)).toBeNull();
   });
 });
