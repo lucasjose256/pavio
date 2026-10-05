@@ -33,6 +33,9 @@ describe('validateBlock', () => {
     expect(validateBlock(block({ endMin: t(9) }))).toContain('time:same');
     expect(validateBlock(block({ startMin: 2000 }))).toContain('time:range');
     expect(validateBlock(block(), ['outro'])).toContain('env:missing');
+    const pomo = { focusMin: 25, breakMin: 5, longBreakMin: 0, cyclesBeforeLong: 4 };
+    expect(validateBlock(block({ pomodoro: pomo }))).toEqual([]);
+    expect(validateBlock(block({ pomodoro: { ...pomo, focusMin: 0 } }))).toContain('pomodoro:focus');
   });
 });
 

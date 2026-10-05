@@ -1,4 +1,4 @@
-import type { HistoryEntry, IntentGrant, Session } from '../../core/models';
+import type { HistoryEntry, IntentGrant, PomodoroPhase, Session } from '../../core/models';
 import { formatMinutes } from '../../core/schedule';
 import type { NotifierPort } from '../../core/ports';
 import { notifications } from '../../ui/i18n/pt-BR';
@@ -13,6 +13,20 @@ export class ChromeNotifier implements NotifierPort {
       iconUrl: icon(),
       title: notifications.completedTitle,
       message: notifications.completedMessage(entry.environmentName, Math.round(entry.actualMs / 60_000)),
+    });
+  }
+
+  async pomodoroPhase(session: Session, phase: PomodoroPhase, until: number): Promise<void> {
+    const end = new Date(until);
+    const time = formatMinutes(end.getHours() * 60 + end.getMinutes());
+    const cycle = session.pomodoro?.cycle ?? 1;
+    await chrome.notifications.create(`pomodoro-${session.id}`, {
+      type: 'basic',
+      iconUrl: icon(),
+      title: phase === 'break' ? notifications.breakTitle : notifications.focusTitle,
+      message: phase === 'break'
+        ? notifications.breakMessage(Math.max(1, Math.round((until - Date.now()) / 60_000)), time, session.pomodoro?.long ?? false)
+        : notifications.focusMessage(cycle),
     });
   }
 

@@ -3,12 +3,15 @@ import { createBuiltinEnvironment } from './environments';
 import { MemoryStorage } from './memory-storage';
 import type { HistoryEntry } from './models';
 import { HistoryRepository, ScheduleRepository, SessionRepository } from './repositories';
-import { SESSION_ALARM, SessionAlreadyActiveError, SessionService } from './session-service';
+import { POMODORO_ALARM, SESSION_ALARM, SessionAlreadyActiveError, SessionService } from './session-service';
+import { planFor } from './blocking';
+import { restrictedKindActive } from './sites';
 
 const env = createBuiltinEnvironment('builtin-study', 0)!;
 let now: number;
 let alarms: Map<string, number>;
 let notified: HistoryEntry[];
+let phases: string[];
 let sessions: SessionRepository;
 let history: HistoryRepository;
 let service: SessionService;
@@ -17,6 +20,7 @@ beforeEach(() => {
   now = 1_000_000;
   alarms = new Map();
   notified = [];
+  phases = [];
   const storage = new MemoryStorage();
   sessions = new SessionRepository(storage);
   history = new HistoryRepository(storage);
@@ -30,7 +34,7 @@ beforeEach(() => {
       schedule: async (n, w) => void alarms.set(n, w),
       cancel: async (n) => void alarms.delete(n),
     },
-    notifier: { sessionCompleted: async (e) => void notified.push(e), intentTimeUp: async () => {}, scheduledStarted: async () => {} },
+    notifier: { sessionCompleted: async (e) => void notified.push(e), intentTimeUp: async () => {}, scheduledStarted: async () => {}, pomodoroPhase: async (_s, phase) => void phases.push(phase) },
   });
 });
 
@@ -95,3 +99,70 @@ describe('SessionService', () => {
     expect(entry?.blockedAttempts).toBe(2);
   });
 });
+
+describe('Pomodoro automático', () => {
+  const pomo = { focusMin: 25, breakMin: 5, longBreakMin: 0, cyclesBeforeLong: 4 };
+  const startPomo = () => service.start({ ...input, minutes: 90, pomodoro: pomo });
+
+  it('começa em foco, sem notificar, e agenda o alarme da primeira pausa', async () => {
+    const s = await startPomo();
+    expect(s.pomodoro).toMatchObject({ phase: 'focus', cycle: 1, phaseEndsAt: now + 25 * 60_000 });
+    expect(alarms.get(POMODORO_ALARM)).toBe(now + 25 * 60_000);
+    expect(phases).toEqual([]);
+    expect(planFor(s).block.length).toBeGreaterThan(0); // foco: bloqueando
+  });
+
+  it('na hora da pausa: troca a fase, notifica, desliga os bloqueios e agenda a volta', async () => {
+    const s = await startPomo();
+    now = s.startedAt + 25 * 60_000;
+    const during = await service.reconcile();
+    expect(during?.pomodoro).toMatchObject({ phase: 'break', phaseEndsAt: s.startedAt + 30 * 60_000 });
+    expect(phases).toEqual(['break']);
+    expect(alarms.get(POMODORO_ALARM)).toBe(s.startedAt + 30 * 60_000);
+    expect(planFor(during)).toEqual({ block: [], intent: [], allow: [] });
+    expect(restrictedKindActive(during, 'instagram', ['instagram.com'])).toBe(false);
+    expect((await sessions.get())?.pomodoro?.phase).toBe('break'); // gravado: content scripts e DNR reagem ao storage
+  });
+
+  it('depois da pausa volta ao foco (ciclo 2) e os bloqueios voltam', async () => {
+    const s = await startPomo();
+    now = s.startedAt + 31 * 60_000;
+    const back = await service.reconcile();
+    expect(back?.pomodoro).toMatchObject({ phase: 'focus', cycle: 2 });
+    expect(planFor(back).block.length).toBeGreaterThan(0);
+  });
+
+  it('é idempotente: reconciliar de novo na mesma fase não notifica outra vez', async () => {
+    const s = await startPomo();
+    now = s.startedAt + 26 * 60_000;
+    await service.reconcile();
+    await service.reconcile();
+    expect(phases).toEqual(['break']);
+  });
+
+  it('navegador fechado por várias fases: cai direto na fase certa, com uma notificação', async () => {
+    const s = await startPomo();
+    now = s.startedAt + 58 * 60_000; // foco 2 termina em 55; pausa 2: 55..60
+    const late = await service.reconcile();
+    expect(late?.pomodoro).toMatchObject({ phase: 'break', cycle: 2 });
+    expect(phases).toEqual(['break']);
+  });
+
+  it('sem pomodoro nada muda; ao encerrar o alarme da fase é cancelado', async () => {
+    const plain = await service.start(input);
+    expect(plain.pomodoro).toBeUndefined();
+    expect(alarms.has(POMODORO_ALARM)).toBe(false);
+    await service.abandon();
+    await startPomo();
+    expect(alarms.has(POMODORO_ALARM)).toBe(true);
+    await service.abandon();
+    expect(alarms.has(POMODORO_ALARM)).toBe(false);
+  });
+
+  it('a última fase não agenda alarme de fase (o fim da sessão cuida)', async () => {
+    const s = await service.start({ ...input, minutes: 20, pomodoro: pomo }); // sessão menor que o 1º foco
+    expect(s.pomodoro?.phaseEndsAt).toBe(s.endsAt);
+    expect(alarms.has(POMODORO_ALARM)).toBe(false);
+  });
+});
+

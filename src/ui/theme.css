@@ -77,3 +77,14 @@ button { cursor: pointer; }
   transition: border-color .2s;
 }
 .field:hover { border-color: var(--muted); }
+
+/* ---- Pomodoro (popup e horários) ---- */
+.pomo { border: 1px solid var(--border); border-radius: 14px; padding: 10px 12px; background: var(--surface); }
+.pomo-toggle { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; font-size: 13px; }
+.pomo-toggle input { margin-top: 3px; accent-color: var(--accent); }
+.pomo-sub { display: block; color: var(--muted); font-size: 12px; }
+.pomo-body { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; margin-top: 10px; font-size: 13px; color: var(--muted); }
+.pomo-body label { display: inline-flex; gap: 6px; align-items: center; }
+.pomo-long { flex-basis: 100%; flex-wrap: wrap; }
+.pomo-unit { flex-basis: 100%; font-size: 11px; color: var(--muted); }
+.pomo .num { width: 46px; padding: 4px 6px; text-align: center; }

@@ -41,7 +41,7 @@ beforeEach(async () => {
   };
   sessionService = new SessionService({
     sessions, history, schedule: scheduleRepo, scheduler, clock, newId: () => `s${++n}`,
-    notifier: { sessionCompleted: async () => {}, intentTimeUp: async () => {}, scheduledStarted: async (s) => void started.push(s) },
+    notifier: { sessionCompleted: async () => {}, intentTimeUp: async () => {}, scheduledStarted: async (s) => void started.push(s), pomodoroPhase: async () => {} },
   });
   service = new ScheduleService({ schedule: scheduleRepo, environments, sessionService, scheduler, clock });
 });
@@ -122,6 +122,16 @@ describe('ScheduleService', () => {
     expect(await service.sync()).toBeUndefined();
     const [entry] = await history.list();
     expect(entry).toMatchObject({ outcome: 'completed', source: 'schedule', actualMs: 3 * 3_600_000 });
+  });
+});
+
+describe('faixa com Pomodoro', () => {
+  it('a vela da faixa já nasce com pomodoro e, no meio dela, cai na fase certa', async () => {
+    await scheduleRepo.save(block({ pomodoro: { focusMin: 25, breakMin: 5, longBreakMin: 0, cyclesBeforeLong: 4 } }));
+    now = mon(9, 27); // faixa começou 09:00; 09:25–09:30 é a primeira pausa
+    const s = await service.sync();
+    expect(s?.pomodoro).toMatchObject({ phase: 'break', cycle: 1, phaseEndsAt: mon(9, 30) });
+    expect(alarms.get('pomodoro-phase')).toBe(mon(9, 30));
   });
 });
 

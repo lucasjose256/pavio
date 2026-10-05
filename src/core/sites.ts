@@ -1,13 +1,14 @@
 import type { RestrictedKind, Session } from './models';
 import { findRule } from './matching';
+import { enforcing } from './pomodoro';
 
 /** Há sessão ativa cujo ambiente trata algum destes domínios como `restricted` do tipo `kind`? */
 export function restrictedKindActive(
-  session: Pick<Session, 'status' | 'environmentSnapshot'> | undefined,
+  session: Pick<Session, 'status' | 'environmentSnapshot' | 'pomodoro'> | undefined,
   kind: RestrictedKind,
   domains: string[],
 ): boolean {
-  if (session?.status !== 'active') return false;
+  if (!session || !enforcing(session)) return false;
   return domains.some((d) => {
     const rule = findRule(session.environmentSnapshot, d);
     return rule?.mode === 'restricted' && rule.restrictedKind === kind;

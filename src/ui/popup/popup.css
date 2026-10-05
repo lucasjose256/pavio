@@ -1,16 +1,16 @@
 body { width: 310px; }
-.popup { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 22px 22px 14px;
+.popup { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 14px 20px 8px;
   background: radial-gradient(ellipse 80% 45% at 50% 20%, var(--glow), transparent 70%); }
-.greeting { margin: 0; font-family: var(--font-display); font-size: 19px; text-align: center; }
+.greeting { margin: 0; font-family: var(--font-display); font-size: 18px; text-align: center; }
 .popup-candle { width: 150px; margin: 4px 0; }
-.popup-candle.small { width: 104px; }
+.popup-candle.small { width: 64px; margin: 0; }
 .time { margin: 0; font-family: var(--font-display); font-size: 42px; letter-spacing: .02em; font-variant-numeric: tabular-nums; }
 .sub { margin: 0 0 8px; color: var(--muted); font-size: 14px; }
-.form { width: 100%; display: flex; flex-direction: column; gap: 14px; margin-top: 8px; }
+.form { width: 100%; display: flex; flex-direction: column; gap: 9px; margin-top: 2px; }
 .full { width: 100%; }
-.lbl { display: block; font-size: 12px; color: var(--muted); margin-bottom: 5px; font-weight: 600; }
-.chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 6px; }
-.chip { background: var(--surface); border: 1px solid var(--border); border-radius: 999px; padding: 5px 14px; font-size: 13px; transition: all .15s; }
+.lbl { display: block; font-size: 12px; color: var(--muted); margin-bottom: 3px; font-weight: 600; }
+.chips { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 4px; }
+.chip { background: var(--surface); border: 1px solid var(--border); border-radius: 999px; padding: 4px 10px; font-size: 13px; transition: all .15s; }
 .chip:hover { border-color: var(--muted); }
 .chip[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: transparent; font-weight: 650; }
 .hint { margin: 0; font-size: 12px; color: var(--muted); }
@@ -20,3 +20,5 @@ body { width: 310px; }
 .links { display: flex; gap: 2px; flex-wrap: wrap; justify-content: center; }
 .next { margin: 0; font-size: 12px; color: var(--accent-text); font-weight: 600; text-align: center; }
 .sched-tag { display: block; margin-top: 2px; font-size: 12px; color: var(--accent-text); font-weight: 600; }
+.phase { margin: 0; padding: 3px 12px; border-radius: 999px; font-size: 12px; font-weight: 600; background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent-text); }
+.phase.break { background: color-mix(in srgb, var(--ok) 16%, transparent); color: var(--ok); }

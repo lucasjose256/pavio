@@ -9,9 +9,12 @@ import {
 import type { Environment, Session, Settings, Strictness } from '../../core/models';
 import { DEFAULT_SETTINGS } from '../../core/models';
 import { planForEnvironment } from '../../core/blocking';
+import { pomodoroAt, validatePomodoro } from '../../core/pomodoro';
+import type { PomodoroConfig } from '../../core/models';
+import { PomodoroFields } from '../shared/PomodoroFields';
 import { findRule } from '../../core/matching';
 import { parseYouTubeLinks } from '../../core/youtube';
-import { youtubeUi } from '../i18n/pt-BR';
+import { pomodoroError, youtubeUi } from '../i18n/pt-BR';
 import { ensureHostAccess } from '../../platform/chrome/permissions';
 import { createServices } from '../../platform/chrome/services';
 import { initTheme } from '../shared/theme';
@@ -32,6 +35,7 @@ function StartForm({ skin }: { skin: string }) {
   const [error, setError] = useState('');
   const [links, setLinks] = useState('');
   const [nextBlock, setNextBlock] = useState('');
+  const [pomodoro, setPomodoro] = useState<PomodoroConfig>();
 
   useEffect(() => {
     void Promise.all([services.schedule.list(), services.schedule.skipped()]).then(([blocks, skipped]) => {
@@ -52,6 +56,8 @@ function StartForm({ skin }: { skin: string }) {
     const environment = envs.find((e) => e.id === envId);
     if (!environment) return setError('Crie um ambiente nas opções primeiro.');
     if (!isValidDuration(minutes)) return setError(`Escolha entre ${MIN_DURATION_MIN} e ${MAX_DURATION_MIN} minutos.`);
+    const pomodoroProblem = pomodoro && validatePomodoro(pomodoro);
+    if (pomodoroProblem) return setError(pomodoroError(pomodoroProblem));
     const parsed = parseYouTubeLinks(usesYouTube ? links : '');
     if (parsed.invalid.length) return setError(youtubeUi.invalid(parsed.invalid));
     // O redirect do bloqueio precisa de acesso aos sites. Pedido aqui, direto do clique.
@@ -60,7 +66,7 @@ function StartForm({ skin }: { skin: string }) {
       return setError('Sem acesso aos sites bloqueados, a vela não conseguiria protegê-lo. Permita o acesso ou use outro ambiente.');
     }
     try {
-      await services.sessionService.start({ environment, minutes, strictness, youtubeAllowlist: parsed.links });
+      await services.sessionService.start({ environment, minutes, strictness, youtubeAllowlist: parsed.links, pomodoro });
     } catch {
       setError('Não foi possível acender a vela.');
     }
@@ -103,13 +109,14 @@ function StartForm({ skin }: { skin: string }) {
           </details>
         )}
 
+        <PomodoroFields value={pomodoro} onChange={setPomodoro} />
+
         <div>
           <span class="lbl">Modo</span>
           <div class="chips">
-            <button type="button" class="chip" aria-pressed={strictness === 'focus'} onClick={() => setStrictness('focus')}>Foco</button>
-            <button type="button" class="chip" aria-pressed={strictness === 'light'} onClick={() => setStrictness('light')}>Leve</button>
+            <button type="button" class="chip" title="Desistir dá trabalho, de propósito" aria-pressed={strictness === 'focus'} onClick={() => setStrictness('focus')}>Foco</button>
+            <button type="button" class="chip" title="Você pode parar com uma confirmação" aria-pressed={strictness === 'light'} onClick={() => setStrictness('light')}>Leve</button>
           </div>
-          <p class="hint">{strictness === 'focus' ? 'Desistir dá um pouco de trabalho, de propósito.' : 'Você pode parar com uma confirmação.'}</p>
         </div>
 
         {error && <p class="error" role="alert">{error}</p>}
@@ -120,6 +127,9 @@ function StartForm({ skin }: { skin: string }) {
 }
 
 function Running({ session, skin, now }: { session: Session; skin: string; now: number }) {
+  // Fase atual calculada pelo relógio (a gravada na sessão é a que bloqueios e content scripts usam).
+  const phase = session.pomodoro && session.endsAt > now ? pomodoroAt(session.pomodoro, session.startedAt, session.endsAt, now) : undefined;
+
   // O popup fecha ao perder o foco: a fricção acontece numa aba própria.
   async function stop() {
     await chrome.tabs.create({ url: chrome.runtime.getURL('src/ui/friction/index.html') });
@@ -129,6 +139,13 @@ function Running({ session, skin, now }: { session: Session; skin: string; now: 
     <>
       <p class="greeting">Sua vela está acesa</p>
       <div class="popup-candle"><Candle skin={skin} progress={candleProgress(session, now)} label="Vela acesa, sessão em andamento" /></div>
+      {phase && (
+        <p class={`phase ${phase.phase}`} role="status">
+          {phase.phase === 'break'
+            ? `Pausa${phase.long ? ' longa' : ''} · ${formatRemaining(phase.end - now)} · bloqueios liberados`
+            : `Foco ${phase.cycle} · pausa em ${formatRemaining(phase.end - now)}`}
+        </p>
+      )}
       <p class="time">{formatRemaining(Math.min(remainingMs(session, now), session.plannedMs))}</p>
       <p class="sub">
         {session.environmentSnapshot.name}

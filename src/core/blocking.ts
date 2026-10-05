@@ -1,4 +1,5 @@
 import type { BlockPlan, Environment, IntentGrant, Session } from './models';
+import { enforcing } from './pomodoro';
 import { hostMatchesDomain } from './matching';
 
 export const EMPTY_PLAN: BlockPlan = { block: [], intent: [], allow: [] };
@@ -36,8 +37,9 @@ export function accessDomains(env: Environment): string[] {
 }
 
 export function planFor(
-  session: Pick<Session, 'status' | 'environmentSnapshot'> | undefined,
+  session: Pick<Session, 'status' | 'environmentSnapshot' | 'pomodoro'> | undefined,
   grants: IntentGrant[] = [],
 ): BlockPlan {
-  return session?.status === 'active' ? planForEnvironment(session.environmentSnapshot, grants) : EMPTY_PLAN;
+  // Sem sessão, ou na pausa do Pomodoro: nada bloqueado.
+  return session && enforcing(session) ? planForEnvironment(session.environmentSnapshot, grants) : EMPTY_PLAN;
 }

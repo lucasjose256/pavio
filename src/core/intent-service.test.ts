@@ -19,7 +19,7 @@ beforeEach(() => {
     intents: repo,
     clock: { now: () => now },
     scheduler: { schedule: async (n, w) => void alarms.set(n, w), cancel: async (n) => void alarms.delete(n) },
-    notifier: { sessionCompleted: async () => {}, intentTimeUp: async (g) => void warned.push(g), scheduledStarted: async () => {} },
+    notifier: { sessionCompleted: async () => {}, intentTimeUp: async (g) => void warned.push(g), scheduledStarted: async () => {}, pomodoroPhase: async () => {} },
   });
 });
 

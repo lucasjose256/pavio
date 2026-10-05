@@ -105,6 +105,13 @@ Evitar: `tabs`, `history`, `webNavigation`, `scripting`, `<all_urls>` obrigatór
 - Ambiente em uso por faixa não pode ser apagado. Permissão de host do ambiente é pedida ao salvar a faixa.
 - Não há permissão nova (usa alarms/notifications). Notificação "Seu horário começou".
 
+## Pomodoro automático (`core/pomodoro.ts`)
+- Opção de qualquer sessão (manual no popup, ou por faixa de horário via `ScheduleBlock.pomodoro`). Alterna **foco** (bloqueios ligados) e **pausa** (bloqueios desligados) sozinho, até o fim da vela; o tempo total da vela corre durante as pausas. Pausa longa opcional a cada N focos (padrão 25/5, longa 15 a cada 4).
+- `pomodoroAt(config, startedAt, endsAt, now)` é puro e determinístico (por isso vale mesmo com o navegador fechado). A fase atual fica gravada em `Session.pomodoro` (`phase`, `cycle`, `long`, `phaseEndsAt`).
+- `SessionService.syncPomodoro` (chamado em `start`, `startScheduled` e `reconcile`) mantém a fase gravada em dia, notifica a troca ("Hora da pausa" / "De volta ao foco") e agenda o alarme `pomodoro-phase` para a próxima troca. Quem bloqueia/restringe **só lê a fase gravada**: `enforcing(session)` (sessão ativa e fora da pausa) é usado por `planFor` (DNR), `restrictedKindActive` (Instagram/X) e `youtubeRestriction`. Gravar a nova fase dispara a reação via `storage.onChanged` (DNR, content scripts).
+- Na pausa: regras DNR são removidas, content scripts desligam, a página de bloqueio mostra "Hora da pausa" com botão para abrir o site e a de intenção segue direto. Concedidas permissões de intenção são mantidas.
+- Popup: mostra "Foco N · pausa em mm:ss" / "Pausa · mm:ss · bloqueios liberados" (calculado pelo relógio local). Campos compartilhados: `ui/shared/PomodoroFields.tsx`. O popup tem limite de ~600 px de altura (Chrome): cuidado ao adicionar campos.
+
 ## Fora da V1
 Desafios, compartilhamento, loja de skins, Safari/Firefox, app macOS, contas, backend.
 
@@ -118,6 +125,7 @@ Desafios, compartilhamento, loja de skins, Safari/Firefox, app macOS, contas, ba
 7. ✅ Instagram (só DMs) e X (sem "Para você")
 8. ✅ Histórico (+ redesenho da página de opções)
 9. ✅ Horários recorrentes (faixas por dia/hora, cada uma com seu ambiente)
+10. ✅ Pomodoro automático (pausas que desligam os bloqueios)
 
 ## Decisões em aberto / assumidas
 - "Fora de sessão = confirmação simples" foi interpretado como `strictness: 'light'` (confirmação simples) vs `'focus'` (10s + frase). Confirmar com o dono.

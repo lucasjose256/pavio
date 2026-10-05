@@ -5,6 +5,7 @@ import './intent.css';
 import { Candle } from '../candle/Candle';
 import { INTENT_MAX_MINUTES, INTENT_MAX_TEXT, INTENT_MIN_MINUTES, INTENT_PRESETS_MIN, validateIntent } from '../../core/intent-service';
 import { hostMatchesDomain } from '../../core/matching';
+import { onBreak } from '../../core/pomodoro';
 import type { Session, Settings } from '../../core/models';
 import { DEFAULT_SETTINGS } from '../../core/models';
 import { createServices } from '../../platform/chrome/services';
@@ -74,7 +75,7 @@ function Intent() {
   }
 
   // Sem sessão ativa não há o que perguntar: segue para o site.
-  if (session !== undefined && session.status !== 'active') location.replace(destination());
+  if (session !== undefined && (session.status !== 'active' || onBreak(session))) location.replace(destination());
 
   return (
     <main class="intent">

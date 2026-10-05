@@ -1,4 +1,5 @@
-import type { AllowedLink, Environment, HistoryEntry, Session, Strictness } from './models';
+import type { AllowedLink, Environment, HistoryEntry, PomodoroConfig, Session, Strictness } from './models';
+import { pomodoroState } from './pomodoro';
 import type { Occurrence } from './schedule';
 import type { IdGenerator } from './ports';
 
@@ -15,6 +16,8 @@ export interface StartInput {
   minutes: number;
   strictness: Strictness;
   youtubeAllowlist?: AllowedLink[];
+  /** Pomodoro automático (pausas que liberam os bloqueios). */
+  pomodoro?: PomodoroConfig;
 }
 
 export function buildSession(input: StartInput, now: number, newId: IdGenerator): Session {
@@ -31,6 +34,7 @@ export function buildSession(input: StartInput, now: number, newId: IdGenerator)
     youtubeAllowlist: input.youtubeAllowlist ?? [],
     status: 'active',
     blockedAttempts: 0,
+    ...(input.pomodoro && { pomodoro: pomodoroState(input.pomodoro, now, now + plannedMs, now) }),
   };
 }
 
@@ -51,6 +55,7 @@ export function buildScheduledSession(env: Environment, occurrence: Occurrence, 
     scheduleBlockId: block.id,
     occurrenceKey: key,
     scheduleName: block.name,
+    ...(block.pomodoro && { pomodoro: pomodoroState(block.pomodoro, start, end, start) }),
   };
 }
 

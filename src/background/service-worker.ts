@@ -3,7 +3,7 @@ import { migrate } from '../core/migrations';
 import { planFor } from '../core/blocking';
 import { domainFromIntentAlarm } from '../core/intent-service';
 import { SCHEDULE_ALARM } from '../core/schedule-service';
-import { SESSION_ALARM } from '../core/session-service';
+import { POMODORO_ALARM, SESSION_ALARM } from '../core/session-service';
 import { INTENT_NOTIFICATION_PREFIX } from '../platform/chrome/notifications';
 import { createServices } from '../platform/chrome/services';
 
@@ -39,7 +39,8 @@ async function boot() {
 chrome.runtime.onInstalled.addListener(() => void boot());
 chrome.runtime.onStartup.addListener(() => void boot());
 chrome.alarms.onAlarm.addListener((alarm) => {
-  if (alarm.name === SESSION_ALARM || alarm.name === SCHEDULE_ALARM) return void syncAll();
+  // Fim da vela, início de faixa e troca de fase do Pomodoro: tudo passa pelo mesmo sync idempotente.
+  if (alarm.name === SESSION_ALARM || alarm.name === SCHEDULE_ALARM || alarm.name === POMODORO_ALARM) return void syncAll();
   const domain = domainFromIntentAlarm(alarm.name);
   if (domain) void intentService.timeUp(domain);
 });

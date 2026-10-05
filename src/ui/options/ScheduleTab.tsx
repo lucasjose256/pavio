@@ -6,6 +6,8 @@ import {
   MINUTES_PER_DAY, blockDurationMin, crossesMidnight, findOverlaps, formatMinutes, parseTime, scheduleState, validateBlock, weekSegments,
 } from '../../core/schedule';
 import { ensureHostAccess } from '../../platform/chrome/permissions';
+import { pomodoroError } from '../i18n/pt-BR';
+import { PomodoroFields } from '../shared/PomodoroFields';
 import { DAY_SHORT, WEEK_ORDER, formatDays, formatRange, formatWhen } from '../shared/format';
 import { services } from './shared';
 
@@ -28,7 +30,7 @@ const errorText = (code: string): string =>
     'time:same': 'O início e o fim não podem ser iguais.',
     'time:range': 'Horário inválido.',
     'env:missing': 'Escolha um ambiente.',
-  })[code] ?? 'Faixa inválida.';
+  })[code] ?? (code.startsWith('pomodoro:') ? pomodoroError(code) : 'Faixa inválida.');
 
 export function ScheduleTab({ active }: { active: boolean }) {
   const [blocks, setBlocks] = useState<ScheduleBlock[]>([]);
@@ -171,6 +173,10 @@ export function ScheduleTab({ active }: { active: boolean }) {
             ))}
           </div>
 
+          <div class="gap">
+            <PomodoroFields value={draft.pomodoro} onChange={(pomodoro) => setDraft({ ...draft, pomodoro })} />
+          </div>
+
           <label class="check"><input type="checkbox" checked={draft.enabled} onChange={(e) => patch({ enabled: e.currentTarget.checked })} /> Faixa ativa</label>
 
           {overlaps.length > 0 && (
@@ -227,7 +233,7 @@ export function ScheduleTab({ active }: { active: boolean }) {
                 <button class="block-main" onClick={() => edit(b)}>
                   <strong>{b.name || 'Sem nome'}</strong>
                   <span>{formatDays(b.days)} · {formatRange(b)}</span>
-                  <span class="muted">{envName(b.environmentId) ?? <em class="bad">ambiente removido</em>} · {b.strictness === 'focus' ? 'Foco' : 'Leve'}</span>
+                  <span class="muted">{envName(b.environmentId) ?? <em class="bad">ambiente removido</em>} · {b.strictness === 'focus' ? 'Foco' : 'Leve'}{b.pomodoro ? ` · Pomodoro ${b.pomodoro.focusMin}/${b.pomodoro.breakMin}` : ''}</span>
                 </button>
                 <label class="switch" title={b.enabled ? 'Desativar' : 'Ativar'}>
                   <input type="checkbox" checked={b.enabled} onChange={() => toggle(b)} aria-label={`Faixa ${b.name || 'sem nome'} ativa`} />

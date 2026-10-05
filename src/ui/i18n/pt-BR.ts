@@ -31,6 +31,20 @@ export const quotes = [
   'Deixe a chama trabalhar. Você também.',
 ];
 
+export const pomodoroError = (code: string): string =>
+  ({
+    'pomodoro:focus': 'O foco do Pomodoro deve ter entre 1 e 180 minutos.',
+    'pomodoro:break': 'A pausa deve ter entre 1 e 60 minutos.',
+    'pomodoro:long': 'A pausa longa deve ter entre 1 e 60 minutos.',
+    'pomodoro:cycles': 'A pausa longa vem a cada 2 a 10 focos.',
+  })[code] ?? 'Pomodoro inválido.';
+
+export const breakUi = {
+  title: 'Hora da pausa',
+  message: (site: string | null, until: string) => `${site ? `O ${site} está liberado` : 'Os sites estão liberados'} até ${until}. Respire, levante, beba água.`,
+  open: (site: string) => `Abrir ${site}`,
+};
+
 export const validationMessage = (code: string): string => {
   const [kind, type, domain] = code.split(':');
   if (kind === 'name') return 'Dê um nome ao ambiente.';
@@ -44,6 +58,11 @@ export const notifications = {
   completedTitle: 'A vela acabou 🕯️',
   completedMessage: (env: string, minutes: number) =>
     `Sessão "${env}" concluída: ${minutes} min de foco. Você devolveu esse tempo a você.`,
+  breakTitle: 'Hora da pausa ☕',
+  breakMessage: (minutes: number, until: string, long: boolean) =>
+    `${long ? 'Pausa longa' : 'Pausa'} de ${minutes} min: os bloqueios estão liberados até ${until}. Respire, levante, beba água.`,
+  focusTitle: 'De volta ao foco 🕯️',
+  focusMessage: (cycle: number) => `Foco ${cycle}: os bloqueios voltaram. Você consegue.`,
   scheduledTitle: 'Seu horário começou 🕯️',
   scheduledMessage: (name: string, until: string) => `"${name}": vela acesa até as ${until}. Cuidamos do resto.`,
   intentTitle: 'Ainda está na tarefa?',

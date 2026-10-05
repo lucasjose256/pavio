@@ -1,5 +1,6 @@
 import { dayKey } from './history';
 import type { ScheduleBlock } from './models';
+import { validatePomodoro } from './pomodoro';
 
 export const MINUTES_PER_DAY = 1440;
 
@@ -31,6 +32,8 @@ export function validateBlock(b: ScheduleBlock, knownEnvironmentIds?: string[]):
   if (!inRange(b.startMin) || !inRange(b.endMin)) errors.push('time:range');
   else if (b.startMin === b.endMin) errors.push('time:same');
   if (knownEnvironmentIds && !knownEnvironmentIds.includes(b.environmentId)) errors.push('env:missing');
+  const pomodoroError = b.pomodoro && validatePomodoro(b.pomodoro);
+  if (pomodoroError) errors.push(pomodoroError);
   return errors;
 }
 

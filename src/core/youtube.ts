@@ -1,5 +1,6 @@
 import type { AllowedLink, Session } from './models';
 import { findRule } from './matching';
+import { enforcing } from './pomodoro';
 
 /** Id de canal estável: "@handle" (minúsculo), "UCxxxx", "c/nome" ou "user/nome". */
 export function channelIdFromPath(pathname: string): string | null {
@@ -97,9 +98,9 @@ export function youtubeDecision(loc: { pathname: string; search: string }, allow
 
 /** A sessão pede o modo restrito do YouTube? Devolve a allowlist da sessão, ou null se não. */
 export function youtubeRestriction(
-  session: Pick<Session, 'status' | 'environmentSnapshot' | 'youtubeAllowlist'> | undefined,
+  session: Pick<Session, 'status' | 'environmentSnapshot' | 'youtubeAllowlist' | 'pomodoro'> | undefined,
 ): { allowlist: AllowedLink[] } | null {
-  if (session?.status !== 'active') return null;
+  if (!session || !enforcing(session)) return null;
   const rule = findRule(session.environmentSnapshot, 'www.youtube.com');
   return rule?.mode === 'restricted' && rule.restrictedKind === 'youtube' ? { allowlist: session.youtubeAllowlist } : null;
 }

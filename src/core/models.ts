@@ -54,6 +54,8 @@ export interface Session {
   scheduleBlockId?: string;
   occurrenceKey?: string;
   scheduleName?: string;
+  /** Pomodoro automático: alterna foco e pausa dentro da sessão. Na pausa os bloqueios ficam desligados. */
+  pomodoro?: PomodoroSession;
 }
 
 /** Sessão encerrada, guardada para o futuro relatório de "horas devolvidas". */
@@ -111,6 +113,28 @@ export interface ScheduleBlock {
   endMin: number;
   strictness: Strictness;
   enabled: boolean;
+  /** Se definido, as sessões desta faixa usam Pomodoro automático. */
+  pomodoro?: PomodoroConfig;
   createdAt: number;
   updatedAt: number;
+}
+
+/** Ciclos de foco/pausa. `longBreakMin = 0` desliga a pausa longa. */
+export interface PomodoroConfig {
+  focusMin: number;
+  breakMin: number;
+  longBreakMin: number;
+  /** A cada quantos focos vem a pausa longa. */
+  cyclesBeforeLong: number;
+}
+
+export type PomodoroPhase = 'focus' | 'break';
+
+/** Config + fase atual, gravada na sessão (o service worker mantém em dia; as demais partes só leem). */
+export interface PomodoroSession extends PomodoroConfig {
+  phase: PomodoroPhase;
+  /** Número do foco (1, 2, 3…) a que esta fase pertence. */
+  cycle: number;
+  long: boolean;
+  phaseEndsAt: number;
 }
