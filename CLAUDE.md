@@ -31,7 +31,7 @@ Vite + `@crxjs/vite-plugin` (manifest tipado em `manifest.ts`), TypeScript stric
 - `SessionService` (start / reconcile / abandon) usa ports (`SchedulerPort`, `NotifierPort`, `Clock`); no Chrome: alarms + notifications.
 - `reconcile()` é idempotente e roda: ao acordar o service worker, no `onStartup`/`onInstalled`, quando o alarme `session-end` dispara e ao abrir o popup. Se `now >= endsAt`: grava histórico (concluída = tempo planejado inteiro), limpa a sessão, cancela alarme e notifica. Senão, reagenda o alarme (alarmes se perdem ao reiniciar o navegador).
 - Quem inicia a sessão só grava no storage; reações (ex.: sincronizar regras DNR na etapa 4) vêm de `chrome.storage.onChanged` no background, não de chamadas diretas.
-- **Pendência temporária:** "Encerrar antes da hora" no popup usa `confirm()` para os dois modos; a etapa 5 troca por uma aba de fricção (modo `focus`: 10s + frase).
+- Encerrar antes da hora: o popup abre a aba `ui/friction/` (o popup fecha ao perder foco). Só essa aba chama `sessionService.abandon()`.
 
 ## Bloqueio (`core/blocking.ts`, `platform/chrome/blocking.ts`)
 - `planFor(session)` → `BlockPlan { block, allow }`: só `blocked` vira regra de rede (`restricted` passa; é dos content scripts). Subdomínio não bloqueado de um domínio bloqueado vira exceção `allow` (prioridade maior).
@@ -40,6 +40,12 @@ Vite + `@crxjs/vite-plugin` (manifest tipado em `manifest.ts`), TypeScript stric
 - O redirect exige permissão de host: o popup chama `ensureHostAccess` no clique de "Acender vela"; se negada, a sessão não inicia.
 - **Armadilha de build:** `blocked/index.html` só está em `web_accessible_resources`, e o CRXJS copia esse HTML sem compilar (página em branco). Por isso ele é entrada explícita em `vite.config.ts` (`build.rollupOptions.input`). Toda página nova só acessível por redirect/link externo precisa disso; confira que `dist/.../index.html` aponta para `/assets/...`.
 - A página de bloqueio conta a tentativa (`recordBlockedAttempt`) e, com a vela já apagada, oferece abrir o site.
+
+## Fricção (`core/friction.ts`, `ui/friction/`)
+- `frictionFor(strictness)` devolve passos; `evaluateFriction(steps, input)` diz se pode encerrar (todos os passos cumpridos). `light` = `confirm`; `focus` = `wait` 10s + `typePhrase` ("eu quero desistir do meu foco agora", tolera caixa/acentos/espaços). `challenge` está previsto no tipo e na avaliação (desafios futuros = novos passos), sem UI ainda.
+- Textos ficam em `ui/i18n/pt-BR.ts` (`friction`); o domínio só tem a regra.
+- A tela bloqueia colar (de propósito) e o botão "Apagar a vela" só habilita com tudo cumprido. O cronômetro conta desde a abertura da aba (recarregar reinicia).
+- Páginas que o CRXJS não compila sozinho (bloqueio, fricção) são entradas explícitas em `vite.config.ts`.
 
 ## Storage (`chrome.storage.local`)
 Chaves em `KEYS` (`repositories.ts`): `schemaVersion`, `environments`, `settings`, `activeSession`, `history` (máx. 1000).
@@ -72,7 +78,7 @@ Agenda recorrente, desafios, compartilhamento, loja de skins, Safari/Firefox, ap
 2. ✅ Página de opções (ambientes/regras, sugestões, permissão por site) + identidade visual da vela
 3. ✅ Sessão + timer (alarms) + iniciar sessão no popup + notificação
 4. ✅ Bloqueio (DNR) + página de bloqueio
-5. Página de fricção
+5. ✅ Página de fricção
 6. Modo restrito do YouTube (+ allowlist)
 7. Instagram (só DMs) e X (sem "Para você")
 8. Histórico

@@ -45,3 +45,20 @@ export const notifications = {
   completedMessage: (env: string, minutes: number) =>
     `Sessão "${env}" concluída: ${minutes} min de foco. Você devolveu esse tempo a você.`,
 };
+
+export const friction = {
+  title: 'Antes de ir…',
+  focusMessage: 'A vela ainda não acabou, ainda temos coisas a fazer...',
+  lightMessage: 'Quer apagar a vela agora? A sessão será encerrada.',
+  waitLeft: (s: number) => `Você poderá desistir em ${s}s`,
+  waitDone: 'Se ainda quiser desistir, escreva a frase abaixo.',
+  typePrompt: 'Para desistir, digite exatamente:',
+  phrasePlaceholder: 'Digite a frase aqui',
+  keepFocus: 'Voltar ao foco',
+  giveUp: 'Apagar a vela',
+  doneTitle: 'Vela apagada.',
+  doneMessage: 'Sem culpa. Foi o que deu hoje, e amanhã a gente acende de novo.',
+  close: 'Fechar',
+  noSessionTitle: 'Não há vela acesa.',
+  noSessionMessage: 'A sessão já terminou. Pode fechar esta aba.',
+};

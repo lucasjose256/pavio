@@ -93,9 +93,10 @@ function StartForm({ skin }: { skin: string }) {
 }
 
 function Running({ session, skin, now }: { session: Session; skin: string; now: number }) {
+  // O popup fecha ao perder o foco: a fricção acontece numa aba própria.
   async function stop() {
-    // TEMPORÁRIO (etapa 5 troca por uma aba de fricção): confirmação simples.
-    if (confirm('Apagar a vela agora? A sessão será encerrada.')) await services.sessionService.abandon();
+    await chrome.tabs.create({ url: chrome.runtime.getURL('src/ui/friction/index.html') });
+    window.close();
   }
   return (
     <>
