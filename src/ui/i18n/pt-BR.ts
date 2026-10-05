@@ -15,15 +15,15 @@ export const kindLabel: Record<RestrictedKind, string> = {
 
 export const modeHelp: Record<RuleMode, string> = {
   allowed: 'Acesso normal.',
-  blocked: 'Redireciona para a vela durante a sessão.',
+  blocked: 'Durante a sessão, a vela te recebe no lugar do site.',
   restricted: 'Acesso limitado, conforme o tipo escolhido.',
 };
 
 /** Frases da página de bloqueio. */
 export const quotes = [
-  'A vela ainda está acesa. Fique mais um pouco.',
+  'A vela ainda está acesa. Fique mais um pouquinho.',
   'Isso pode esperar. O que você começou, não.',
-  'Respire. Volte para o que importa agora.',
+  'Respire fundo. Volte com calma para o que importa agora.',
   'Cada minuto aqui é um minuto devolvido a você.',
   'Você não precisa de força de vontade, só de um ambiente a seu favor.',
   'Um passo pequeno agora vale mais que um plano perfeito depois.',

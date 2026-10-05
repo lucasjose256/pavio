@@ -6,7 +6,7 @@ Tudo local: sem backend, sem coleta de dados, sem contas.
 
 ## Convenções
 - Interface em pt-BR (textos em `src/ui/i18n/pt-BR.ts`); código, nomes e valores de enum em inglês.
-- Visual: calmo, escuro por padrão, minimalista; a vela é a protagonista.
+- Visual: aconchegante, calmo e minimalista; a vela é a protagonista. **Padrão = tema creme** (papel quente, marrom suave, âmbar); variante **noite** (escuro quente) escolhida nas opções. (Decisão revista: o briefing original dizia "escuro por padrão"; o dono pediu tons cremes e quentes.)
 - Comandos: `npm test` (Vitest), `npm run typecheck`, `npm run lint`, `npm run build` (gera `dist/`), `npm run dev`.
 
 ## Arquitetura (decisão central: domínio separado do Chrome)
@@ -61,7 +61,7 @@ Evitar: `tabs`, `history`, `webNavigation`, `<all_urls>` obrigatório.
 - `<Candle progress skin lit />`: `progress` 1 = cheia, 0 = apagada. Cera e chama descem juntas (transição CSS de 1s linear, por isso o popup atualiza a cada 1s); a poça na base cresce e a cera do topo escorre. `prefers-reduced-motion` desliga animações.
 - Estilo: gordinha, cartoon e minimalista (largura 116 × altura 150 no viewBox; cores chapadas, contorno grosso na skin Clássica). Ícone da extensão: `public/icons/icon.svg` → `npm run icons` gera os PNGs (resvg).
 - Skin = `{ id, name, flame (cores), Body }` em `skins/`; pavio/chama/fumaça são comuns. Nova skin: criar arquivo + registrar em `skins/index.ts`. Geometria em `geometry.ts` (testada).
-- Tema: `src/ui/theme.css` (tokens escuros). Frases motivacionais em `ui/i18n/pt-BR.ts` (`quotes`).
+- Tema: `src/ui/theme.css` define tokens para `creme` (padrão) e `noite` (`data-theme` no `<html>`). `Settings.theme` guarda a escolha; `ui/shared/theme.ts` (`initTheme`, chamado em cada página) aplica e evita piscar via cache em localStorage. Nunca use cores fixas na UI: use os tokens (`--bg`, `--surface`, `--accent`, `--glow`...). A skin Minimalista usa `--min-line`/`--min-body`. Tipografia: `--font-display` (serifa, títulos/tempo/frases) e `--font-body` (arredondada do sistema); sem fontes externas. Frases motivacionais em `ui/i18n/pt-BR.ts` (`quotes`).
 - Popup mostra a vela derretendo com o tempo restante quando há sessão; `blocked/` mostra a vela grande, chama animada, frase e tempo restante.
 
 ## Fora da V1

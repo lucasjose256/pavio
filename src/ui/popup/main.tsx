@@ -11,10 +11,12 @@ import { DEFAULT_SETTINGS } from '../../core/models';
 import { planForEnvironment } from '../../core/blocking';
 import { ensureHostAccess } from '../../platform/chrome/permissions';
 import { createServices } from '../../platform/chrome/services';
+import { initTheme } from '../shared/theme';
 import { useNow } from '../shared/useNow';
 import { useStorageValue } from '../shared/useStorageValue';
 
 const services = createServices();
+initTheme();
 
 function StartForm({ skin }: { skin: string }) {
   const [envs, setEnvs] = useState<Environment[]>([]);
@@ -49,6 +51,7 @@ function StartForm({ skin }: { skin: string }) {
 
   return (
     <>
+      <p class="greeting">Vamos acender uma vela?</p>
       <div class="popup-candle small"><Candle skin={skin} progress={1} lit={false} label="Vela apagada" /></div>
       <form class="form" onSubmit={(e) => { e.preventDefault(); void start(); }}>
         <label>
@@ -79,7 +82,7 @@ function StartForm({ skin }: { skin: string }) {
             <button type="button" class="chip" aria-pressed={strictness === 'focus'} onClick={() => setStrictness('focus')}>Foco</button>
             <button type="button" class="chip" aria-pressed={strictness === 'light'} onClick={() => setStrictness('light')}>Leve</button>
           </div>
-          <p class="hint">{strictness === 'focus' ? 'Desistir exige esforço de propósito.' : 'Encerrar com uma confirmação.'}</p>
+          <p class="hint">{strictness === 'focus' ? 'Desistir dá um pouco de trabalho, de propósito.' : 'Você pode parar com uma confirmação.'}</p>
         </div>
 
         {error && <p class="error" role="alert">{error}</p>}
@@ -96,10 +99,11 @@ function Running({ session, skin, now }: { session: Session; skin: string; now: 
   }
   return (
     <>
+      <p class="greeting">Sua vela está acesa</p>
       <div class="popup-candle"><Candle skin={skin} progress={candleProgress(session, now)} label="Vela acesa, sessão em andamento" /></div>
       <p class="time">{formatRemaining(Math.min(remainingMs(session, now), session.plannedMs))}</p>
       <p class="sub">{session.environmentSnapshot.name}</p>
-      <button class="btn btn-ghost" onClick={stop}>Encerrar antes da hora</button>
+      <button class="btn btn-ghost" onClick={stop}>Preciso parar antes da hora</button>
     </>
   );
 }

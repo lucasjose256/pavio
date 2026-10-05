@@ -3,12 +3,13 @@ import {
   SUGGESTED_SITES, createEnvironment, createRule, defaultRestrictedKind, validateEnvironment,
 } from '../../core/environments';
 import { DEFAULT_SETTINGS } from '../../core/models';
-import type { Environment, RestrictedKind, Rule, RuleMode, Settings } from '../../core/models';
+import type { Environment, RestrictedKind, Rule, RuleMode, Settings, ThemeName } from '../../core/models';
 import { randomId } from '../../core/ports';
 import { createServices } from '../../platform/chrome/services';
 import { ensureHostAccess } from '../../platform/chrome/permissions';
 import { Candle } from '../candle/Candle';
 import { SKINS } from '../candle/skins';
+import { applyTheme } from '../shared/theme';
 import { kindLabel, modeHelp, modeLabel, validationMessage } from '../i18n/pt-BR';
 
 const services = createServices();
@@ -130,6 +131,11 @@ export function App() {
     setSettings(await services.settings.update({ candleSkin: id }));
   }
 
+  async function pickTheme(theme: ThemeName) {
+    applyTheme(theme);
+    setSettings(await services.settings.update({ theme }));
+  }
+
   const suggestions = SUGGESTED_SITES.filter((s) => !draftDomains.has(s.domain));
 
   return (
@@ -170,8 +176,8 @@ export function App() {
             </div>
 
             <h3>Regras por site</h3>
-            <p class="hint">Sites que não estão na lista ficam liberados.</p>
-            {draft.rules.length === 0 && <p class="empty">Nenhum site ainda. Adicione abaixo.</p>}
+            <p class="hint">O que não está na lista continua liberado.</p>
+            {draft.rules.length === 0 && <p class="empty">Nenhum site por aqui ainda. Adicione o primeiro abaixo.</p>}
             <ul class="rules">
               {draft.rules.map((r) => (
                 <li key={r.id} class="rule">
@@ -229,6 +235,12 @@ export function App() {
         )}
 
         <section class="card">
+          <h3>Aparência</h3>
+          <p class="hint">Escolha o clima da tela e o jeito da sua vela.</p>
+          <div class="row">
+            <button class="seg" aria-pressed={settings.theme === 'cream'} onClick={() => pickTheme('cream')}>Creme</button>
+            <button class="seg" aria-pressed={settings.theme === 'night'} onClick={() => pickTheme('night')}>Noite</button>
+          </div>
           <h3>Estilo da vela</h3>
           <div class="preview-bar">
             <label class="grow">

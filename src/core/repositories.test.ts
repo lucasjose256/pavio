@@ -86,6 +86,9 @@ describe('Settings e History', () => {
   it('settings tem padrão e aceita patch', async () => {
     const s = new SettingsRepository(storage);
     expect((await s.get()).candleSkin).toBe('classic');
+    expect((await s.get()).theme).toBe('cream');
+    await storage.set('settings', { candleSkin: 'minimal' }); // dados antigos sem `theme` ganham o padrão
+    expect((await s.get()).theme).toBe('cream');
     expect((await s.update({ candleSkin: 'minimal' })).candleSkin).toBe('minimal');
   });
   it('histórico mantém só as últimas entradas', async () => {

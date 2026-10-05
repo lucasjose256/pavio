@@ -1,15 +1,17 @@
-body { width: 300px; }
-.popup { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 18px 20px 14px;
-  background: radial-gradient(ellipse at 50% 28%, rgba(244,184,96,.10), transparent 60%); }
-.popup-candle { width: 170px; }
-.time { margin: 0; font-size: 34px; font-weight: 300; letter-spacing: .04em; font-variant-numeric: tabular-nums; }
+body { width: 310px; }
+.popup { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 22px 22px 14px;
+  background: radial-gradient(ellipse 80% 45% at 50% 20%, var(--glow), transparent 70%); }
+.greeting { margin: 0; font-family: var(--font-display); font-size: 19px; text-align: center; }
+.popup-candle { width: 150px; margin: 4px 0; }
+.popup-candle.small { width: 104px; }
+.time { margin: 0; font-family: var(--font-display); font-size: 42px; letter-spacing: .02em; font-variant-numeric: tabular-nums; }
 .sub { margin: 0 0 8px; color: var(--muted); font-size: 14px; }
-.popup-candle.small { width: 96px; }
-.form { width: 100%; display: flex; flex-direction: column; gap: 14px; margin-top: 6px; }
+.form { width: 100%; display: flex; flex-direction: column; gap: 14px; margin-top: 8px; }
 .full { width: 100%; }
-.lbl { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+.lbl { display: block; font-size: 12px; color: var(--muted); margin-bottom: 5px; font-weight: 600; }
 .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 6px; }
-.chip { background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px; padding: 4px 12px; font-size: 13px; }
-.chip[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: transparent; font-weight: 600; }
+.chip { background: var(--surface); border: 1px solid var(--border); border-radius: 999px; padding: 5px 14px; font-size: 13px; transition: all .15s; }
+.chip:hover { border-color: var(--muted); }
+.chip[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: transparent; font-weight: 650; }
 .hint { margin: 0; font-size: 12px; color: var(--muted); }
 .error { margin: 0; font-size: 13px; color: var(--danger); }

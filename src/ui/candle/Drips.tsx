@@ -24,6 +24,6 @@ export function Tear({ length, fill, stroke, strokeWidth }: { length: number; fi
   const right = CANDLE.cx + CANDLE.width / 2;
   return (
     <rect class="pv-drip" x={right - 12} y={14} width={16} height={Math.max(16, length)} rx={8}
-      fill={fill} stroke={stroke} stroke-width={strokeWidth} stroke-linejoin="round" style={{ animationDelay: '0.8s' }} />
+      style={{ fill, stroke, animationDelay: '0.8s' }} stroke-width={strokeWidth} stroke-linejoin="round" />
   );
 }

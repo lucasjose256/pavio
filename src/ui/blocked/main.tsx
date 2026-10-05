@@ -8,10 +8,12 @@ import type { Session, Settings } from '../../core/models';
 import { DEFAULT_SETTINGS } from '../../core/models';
 import { quotes } from '../i18n/pt-BR';
 import { createServices } from '../../platform/chrome/services';
+import { initTheme } from '../shared/theme';
 import { useNow } from '../shared/useNow';
 import { useStorageValue } from '../shared/useStorageValue';
 
 const services = createServices();
+initTheme();
 
 function goBack() {
   if (history.length > 1) history.back();
@@ -40,7 +42,7 @@ function Blocked() {
         />
       </div>
       <p class="quote">{quote}</p>
-      {site && <p class="site">{site} está fora do seu ambiente agora.</p>}
+      {site && <p class="site">{site} está fora do seu ambiente agora. Tudo bem, ele espera.</p>}
       {active && <p class="time">{formatRemaining(remainingMs(active, now))} até a vela acabar</p>}
       {!active && loaded && <p class="time">A vela acabou. Você chegou até o fim. 🕯️</p>}
       <div class="actions">

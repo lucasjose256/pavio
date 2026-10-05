@@ -62,11 +62,15 @@ export interface HistoryEntry {
   blockedAttempts: number;
 }
 
+/** creme = claro e quente (padrão); noite = escuro e quente. */
+export type ThemeName = 'cream' | 'night';
+
 export interface Settings {
   candleSkin: string;
+  theme: ThemeName;
 }
 
-export const DEFAULT_SETTINGS: Settings = { candleSkin: 'classic' };
+export const DEFAULT_SETTINGS: Settings = { candleSkin: 'classic', theme: 'cream' };
 
 /** O que deve estar bloqueado agora. `allow` = exceções (subdomínios de um domínio bloqueado). */
 export interface BlockPlan {
