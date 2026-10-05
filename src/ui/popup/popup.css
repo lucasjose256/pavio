@@ -17,3 +17,4 @@ body { width: 310px; }
 .error { margin: 0; font-size: 13px; color: var(--danger); }
 .yt summary { cursor: pointer; font-size: 13px; color: var(--accent-text); font-weight: 600; margin-bottom: 6px; }
 .yt textarea { resize: vertical; font-size: 12px; margin-bottom: 4px; }
+.links { display: flex; gap: 2px; flex-wrap: wrap; justify-content: center; }

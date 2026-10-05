@@ -113,3 +113,23 @@ export function validateEnvironment(env: Environment): string[] {
   }
   return errors;
 }
+
+/** Quantas regras de cada tipo (para os cartões de ambiente). */
+export function ruleCounts(env: Environment): Record<RuleMode, number> {
+  const counts: Record<RuleMode, number> = { allowed: 0, blocked: 0, restricted: 0 };
+  for (const r of env.rules) counts[r.mode]++;
+  return counts;
+}
+
+/** Cópia editável (ex.: para personalizar um ambiente de exemplo sem perder o original). */
+export function duplicateEnvironment(env: Environment, now: number, newId: IdGenerator): Environment {
+  return {
+    ...structuredClone(env),
+    id: newId(),
+    name: `${env.name} (cópia)`,
+    builtin: false,
+    createdAt: now,
+    updatedAt: now,
+    rules: env.rules.map((r) => ({ ...r, id: newId() })),
+  };
+}

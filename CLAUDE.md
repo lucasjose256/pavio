@@ -90,6 +90,12 @@ Evitar: `tabs`, `history`, `webNavigation`, `scripting`, `<all_urls>` obrigatór
 - Tema: `src/ui/theme.css` define tokens para `creme` (padrão) e `noite` (`data-theme` no `<html>`). `Settings.theme` guarda a escolha; `ui/shared/theme.ts` (`initTheme`, chamado em cada página) aplica e evita piscar via cache em localStorage. Nunca use cores fixas na UI: use os tokens (`--bg`, `--surface`, `--accent`, `--glow`...). A skin Minimalista usa `--min-line`/`--min-body`. Tipografia: `--font-display` (serifa, títulos/tempo/frases) e `--font-body` (arredondada do sistema); sem fontes externas. Frases motivacionais em `ui/i18n/pt-BR.ts` (`quotes`).
 - Popup mostra a vela derretendo com o tempo restante quando há sessão; `blocked/` mostra a vela grande, chama animada, frase e tempo restante.
 
+## Histórico e página de opções (`core/history.ts`, `ui/options/`)
+- `summarizeHistory(entries, now)` (puro, testado): "horas devolvidas" (= tempo com a vela acesa, inclui a parte vivida das encerradas antes), concluídas/encerradas, tentativas bloqueadas, sequência de dias (hoje sem sessão não zera) e últimos 7 dias. `formatDuration` formata "2 h 05 min".
+- Opções em 3 abas por hash (`#ambientes`, `#historico`, `#aparencia`), todas montadas (trocar de aba não perde edição): `EnvironmentsTab` (cartões de ambiente, seletor segmentado por tipo de regra, duplicar, barra de salvar fixa, aviso "Conceder acesso" quando faltam permissões), `HistoryTab` (resumo, gráfico, lista, exportar JSON, apagar), `AppearanceTab` (tema + skin da vela).
+- Permissão de host opcional é pedida só para `accessDomains(env)` (bloqueados + intenção); YouTube/Instagram/X restritos usam content scripts e não precisam.
+- Cores dos tipos de regra: tokens `--mode-allowed|blocked|restricted`. Textos das páginas grandes ficam nos componentes; os compartilhados, em `i18n/pt-BR.ts`.
+
 ## Fora da V1
 Agenda recorrente, desafios, compartilhamento, loja de skins, Safari/Firefox, app macOS, contas, backend.
 
@@ -101,7 +107,7 @@ Agenda recorrente, desafios, compartilhamento, loja de skins, Safari/Firefox, ap
 5. ✅ Página de fricção
 6. ✅ Modo restrito do YouTube (+ allowlist) e modo intenção
 7. ✅ Instagram (só DMs) e X (sem "Para você")
-8. Histórico
+8. ✅ Histórico (+ redesenho da página de opções)
 
 ## Decisões em aberto / assumidas
 - "Fora de sessão = confirmação simples" foi interpretado como `strictness: 'light'` (confirmação simples) vs `'focus'` (10s + frase). Confirmar com o dono.

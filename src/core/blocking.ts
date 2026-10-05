@@ -29,6 +29,12 @@ export function planForEnvironment(env: Environment, grants: IntentGrant[] = [])
   return { block, intent, allow };
 }
 
+/** Domínios que precisam de acesso opcional ao site (permissão pedida ao usuário): bloqueados e com intenção. */
+export function accessDomains(env: Environment): string[] {
+  const plan = planForEnvironment(env);
+  return [...plan.block, ...plan.intent];
+}
+
 export function planFor(
   session: Pick<Session, 'status' | 'environmentSnapshot'> | undefined,
   grants: IntentGrant[] = [],

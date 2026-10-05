@@ -94,6 +94,10 @@ export class HistoryRepository {
     return (await this.storage.get<HistoryEntry[]>(KEYS.history)) ?? [];
   }
 
+  async clear(): Promise<void> {
+    await this.storage.remove(KEYS.history);
+  }
+
   /** Mantém só as HISTORY_LIMIT entradas mais recentes. */
   async append(entry: HistoryEntry): Promise<void> {
     const all = [...(await this.list()), entry];

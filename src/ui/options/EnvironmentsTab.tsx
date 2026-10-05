@@ -1,0 +1,250 @@
+import { useEffect, useMemo, useState } from 'preact/hooks';
+import { accessDomains } from '../../core/blocking';
+import {
+  SUGGESTED_SITES, createEnvironment, createRule, defaultRestrictedKind, duplicateEnvironment, ruleCounts, validateEnvironment,
+} from '../../core/environments';
+import type { Environment, RestrictedKind, Rule, RuleMode } from '../../core/models';
+import { randomId } from '../../core/ports';
+import { ensureHostAccess, hostPattern } from '../../platform/chrome/permissions';
+import { kindLabel, modeHelp, modeLabel, validationMessage } from '../i18n/pt-BR';
+import { services } from './shared';
+
+const MODES: RuleMode[] = ['allowed', 'blocked', 'restricted'];
+const KINDS: RestrictedKind[] = ['youtube', 'instagram', 'x', 'intent'];
+
+type Notice = { kind: 'ok' | 'warn' | 'error'; text: string };
+
+/** Domínios (que precisam de acesso opcional) sem permissão concedida. */
+async function missingAccess(env: Environment | undefined): Promise<string[]> {
+  if (!env) return [];
+  const domains = accessDomains(env);
+  const granted = await Promise.all(domains.map((d) => chrome.permissions.contains({ origins: [hostPattern(d)] })));
+  return domains.filter((_, i) => !granted[i]);
+}
+
+export function EnvironmentsTab({ active }: { active: boolean }) {
+  const [envs, setEnvs] = useState<Environment[]>([]);
+  const [selectedId, setSelectedId] = useState<string>();
+  const [draft, setDraft] = useState<Environment>();
+  const [dirty, setDirty] = useState(false);
+  const [notice, setNotice] = useState<Notice>();
+  const [sessionActive, setSessionActive] = useState(false);
+  const [missing, setMissing] = useState<string[]>([]);
+  const [newDomain, setNewDomain] = useState('');
+  const [newMode, setNewMode] = useState<RuleMode>('blocked');
+
+  async function reload(selectId?: string) {
+    const list = await services.environments.list();
+    const env = list.find((e) => e.id === (selectId ?? selectedId)) ?? list[0];
+    setEnvs(list);
+    setSelectedId(env?.id);
+    setDraft(env ? structuredClone(env) : undefined);
+    setDirty(false);
+    setMissing(await missingAccess(env));
+  }
+
+  useEffect(() => {
+    void reload();
+    void services.sessions.get().then((s) => setSessionActive(s?.status === 'active'));
+  }, []);
+
+  const domains = useMemo(() => new Set(draft?.rules.map((r) => r.domain)), [draft]);
+  const suggestions = SUGGESTED_SITES.filter((s) => !domains.has(s.domain));
+
+  function edit(fn: (env: Environment) => void) {
+    if (!draft) return;
+    const next = structuredClone(draft);
+    fn(next);
+    setDraft(next);
+    setDirty(true);
+    setNotice(undefined);
+  }
+
+  const confirmDiscard = () => !dirty || confirm('Descartar as alterações não salvas?');
+
+  function select(id: string) {
+    if (id === selectedId || !confirmDiscard()) return;
+    setNotice(undefined);
+    void reload(id);
+  }
+
+  async function createNew() {
+    if (!confirmDiscard()) return;
+    const env = await services.environments.save(createEnvironment('Novo ambiente', Date.now(), randomId));
+    await reload(env.id);
+  }
+
+  async function duplicate() {
+    if (!draft || !confirmDiscard()) return;
+    const copy = await services.environments.save(duplicateEnvironment(draft, Date.now(), randomId));
+    await reload(copy.id);
+    setNotice({ kind: 'ok', text: 'Cópia criada. Agora você pode ajustar à vontade.' });
+  }
+
+  async function save() {
+    if (!draft) return;
+    const errors = validateEnvironment(draft);
+    if (errors.length) return setNotice({ kind: 'error', text: errors.map(validationMessage).join(' ') });
+    // Primeiro a permissão (precisa do clique do usuário), depois o storage.
+    const granted = await ensureHostAccess(accessDomains(draft));
+    const saved = await services.environments.save(draft);
+    await reload(saved.id);
+    if (!granted) setNotice({ kind: 'warn', text: 'Salvo, mas sem acesso aos sites o bloqueio não funciona. Use "Conceder acesso" abaixo.' });
+    else setNotice({ kind: 'ok', text: 'Ambiente salvo.' });
+  }
+
+  async function grantAccess() {
+    await ensureHostAccess(missing);
+    setMissing(await missingAccess(envs.find((e) => e.id === selectedId)));
+  }
+
+  async function remove() {
+    if (!draft || draft.builtin || !confirm(`Apagar o ambiente "${draft.name}"?`)) return;
+    await services.environments.remove(draft.id);
+    await reload(envs.find((e) => e.id !== draft.id)?.id);
+  }
+
+  async function restore() {
+    if (!draft || !confirm('Voltar este ambiente de exemplo ao padrão?')) return;
+    await services.environments.restoreBuiltin(draft.id);
+    await reload(draft.id);
+    setNotice({ kind: 'ok', text: 'Ambiente restaurado.' });
+  }
+
+  function addRule(input: string, mode: RuleMode) {
+    const rule = createRule(input, mode, randomId);
+    if (!rule) return setNotice({ kind: 'error', text: 'Esse endereço não parece um site válido (ex.: reddit.com).' });
+    if (domains.has(rule.domain)) return setNotice({ kind: 'error', text: `${rule.domain} já está na lista.` });
+    edit((env) => env.rules.push(rule));
+    setNewDomain('');
+  }
+
+  function setMode(rule: Rule, mode: RuleMode) {
+    edit((env) => {
+      const r = env.rules.find((x) => x.id === rule.id)!;
+      r.mode = mode;
+      if (mode === 'restricted') r.restrictedKind = r.restrictedKind ?? defaultRestrictedKind(r.domain);
+      else delete r.restrictedKind;
+    });
+  }
+
+  return (
+    <main class="pane" hidden={!active}>
+      {sessionActive && <p class="notice warn">Há uma sessão em andamento: o que você mudar vale a partir da próxima.</p>}
+
+      <section aria-label="Escolha o ambiente">
+        <h2 class="section-title">Seus ambientes</h2>
+        <p class="section-sub">Um ambiente é um jeito de organizar seu dia. Escolha um para ver e editar as regras.</p>
+        <ul class="env-grid">
+          {envs.map((e) => {
+            const c = ruleCounts(e);
+            return (
+              <li key={e.id}>
+                <button class={`env-card ${e.id === selectedId ? 'on' : ''}`} onClick={() => select(e.id)} aria-pressed={e.id === selectedId}>
+                  <span class="env-name">{e.name}{e.builtin && <span class="tag">exemplo</span>}</span>
+                  <span class="dots" aria-hidden="true">
+                    {e.rules.slice(0, 8).map((r) => <i key={r.id} class={`dot m-${r.mode}`} title={r.domain} />)}
+                  </span>
+                  <span class="env-meta">
+                    {c.blocked} bloqueados · {c.restricted} restritos · {c.allowed} liberados
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+          <li>
+            <button class="env-card new" onClick={createNew}>
+              <span class="plus" aria-hidden="true">+</span>
+              <span>Novo ambiente</span>
+            </button>
+          </li>
+        </ul>
+      </section>
+
+      {draft && (
+        <section class="card" aria-label={`Editar ${draft.name}`}>
+          <div class="editor-head">
+            <label class="grow">
+              <span class="lbl">Nome do ambiente</span>
+              <input class="field full name-input" value={draft.name} maxLength={40}
+                onInput={(e) => edit((env) => { env.name = e.currentTarget.value; })} />
+            </label>
+            <div class="head-actions">
+              <button class="btn btn-ghost" onClick={duplicate}>Duplicar</button>
+              {draft.builtin
+                ? <button class="btn btn-ghost" onClick={restore}>Restaurar padrão</button>
+                : <button class="btn btn-ghost btn-danger" onClick={remove}>Apagar</button>}
+            </div>
+          </div>
+
+          <h3>Regras por site</h3>
+          <ul class="legend">
+            {MODES.map((m) => (
+              <li key={m}><i class={`dot m-${m}`} /><strong>{modeLabel[m]}</strong> <span>{modeHelp[m]}</span></li>
+            ))}
+          </ul>
+
+          {draft.rules.length === 0 && <p class="empty">Nenhum site por aqui ainda. Adicione o primeiro abaixo, ou toque numa sugestão.</p>}
+          <ul class="rules">
+            {draft.rules.map((r) => (
+              <li key={r.id} class="rule">
+                <span class={`badge m-${r.mode}`} aria-hidden="true">{r.domain[0]?.toUpperCase()}</span>
+                <span class="domain">{r.domain}</span>
+                <div class="seg-group" role="group" aria-label={`Regra de ${r.domain}`}>
+                  {MODES.map((m) => (
+                    <button key={m} class={`seg-btn m-${m}`} aria-pressed={r.mode === m} onClick={() => setMode(r, m)}>{modeLabel[m]}</button>
+                  ))}
+                </div>
+                {r.mode === 'restricted' ? (
+                  <select class="field kind" aria-label={`Tipo de restrição de ${r.domain}`} value={r.restrictedKind}
+                    onChange={(e) => edit((env) => { env.rules.find((x) => x.id === r.id)!.restrictedKind = e.currentTarget.value as RestrictedKind; })}>
+                    {KINDS.map((k) => <option value={k}>{kindLabel[k]}</option>)}
+                  </select>
+                ) : <span class="kind" />}
+                <button class="btn btn-ghost x" aria-label={`Remover ${r.domain}`}
+                  onClick={() => edit((env) => { env.rules = env.rules.filter((x) => x.id !== r.id); })}>✕</button>
+              </li>
+            ))}
+          </ul>
+
+          <form class="add" onSubmit={(e) => { e.preventDefault(); addRule(newDomain, newMode); }}>
+            <input class="field grow" placeholder="Adicionar site (ex.: reddit.com)" value={newDomain} aria-label="Novo site"
+              onInput={(e) => setNewDomain(e.currentTarget.value)} />
+            <select class="field" aria-label="Regra do novo site" value={newMode} onChange={(e) => setNewMode(e.currentTarget.value as RuleMode)}>
+              {MODES.map((m) => <option value={m}>{modeLabel[m]}</option>)}
+            </select>
+            <button class="btn" type="submit">Adicionar</button>
+          </form>
+
+          {suggestions.length > 0 && (
+            <div class="chips">
+              <span class="hint">Sugestões:</span>
+              {suggestions.map((s) => (
+                <button key={s.domain} class="chip" onClick={() => addRule(s.domain, 'blocked')}>+ {s.name}</button>
+              ))}
+            </div>
+          )}
+
+          {missing.length > 0 && !dirty && (
+            <div class="notice warn access">
+              <span>O Chrome ainda não deu acesso a <strong>{missing.join(', ')}</strong>. Sem isso, o bloqueio não funciona.</span>
+              <button class="btn btn-primary" onClick={grantAccess}>Conceder acesso</button>
+            </div>
+          )}
+          {notice && <p class={`notice ${notice.kind}`} role="status">{notice.text}</p>}
+          <p class="hint perm">
+            O acesso aos sites serve só para bloquear ou limitar essas páginas. Nada sai do seu computador.
+          </p>
+        </section>
+      )}
+
+      {dirty && (
+        <div class="savebar" role="region" aria-label="Alterações não salvas">
+          <span>Você tem alterações não salvas</span>
+          <button class="btn btn-ghost" onClick={() => reload(draft?.id)}>Descartar</button>
+          <button class="btn btn-primary" onClick={save}>Salvar</button>
+        </div>
+      )}
+    </main>
+  );
+}

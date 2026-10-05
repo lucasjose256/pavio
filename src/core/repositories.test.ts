@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { createBuiltinEnvironments, createEnvironment, createRule, validateEnvironment } from './environments';
+import { createBuiltinEnvironment, createBuiltinEnvironments, createEnvironment, createRule, duplicateEnvironment, ruleCounts, validateEnvironment } from './environments';
+import { accessDomains } from './blocking';
 import { MemoryStorage } from './memory-storage';
 import { migrate } from './migrations';
 import {
@@ -99,5 +100,23 @@ describe('Settings e History', () => {
     const all = await h.list();
     expect(all).toHaveLength(HISTORY_LIMIT);
     expect(all[0]?.sessionId).toBe('s5');
+  });
+});
+
+describe('helpers de ambiente', () => {
+  it('ruleCounts conta por tipo', () => {
+    expect(ruleCounts(createBuiltinEnvironment('builtin-study', 0)!)).toEqual({ allowed: 0, blocked: 5, restricted: 1 });
+  });
+  it('duplicateEnvironment gera cópia editável com ids novos', () => {
+    const original = createBuiltinEnvironment('builtin-study', 0)!;
+    const copy = duplicateEnvironment(original, 5, newId);
+    expect(copy).toMatchObject({ name: 'Estudo (cópia)', builtin: false, createdAt: 5 });
+    expect(copy.id).not.toBe(original.id);
+    expect(copy.rules.map((r) => r.domain)).toEqual(original.rules.map((r) => r.domain));
+    expect(copy.rules[0]!.id).not.toBe(original.rules[0]!.id);
+    expect(validateEnvironment(copy)).toEqual([]);
+  });
+  it('accessDomains pede acesso só ao que o DNR precisa (YouTube/Instagram/X restritos não)', () => {
+    expect(accessDomains(createBuiltinEnvironment('builtin-night', 0)!)).toEqual(['facebook.com', 'tiktok.com', 'reddit.com']);
   });
 });

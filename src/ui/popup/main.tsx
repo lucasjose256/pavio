@@ -145,7 +145,10 @@ function Popup() {
   return (
     <main class="popup">
       {!loaded ? null : active ? <Running session={active} skin={skin} now={now} /> : <StartForm skin={skin} />}
-      <button class="btn btn-ghost" onClick={() => chrome.runtime.openOptionsPage()}>Ambientes e opções</button>
+      <div class="links">
+        <button class="btn btn-ghost" onClick={() => chrome.runtime.openOptionsPage()}>Ambientes e opções</button>
+        <button class="btn btn-ghost" onClick={() => chrome.tabs.create({ url: chrome.runtime.getURL('src/ui/options/index.html#historico') })}>Histórico</button>
+      </div>
     </main>
   );
 }
