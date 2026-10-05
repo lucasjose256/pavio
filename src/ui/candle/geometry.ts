@@ -1,6 +1,6 @@
 /** Geometria da vela (coordenadas do viewBox). `progress`: 1 = cheia, 0 = apagada. */
-export const VIEW = { width: 240, height: 400 };
-export const CANDLE = { cx: 120, width: 72, baseY: 350, maxHeight: 230, minHeight: 10 };
+export const VIEW = { width: 240, height: 320 };
+export const CANDLE = { cx: 120, width: 116, baseY: 270, maxHeight: 150, minHeight: 10 };
 
 export interface CandleGeometry {
   progress: number;
@@ -20,8 +20,8 @@ export function candleGeometry(progress: number): CandleGeometry {
     waxHeight,
     topY: CANDLE.baseY - waxHeight,
     // quanto mais derrete, maior a poça de cera na base
-    puddleRx: 50 + (1 - p) * 36,
-    puddleRy: 7 + (1 - p) * 5,
-    dripLength: Math.min(46, waxHeight * 0.6),
+    puddleRx: 72 + (1 - p) * 20,
+    puddleRy: 9 + (1 - p) * 4,
+    dripLength: Math.min(40, waxHeight * 0.5),
   };
 }

@@ -1,18 +1,20 @@
 import type { FlameColors } from './types';
 
-/** Chama animada. Origem (0,0) = ponta do pavio. */
+/** Chama gordinha e animada. Origem (0,0) = ponta do pavio. */
 export function Flame({ uid, colors }: { uid: string; colors: FlameColors }) {
   return (
-    <g>
-      <circle class="pv-glow" cx={0} cy={-34} r={110} fill={`url(#${uid}-glow)`} />
-      <rect x={-1.5} y={0} width={3} height={15} rx={1.5} fill="#2a2420" />
+    <g transform="scale(1.2)">
+      <circle class="pv-glow" cx={0} cy={-40} r={120} fill={`url(#${uid}-glow)`} />
+      <rect x={-2.5} y={0} width={5} height={16} rx={2.5} fill="#3a2b33" />
       <g class="pv-flame-body">
         <path
-          d="M0 -66 C6 -48 18 -36 18 -19 A18 18 0 0 1 -18 -19 C-18 -36 -6 -48 0 -66Z"
+          d="M0 -76 C8 -56 23 -43 23 -23 A23 23 0 0 1 -23 -23 C-23 -43 -8 -56 0 -76Z"
           fill={`url(#${uid}-flame)`}
+          stroke={colors.outline}
+          stroke-width={colors.outline ? 5 : 0}
+          stroke-linejoin="round"
         />
-        <path class="pv-flame-inner" d="M0 -40 C4 -30 10 -24 10 -14 A10 10 0 0 1 -10 -14 C-10 -24 -4 -30 0 -40Z" fill={colors.inner} />
-        <ellipse cx={0} cy={-5} rx={5} ry={6} fill="#7aa7ff" opacity={0.55} />
+        <path class="pv-flame-inner" d="M0 -47 C5 -36 13 -30 13 -19 A13 13 0 0 1 -13 -19 C-13 -30 -5 -36 0 -47Z" fill={colors.inner} />
       </g>
     </g>
   );
@@ -22,8 +24,8 @@ export function FlameDefs({ uid, colors }: { uid: string; colors: FlameColors })
   return (
     <>
       <radialGradient id={`${uid}-glow`}>
-        <stop offset="0" stop-color={colors.glow} stop-opacity="0.55" />
-        <stop offset="0.45" stop-color={colors.glow} stop-opacity="0.16" />
+        <stop offset="0" stop-color={colors.glow} stop-opacity="0.45" />
+        <stop offset="0.5" stop-color={colors.glow} stop-opacity="0.12" />
         <stop offset="1" stop-color={colors.glow} stop-opacity="0" />
       </radialGradient>
       <linearGradient id={`${uid}-flame`} x1="0" y1="0" x2="0" y2="1">
@@ -38,8 +40,8 @@ export function FlameDefs({ uid, colors }: { uid: string; colors: FlameColors })
 export function Smoke() {
   return (
     <g class="pv-smoke">
-      <rect x={-1.5} y={0} width={3} height={15} rx={1.5} fill="#2a2420" />
-      <path d="M0 -2 C-8 -18 8 -30 0 -48 C-6 -60 6 -70 0 -84" fill="none" stroke="#b9b3c4" stroke-width={3} stroke-linecap="round" />
+      <rect x={-2.5} y={0} width={5} height={16} rx={2.5} fill="#3a2b33" />
+      <path d="M0 -2 C-10 -18 10 -30 0 -48 C-8 -60 8 -70 0 -84" fill="none" stroke="#b9b3c4" stroke-width={4} stroke-linecap="round" />
     </g>
   );
 }

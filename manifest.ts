@@ -11,7 +11,8 @@ export default defineManifest({
   permissions: ['storage'],
   // Pedida por site, no clique do usuário (ao salvar um ambiente com sites bloqueados/restritos).
   optional_host_permissions: ['<all_urls>'],
-  action: { default_popup: 'src/ui/popup/index.html', default_title: 'Pavio' },
+  icons: { 16: 'public/icons/icon-16.png', 32: 'public/icons/icon-32.png', 48: 'public/icons/icon-48.png', 128: 'public/icons/icon-128.png' },
+  action: { default_popup: 'src/ui/popup/index.html', default_title: 'Pavio', default_icon: { 16: 'public/icons/icon-16.png', 32: 'public/icons/icon-32.png', 48: 'public/icons/icon-48.png', 128: 'public/icons/icon-128.png' } },
   options_ui: { page: 'src/ui/options/index.html', open_in_tab: true },
   // Alvo dos redirecionamentos do bloqueio (etapa 4).
   web_accessible_resources: [{ resources: ['src/ui/blocked/index.html'], matches: ['<all_urls>'] }],

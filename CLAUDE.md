@@ -44,7 +44,8 @@ Estado do modo intenção irá em `chrome.storage.session`.
 Evitar: `tabs`, `history`, `webNavigation`, `<all_urls>` obrigatório.
 
 ## Identidade visual: a vela (`src/ui/candle/`)
-- `<Candle progress skin lit />`: `progress` 1 = cheia, 0 = apagada. Cera e chama descem juntas (transição CSS de 1s linear, por isso o popup atualiza a cada 1s); a poça na base cresce e as gotas escorrem. `prefers-reduced-motion` desliga animações.
+- `<Candle progress skin lit />`: `progress` 1 = cheia, 0 = apagada. Cera e chama descem juntas (transição CSS de 1s linear, por isso o popup atualiza a cada 1s); a poça na base cresce e a cera do topo escorre. `prefers-reduced-motion` desliga animações.
+- Estilo: gordinha, cartoon e minimalista (largura 116 × altura 150 no viewBox; cores chapadas, contorno grosso na skin Clássica). Ícone da extensão: `public/icons/icon.svg` → `npm run icons` gera os PNGs (resvg).
 - Skin = `{ id, name, flame (cores), Body }` em `skins/`; pavio/chama/fumaça são comuns. Nova skin: criar arquivo + registrar em `skins/index.ts`. Geometria em `geometry.ts` (testada).
 - Tema: `src/ui/theme.css` (tokens escuros). Frases motivacionais em `ui/i18n/pt-BR.ts` (`quotes`).
 - Popup mostra a vela derretendo com o tempo restante quando há sessão; `blocked/` mostra a vela grande, chama animada, frase e tempo restante.

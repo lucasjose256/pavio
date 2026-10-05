@@ -22,12 +22,6 @@
   transform-origin: 50% 0;
   animation: pv-drip 7s ease-in-out infinite;
 }
-.pv-drop {
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: pv-drop 7s ease-in infinite;
-  opacity: 0;
-}
 .pv-smoke path { stroke-dasharray: 120; animation: pv-smoke 4s ease-out infinite; }
 
 @keyframes pv-flicker {
@@ -42,17 +36,12 @@
   0%, 100% { transform: scaleY(0.72); }
   55% { transform: scaleY(1); }
 }
-@keyframes pv-drop {
-  0%, 55% { opacity: 0; transform: translateY(0) scale(0.6); }
-  62% { opacity: 1; transform: translateY(0) scale(1); }
-  100% { opacity: 0; transform: translateY(46px) scale(0.8); }
-}
 @keyframes pv-smoke {
   0% { stroke-dashoffset: 120; opacity: 0.9; }
   100% { stroke-dashoffset: 0; opacity: 0; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .pv-flame-body, .pv-flame-inner, .pv-glow, .pv-pool, .pv-drip, .pv-drop, .pv-smoke path { animation: none; }
+  .pv-flame-body, .pv-flame-inner, .pv-glow, .pv-pool, .pv-drip, .pv-smoke path { animation: none; }
   .pv-rise, .pv-puddle { transition: none; }
 }

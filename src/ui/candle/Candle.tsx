@@ -19,7 +19,7 @@ export function Candle({ progress, skin: skinId, lit, label, class: className }:
   const skin = getSkin(skinId);
   const geo = candleGeometry(progress);
   const isLit = lit ?? geo.progress > 0;
-  const wickY = geo.topY - 14;
+  const wickY = geo.topY - 16;
 
   return (
     <svg

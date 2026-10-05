@@ -6,6 +6,8 @@ export interface FlameColors {
   mid: string;
   inner: string;
   glow: string;
+  /** Contorno da chama (estilo cartoon). */
+  outline?: string;
 }
 
 export interface SkinBodyProps {

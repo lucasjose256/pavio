@@ -1,30 +1,29 @@
 import { CANDLE } from './geometry';
 
-interface Props {
-  color: string;
-  length: number;
-}
-
-/** Gotas de cera escorrendo pela lateral (origem em y=0 = topo da cera). */
-export function Drips({ color, length }: Props) {
+/** "Cera derretida" no topo: faixa + línguas que crescem e encolhem. Origem y=0 = topo da cera. */
+export function Drips({ color, length, clipId }: { color: string; length: number; clipId: string }) {
   const half = CANDLE.width / 2;
-  const drips = [
-    { x: -half + 7, k: 0.9, delay: 0 },
-    { x: -half + 26, k: 0.45, delay: 2.4 },
-    { x: half - 20, k: 1, delay: 1.2 },
-    { x: half - 5, k: 0.55, delay: 3.6 },
+  const lobes = [
+    { x: -half + 18, k: 0.6, delay: 0 },
+    { x: -2, k: 1, delay: 1.6 },
+    { x: half - 20, k: 0.75, delay: 3.2 },
   ];
   return (
-    <g>
-      {drips.map((d) => {
-        const len = Math.max(6, length * d.k);
-        return (
-          <g key={d.x} transform={`translate(${CANDLE.cx + d.x} 0)`}>
-            <rect class="pv-drip" x={-4} y={0} width={8} height={len} rx={4} fill={color} style={{ animationDelay: `${d.delay}s` }} />
-            <circle class="pv-drop" cx={0} cy={len} r={3} fill={color} style={{ animationDelay: `${d.delay}s` }} />
-          </g>
-        );
-      })}
+    <g clip-path={`url(#${clipId})`}>
+      <rect x={CANDLE.cx - half} y={-4} width={CANDLE.width} height={16} fill={color} />
+      {lobes.map((l) => (
+        <rect key={l.x} class="pv-drip" x={CANDLE.cx + l.x - 9} y={-4} width={18} height={Math.max(14, length * l.k) + 12}
+          rx={9} fill={color} style={{ animationDelay: `${l.delay}s` }} />
+      ))}
     </g>
+  );
+}
+
+/** Gota que escorre pela lateral direita, com contorno. */
+export function Tear({ length, fill, stroke, strokeWidth }: { length: number; fill: string; stroke: string; strokeWidth: number }) {
+  const right = CANDLE.cx + CANDLE.width / 2;
+  return (
+    <rect class="pv-drip" x={right - 12} y={14} width={16} height={Math.max(16, length)} rx={8}
+      fill={fill} stroke={stroke} stroke-width={strokeWidth} stroke-linejoin="round" style={{ animationDelay: '0.8s' }} />
   );
 }
