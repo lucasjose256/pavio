@@ -16,12 +16,23 @@ export default defineManifest({
   options_ui: { page: 'src/ui/options/index.html', open_in_tab: true },
   // Alvos dos redirecionamentos: página da vela (bloqueio) e "o que você vai fazer aqui?" (intenção).
   web_accessible_resources: [{ resources: ['src/ui/blocked/index.html', 'src/ui/intent/index.html'], matches: ['<all_urls>'] }],
-  // Modo restrito do YouTube. Declarado aqui (e não como permissão opcional) porque o script precisa
+  // Modo restrito do YouTube/Instagram/X. Declarado aqui (e não como permissão opcional) porque o script precisa
   // estar pronto em document_start; ele não faz nada fora de uma sessão com YouTube "restrito".
   content_scripts: [
     {
       matches: ['https://www.youtube.com/*', 'https://m.youtube.com/*'],
       js: ['src/content/youtube.iife.ts'],
+      run_at: 'document_start',
+    },
+    // Instagram "só mensagens" e X sem "Para você". Mesmo critério do YouTube (sufixo .iife = document_start exato).
+    {
+      matches: ['https://www.instagram.com/*'],
+      js: ['src/content/instagram.iife.ts'],
+      run_at: 'document_start',
+    },
+    {
+      matches: ['https://x.com/*', 'https://twitter.com/*', 'https://mobile.twitter.com/*'],
+      js: ['src/content/x.iife.ts'],
       run_at: 'document_start',
     },
   ],

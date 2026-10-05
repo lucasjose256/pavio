@@ -86,6 +86,7 @@ export const blockedWhy: Record<string, string> = {
   shorts: 'Os Shorts ficam de fora durante a sessão.',
   feed: 'Esse feed fica escondido durante a sessão.',
   'not-allowed': 'Esse endereço não está na sua lista de hoje.',
+  'dm-only': 'No Instagram, só as mensagens ficam disponíveis durante a sessão.',
 };
 
 export const youtubeUi = {

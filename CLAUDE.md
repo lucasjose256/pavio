@@ -55,6 +55,12 @@ Vite + `@crxjs/vite-plugin` (manifest tipado em `manifest.ts`), TypeScript stric
 - Páginas bloqueadas vão para `blocked/index.html?site=youtube.com&why=shorts|feed|not-allowed`.
 - Limitação: o dono do vídeo só é checado por link de canal no DOM; vídeo sem nenhum link de canal visível é bloqueado.
 
+## Instagram e X (`core/sites.ts`, `content/instagram.iife.ts`, `content/x.iife.ts`)
+- **Instagram "só mensagens"**: decisão pura por caminho (`instagramDecision`): `/direct…` e o necessário para login passam; `/` vai para `/direct/inbox/`; todo o resto (Reels, Explorar, feed, perfis, stories) vai para `blocked/…?why=dm-only`. Atalhos de Reels/Explorar no menu são escondidos por CSS. SPA: `content/navigation.ts` (`onNavigate`) combina Navigation API, popstate e checagem a cada 500 ms.
+- **X sem "Para você"**: o script acha as abas por `[data-testid=primaryColumn] [role=tablist] [role=tab]` + texto (`classifyXTab`: en/pt/es), esconde "Para você" (atributo `data-pavio-x`) e, se ela estiver selecionada, clica em "Seguindo". Ao fim da sessão desfaz tudo. Vale para `x.com`/`twitter.com` (regra restrita tipo `x`).
+- **Validação:** a lógica foi testada (unitário + script compilado numa página que imita a estrutura do X). **Os seletores do DOM real do Instagram e do X NÃO foram validados** (exigem login). Se algo falhar, ajuste `selectors.ts` (`instagram`, `x`). Textos de aba em outros idiomas entram em `x.forYouLabels`/`followingLabels`.
+- Timer (`setTimeout`), não `requestAnimationFrame`, nos content scripts: rAF pausa em aba oculta.
+
 ## Modo intenção (`core/intent-service.ts`, `ui/intent/`)
 - Vale para sites `restricted` com tipo `intent` (Reddit, TikTok, Facebook e sites adicionados). YouTube/Instagram/X têm o próprio tratamento.
 - Sem `scripting` e sem content script: o DNR redireciona o site para `intent/index.html?site=…&next=<url original>` (prioridade 2; `next` vai por último, sem codificar, porque o DNR não codifica). Ao responder ("o que vai fazer" + minutos), `IntentService.grant` grava a permissão, o background remove a regra daquele site e a página navega de volta (só para o mesmo domínio).
@@ -73,7 +79,7 @@ Estado do modo intenção irá em `chrome.storage.session`.
 | `alarms` | Fim da sessão e aviso do modo intenção com service worker suspenso | ✅ etapa 3 |
 | `notifications` | Avisar que a vela acabou | ✅ etapa 3 |
 | `declarativeNetRequest` | Bloquear/redirecionar sites sem ler conteúdo | ✅ etapa 4 |
-| Content script em `www/m.youtube.com` (via `content_scripts.matches`, aviso de instalação) | Modo restrito do YouTube em `document_start` | ✅ etapa 6 (Instagram e X: etapa 7) |
+| Content scripts em `youtube.com`, `instagram.com`, `x.com`/`twitter.com` (via `content_scripts.matches`, geram aviso de instalação) | Modo restrito de cada site em `document_start` | ✅ etapas 6-7 |
 | `optional_host_permissions: <all_urls>` | Redirect do DNR exige acesso ao host; pedido por site (`*://*.dominio/*`), no clique em Salvar da página de opções (`platform/chrome/permissions.ts`) | ✅ etapa 2 |
 Evitar: `tabs`, `history`, `webNavigation`, `scripting`, `<all_urls>` obrigatório. (`chrome.tabs.query/update` por padrão de host funcionam sem `tabs`; modo intenção usa DNR em vez de `scripting`.)
 
@@ -94,7 +100,7 @@ Agenda recorrente, desafios, compartilhamento, loja de skins, Safari/Firefox, ap
 4. ✅ Bloqueio (DNR) + página de bloqueio
 5. ✅ Página de fricção
 6. ✅ Modo restrito do YouTube (+ allowlist) e modo intenção
-7. Instagram (só DMs) e X (sem "Para você")
+7. ✅ Instagram (só DMs) e X (sem "Para você")
 8. Histórico
 
 ## Decisões em aberto / assumidas
