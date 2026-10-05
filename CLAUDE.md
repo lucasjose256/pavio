@@ -47,10 +47,11 @@ Vite + `@crxjs/vite-plugin` (manifest tipado em `manifest.ts`), TypeScript stric
 - A tela bloqueia colar (de propósito) e o botão "Apagar a vela" só habilita com tudo cumprido. O cronômetro conta desde a abertura da aba (recarregar reinicia).
 - Páginas que o CRXJS não compila sozinho (bloqueio, fricção) são entradas explícitas em `vite.config.ts`.
 
-## Modo restrito do YouTube (`core/youtube.ts`, `content/youtube.ts`, `content/selectors.ts`)
+## Modo restrito do YouTube (`core/youtube.ts`, `content/youtube.iife.ts`, `content/selectors.ts`)
 - Decisão pura por página (`youtubeDecision`): **sem lista** = "sem feed" (busca e vídeos liberados; Shorts e feeds de descoberta redirecionam); **com lista** = só vídeos/playlists/canais colados, e vídeos de canais permitidos (`check-channel`: o content script confere os links do dono no DOM, esperando o `video-id` da página para não ler o vídeo anterior). Links aceitos: watch, youtu.be, shorts/embed/live, playlist, `@handle`, `/channel/UC…`, `/c/…`, `/user/…`.
 - CSS (feed da home, recomendados, comentários, Shorts, sugestões no fim do vídeo) vem de `selectors.ts`, **validado no YouTube real em 2026-10-05**. Quando algo reaparecer, atualize só esse arquivo.
-- Content script estático (`document_start`) em `www.youtube.com`/`m.youtube.com`; só age com sessão ativa cujo ambiente tem youtube.com como `restricted`/`youtube`. Isso gera o aviso de instalação "ler dados do youtube.com" (aceito: é o único jeito de rodar em `document_start`).
+- Content script estático (`document_start`), **nomeado `.iife.ts` de propósito**: sem isso o CRXJS usa um loader assíncrono e o script não roda no início exato (o feed piscaria). Mantenha o sufixo em novos content scripts `document_start`.
+- O script roda em `www.youtube.com`/`m.youtube.com` e só age com sessão ativa cujo ambiente tem youtube.com como `restricted`/`youtube`. Isso gera o aviso de instalação "ler dados do youtube.com" (aceito: é o único jeito de rodar em `document_start`).
 - Páginas bloqueadas vão para `blocked/index.html?site=youtube.com&why=shorts|feed|not-allowed`.
 - Limitação: o dono do vídeo só é checado por link de canal no DOM; vídeo sem nenhum link de canal visível é bloqueado.
 
