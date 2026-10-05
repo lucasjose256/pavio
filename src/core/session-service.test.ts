@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { createBuiltinEnvironment } from './environments';
 import { MemoryStorage } from './memory-storage';
 import type { HistoryEntry } from './models';
-import { HistoryRepository, SessionRepository } from './repositories';
+import { HistoryRepository, ScheduleRepository, SessionRepository } from './repositories';
 import { SESSION_ALARM, SessionAlreadyActiveError, SessionService } from './session-service';
 
 const env = createBuiltinEnvironment('builtin-study', 0)!;
@@ -23,13 +23,14 @@ beforeEach(() => {
   service = new SessionService({
     sessions,
     history,
+    schedule: new ScheduleRepository(storage, { now: () => now }),
     clock: { now: () => now },
     newId: () => 'sid',
     scheduler: {
       schedule: async (n, w) => void alarms.set(n, w),
       cancel: async (n) => void alarms.delete(n),
     },
-    notifier: { sessionCompleted: async (e) => void notified.push(e), intentTimeUp: async () => {} },
+    notifier: { sessionCompleted: async (e) => void notified.push(e), intentTimeUp: async () => {}, scheduledStarted: async () => {} },
   });
 });
 

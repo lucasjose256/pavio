@@ -20,6 +20,8 @@
   --mode-allowed: #5f8a54;
   --mode-blocked: #b5523a;
   --mode-restricted: #c98a1f;
+  /* cores das faixas de horário */
+  --blk-1: #c4672a; --blk-2: #5f8a54; --blk-3: #b8860b; --blk-4: #8a5a7a;
   --min-line: #4a3426;
   --min-body: #fffaf0;
   --font-body: ui-rounded, 'SF Pro Rounded', 'Nunito', system-ui, -apple-system, 'Segoe UI', sans-serif;
@@ -47,6 +49,7 @@
   --mode-allowed: #8fc482;
   --mode-blocked: #e8917a;
   --mode-restricted: #f2b361;
+  --blk-1: #f2a266; --blk-2: #8fc482; --blk-3: #e6c15a; --blk-4: #c99ab8;
 }
 
 *, *::before, *::after { box-sizing: border-box; }

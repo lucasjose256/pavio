@@ -48,6 +48,12 @@ export interface Session {
   youtubeAllowlist: AllowedLink[];
   status: SessionStatus;
   blockedAttempts: number;
+  /** Quem acendeu a vela. Ausente = manual (sessões antigas). */
+  source?: 'manual' | 'schedule';
+  /** Só em sessões de horário: a faixa, a ocorrência (`faixa:dia`) e o nome para exibir. */
+  scheduleBlockId?: string;
+  occurrenceKey?: string;
+  scheduleName?: string;
 }
 
 /** Sessão encerrada, guardada para o futuro relatório de "horas devolvidas". */
@@ -60,6 +66,7 @@ export interface HistoryEntry {
   actualMs: number;
   outcome: 'completed' | 'abandoned';
   blockedAttempts: number;
+  source?: 'manual' | 'schedule';
 }
 
 /** creme = claro e quente (padrão); noite = escuro e quente. */
@@ -89,4 +96,21 @@ export interface IntentGrant {
   minutes: number;
   startedAt: number;
   endsAt: number;
+}
+
+/**
+ * Faixa de horário: nos `days` (0 = domingo … 6 = sábado), de `startMin` a `endMin` (minutos desde 00:00),
+ * o `environmentId` vale automaticamente. `endMin <= startMin` = termina no dia seguinte (ex.: 22:00 → 06:00).
+ */
+export interface ScheduleBlock {
+  id: string;
+  name: string;
+  environmentId: string;
+  days: number[];
+  startMin: number;
+  endMin: number;
+  strictness: Strictness;
+  enabled: boolean;
+  createdAt: number;
+  updatedAt: number;
 }

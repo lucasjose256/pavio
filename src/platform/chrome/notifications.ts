@@ -1,4 +1,5 @@
-import type { HistoryEntry, IntentGrant } from '../../core/models';
+import type { HistoryEntry, IntentGrant, Session } from '../../core/models';
+import { formatMinutes } from '../../core/schedule';
 import type { NotifierPort } from '../../core/ports';
 import { notifications } from '../../ui/i18n/pt-BR';
 
@@ -12,6 +13,19 @@ export class ChromeNotifier implements NotifierPort {
       iconUrl: icon(),
       title: notifications.completedTitle,
       message: notifications.completedMessage(entry.environmentName, Math.round(entry.actualMs / 60_000)),
+    });
+  }
+
+  async scheduledStarted(session: Session): Promise<void> {
+    const end = new Date(session.endsAt);
+    await chrome.notifications.create(`sched-${session.id}`, {
+      type: 'basic',
+      iconUrl: icon(),
+      title: notifications.scheduledTitle,
+      message: notifications.scheduledMessage(
+        session.scheduleName || session.environmentSnapshot.name,
+        formatMinutes(end.getHours() * 60 + end.getMinutes()),
+      ),
     });
   }
 

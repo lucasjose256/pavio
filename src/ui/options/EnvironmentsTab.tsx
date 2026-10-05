@@ -99,7 +99,12 @@ export function EnvironmentsTab({ active }: { active: boolean }) {
   }
 
   async function remove() {
-    if (!draft || draft.builtin || !confirm(`Apagar o ambiente "${draft.name}"?`)) return;
+    if (!draft || draft.builtin) return;
+    const using = (await services.schedule.list()).filter((b) => b.environmentId === draft.id);
+    if (using.length) {
+      return setNotice({ kind: 'error', text: `Este ambiente é usado por ${using.length === 1 ? 'uma faixa' : `${using.length} faixas`} de horário (${using.map((b) => b.name || 'sem nome').join(', ')}). Troque o ambiente delas antes de apagar.` });
+    }
+    if (!confirm(`Apagar o ambiente "${draft.name}"?`)) return;
     await services.environments.remove(draft.id);
     await reload(envs.find((e) => e.id !== draft.id)?.id);
   }

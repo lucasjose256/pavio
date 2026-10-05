@@ -15,6 +15,8 @@ import { youtubeUi } from '../i18n/pt-BR';
 import { ensureHostAccess } from '../../platform/chrome/permissions';
 import { createServices } from '../../platform/chrome/services';
 import { initTheme } from '../shared/theme';
+import { scheduleState } from '../../core/schedule';
+import { formatWhen } from '../shared/format';
 import { useNow } from '../shared/useNow';
 import { useStorageValue } from '../shared/useStorageValue';
 
@@ -29,8 +31,13 @@ function StartForm({ skin }: { skin: string }) {
   const [strictness, setStrictness] = useState<Strictness>('focus');
   const [error, setError] = useState('');
   const [links, setLinks] = useState('');
+  const [nextBlock, setNextBlock] = useState('');
 
   useEffect(() => {
+    void Promise.all([services.schedule.list(), services.schedule.skipped()]).then(([blocks, skipped]) => {
+      const { next } = scheduleState(blocks, Date.now(), skipped);
+      if (next) setNextBlock(`Próximo horário: ${next.block.name || 'faixa'}, ${formatWhen(next.start, Date.now())}`);
+    });
     void services.environments.list().then((list) => {
       setEnvs(list);
       setEnvId((id) => id || list[0]?.id || '');
@@ -62,6 +69,7 @@ function StartForm({ skin }: { skin: string }) {
   return (
     <>
       <p class="greeting">Vamos acender uma vela?</p>
+      {nextBlock && <p class="next">{nextBlock}</p>}
       <div class="popup-candle small"><Candle skin={skin} progress={1} lit={false} label="Vela apagada" /></div>
       <form class="form" onSubmit={(e) => { e.preventDefault(); void start(); }}>
         <label>
@@ -122,7 +130,10 @@ function Running({ session, skin, now }: { session: Session; skin: string; now: 
       <p class="greeting">Sua vela está acesa</p>
       <div class="popup-candle"><Candle skin={skin} progress={candleProgress(session, now)} label="Vela acesa, sessão em andamento" /></div>
       <p class="time">{formatRemaining(Math.min(remainingMs(session, now), session.plannedMs))}</p>
-      <p class="sub">{session.environmentSnapshot.name}</p>
+      <p class="sub">
+        {session.environmentSnapshot.name}
+        {session.source === 'schedule' && <span class="sched-tag">horário{session.scheduleName ? `: ${session.scheduleName}` : ''}</span>}
+      </p>
       <button class="btn btn-ghost" onClick={stop}>Preciso parar antes da hora</button>
     </>
   );

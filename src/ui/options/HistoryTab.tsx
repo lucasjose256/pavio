@@ -82,7 +82,7 @@ export function HistoryTab({ active }: { active: boolean }) {
               {recent.map((e) => (
                 <li key={e.sessionId} class="session">
                   <span class={`pill ${e.outcome}`}>{e.outcome === 'completed' ? 'Concluída' : 'Encerrada antes'}</span>
-                  <span class="session-env">{e.environmentName}</span>
+                  <span class="session-env">{e.environmentName}{e.source === 'schedule' && <span class="tag sched">horário</span>}</span>
                   <span class="session-time">{formatDuration(e.actualMs)} de {formatDuration(e.plannedMs)}</span>
                   <span class="session-when">{when(e.endedAt)}</span>
                 </li>

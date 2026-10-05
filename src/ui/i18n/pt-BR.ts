@@ -44,6 +44,8 @@ export const notifications = {
   completedTitle: 'A vela acabou 🕯️',
   completedMessage: (env: string, minutes: number) =>
     `Sessão "${env}" concluída: ${minutes} min de foco. Você devolveu esse tempo a você.`,
+  scheduledTitle: 'Seu horário começou 🕯️',
+  scheduledMessage: (name: string, until: string) => `"${name}": vela acesa até as ${until}. Cuidamos do resto.`,
   intentTitle: 'Ainda está na tarefa?',
   intentMessage: (domain: string, text: string) => `Você veio ao ${domain} para: "${text}". O tempo combinado acabou.`,
   intentMore: 'Preciso de mais 5 min',
@@ -63,6 +65,8 @@ export const friction = {
   doneTitle: 'Vela apagada.',
   doneMessage: 'Sem culpa. Foi o que deu hoje, e amanhã a gente acende de novo.',
   close: 'Fechar',
+  scheduledBadge: (name?: string) => `Seu horário${name ? ` “${name}”` : ''} acendeu esta vela.`,
+  scheduledNote: 'Só por hoje: amanhã, no mesmo horário, a vela acende de novo.',
   noSessionTitle: 'Não há vela acesa.',
   noSessionMessage: 'A sessão já terminou. Pode fechar esta aba.',
 };

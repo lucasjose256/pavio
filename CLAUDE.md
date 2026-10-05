@@ -96,8 +96,17 @@ Evitar: `tabs`, `history`, `webNavigation`, `scripting`, `<all_urls>` obrigatór
 - Permissão de host opcional é pedida só para `accessDomains(env)` (bloqueados + intenção); YouTube/Instagram/X restritos usam content scripts e não precisam.
 - Cores dos tipos de regra: tokens `--mode-allowed|blocked|restricted`. Textos das páginas grandes ficam nos componentes; os compartilhados, em `i18n/pt-BR.ts`.
 
+## Horários / faixas recorrentes (`core/schedule.ts`, `core/schedule-service.ts`, `ui/options/ScheduleTab.tsx`)
+- Recurso adicionado depois da V1 original (antes estava "fora do escopo"). **Faixa** (`ScheduleBlock`) = dias da semana (0 = dom) + `startMin`/`endMin` + **um ambiente** (a grade de permissões do momento) + modo `focus|light` + ativa/inativa. `endMin <= startMin` = vira a noite. O **Timer** "bloquear agora" é a sessão manual do popup.
+- `scheduleState(blocks, now, skipped)` (puro) devolve a faixa valendo agora e a próxima; sobreposição → vale a que **começou por último**; a UI avisa (`findOverlaps`). `weekSegments` divide faixas noturnas para a grade semanal.
+- `ScheduleService.sync()` (idempotente): conclui o que venceu, **acende a vela sozinho** (`Session.source = 'schedule'`, de `start` ao `end` da faixa, snapshot do ambiente, sem allowlist do YouTube) e agenda o alarme `schedule-next` para a próxima. Não interrompe sessão manual; quando ela acaba dentro da faixa, a faixa assume.
+- **Desistir de uma faixa vale só por hoje**: `SessionService.abandon` grava a `occurrenceKey` (`idFaixa:AAAA-MM-DD`) em `skippedOccurrences` antes de limpar; amanhã volta.
+- Background: `syncAll()` roda ao acordar, nos alarmes `session-end`/`schedule-next` e em mudanças de `activeSession`/`schedule` no storage (editar faixas tem efeito imediato).
+- Ambiente em uso por faixa não pode ser apagado. Permissão de host do ambiente é pedida ao salvar a faixa.
+- Não há permissão nova (usa alarms/notifications). Notificação "Seu horário começou".
+
 ## Fora da V1
-Agenda recorrente, desafios, compartilhamento, loja de skins, Safari/Firefox, app macOS, contas, backend.
+Desafios, compartilhamento, loja de skins, Safari/Firefox, app macOS, contas, backend.
 
 ## Roadmap (uma etapa = um commit)
 1. ✅ Modelos + storage (+ testes do core)
@@ -108,6 +117,7 @@ Agenda recorrente, desafios, compartilhamento, loja de skins, Safari/Firefox, ap
 6. ✅ Modo restrito do YouTube (+ allowlist) e modo intenção
 7. ✅ Instagram (só DMs) e X (sem "Para você")
 8. ✅ Histórico (+ redesenho da página de opções)
+9. ✅ Horários recorrentes (faixas por dia/hora, cada uma com seu ambiente)
 
 ## Decisões em aberto / assumidas
 - "Fora de sessão = confirmação simples" foi interpretado como `strictness: 'light'` (confirmação simples) vs `'focus'` (10s + frase). Confirmar com o dono.

@@ -1,7 +1,8 @@
 import { createBuiltinEnvironment, validateEnvironment } from './environments';
 import { DEFAULT_SETTINGS } from './models';
-import type { Environment, HistoryEntry, IntentGrant, Session, Settings } from './models';
+import type { Environment, HistoryEntry, IntentGrant, ScheduleBlock, Session, Settings } from './models';
 import type { Clock, StoragePort } from './ports';
+import { validateBlock } from './schedule';
 
 export const KEYS = {
   schemaVersion: 'schemaVersion',
@@ -10,6 +11,8 @@ export const KEYS = {
   activeSession: 'activeSession',
   history: 'history',
   intents: 'intents',
+  schedule: 'schedule',
+  skippedOccurrences: 'skippedOccurrences',
 } as const;
 
 export const HISTORY_LIMIT = 1000;
@@ -124,5 +127,50 @@ export class IntentRepository {
   }
   async clear(): Promise<void> {
     await this.storage.remove(KEYS.intents);
+  }
+}
+
+export class InvalidScheduleBlockError extends Error {
+  constructor(public readonly errors: string[]) {
+    super(`Invalid schedule block: ${errors.join(', ')}`);
+  }
+}
+
+/** Faixas de horário + ocorrências que o usuário pulou ao desistir ("só por hoje"). */
+export class ScheduleRepository {
+  constructor(
+    private storage: StoragePort,
+    private clock: Clock,
+  ) {}
+
+  async list(): Promise<ScheduleBlock[]> {
+    return (await this.storage.get<ScheduleBlock[]>(KEYS.schedule)) ?? [];
+  }
+
+  async save(block: ScheduleBlock, knownEnvironmentIds?: string[]): Promise<ScheduleBlock> {
+    const errors = validateBlock(block, knownEnvironmentIds);
+    if (errors.length) throw new InvalidScheduleBlockError(errors);
+    const all = await this.list();
+    const saved: ScheduleBlock = { ...block, name: block.name.trim(), updatedAt: this.clock.now() };
+    const i = all.findIndex((b) => b.id === block.id);
+    if (i >= 0) all[i] = saved;
+    else all.push(saved);
+    await this.storage.set(KEYS.schedule, all);
+    return saved;
+  }
+
+  async remove(id: string): Promise<void> {
+    await this.storage.set(KEYS.schedule, (await this.list()).filter((b) => b.id !== id));
+  }
+
+  async skipped(): Promise<string[]> {
+    return (await this.storage.get<string[]>(KEYS.skippedOccurrences)) ?? [];
+  }
+
+  /** Pula só esta ocorrência (amanhã a faixa volta). Guarda poucas chaves recentes. */
+  async skip(key: string): Promise<void> {
+    const keys = new Set(await this.skipped());
+    keys.add(key);
+    await this.storage.set(KEYS.skippedOccurrences, [...keys].slice(-50));
   }
 }

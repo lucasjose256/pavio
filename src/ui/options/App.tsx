@@ -2,9 +2,11 @@ import { useEffect, useState } from 'preact/hooks';
 import { AppearanceTab } from './AppearanceTab';
 import { EnvironmentsTab } from './EnvironmentsTab';
 import { HistoryTab } from './HistoryTab';
+import { ScheduleTab } from './ScheduleTab';
 
 const TABS = [
   { id: 'ambientes', label: 'Ambientes' },
+  { id: 'horarios', label: 'Horários' },
   { id: 'historico', label: 'Histórico' },
   { id: 'aparencia', label: 'Aparência' },
 ] as const;
@@ -38,6 +40,7 @@ export function App() {
       </header>
       {/* Todas ficam montadas: trocar de aba não perde alterações não salvas. */}
       <EnvironmentsTab active={tab === 'ambientes'} />
+      <ScheduleTab active={tab === 'horarios'} />
       <HistoryTab active={tab === 'historico'} />
       <AppearanceTab active={tab === 'aparencia'} />
     </div>

@@ -1,4 +1,4 @@
-import type { BlockPlan, HistoryEntry, IntentGrant } from './models';
+import type { BlockPlan, HistoryEntry, IntentGrant, Session } from './models';
 
 /**
  * Ports: o que o domínio precisa do mundo exterior.
@@ -28,6 +28,8 @@ export interface SchedulerPort {
 
 export interface NotifierPort {
   sessionCompleted(entry: HistoryEntry): Promise<void>;
+  /** Uma faixa de horário começou e acendeu a vela sozinha. */
+  scheduledStarted(session: Session): Promise<void>;
   /** Aviso gentil: o tempo declarado no modo intenção acabou. */
   intentTimeUp(grant: IntentGrant): Promise<void>;
 }
