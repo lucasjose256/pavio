@@ -31,9 +31,9 @@
 <h2>O que o Pavio guarda (somente no seu dispositivo)</h2>
 <p>Esses dados ficam em <code>chrome.storage.local</code>, que <strong>não é sincronizado</strong> com a sua conta Google:</p>
 <ul>
-<li><strong>Ambientes e regras</strong> que você cria (sites e o que fazer com cada um).</li>
-<li><strong>Horários</strong> (faixas por dia e hora) e configurações (tema, estilo da vela).</li>
-<li><strong>Sessão em andamento:</strong> quando começou, quando termina, o ambiente e o estado do Pomodoro.</li>
+<li><strong>Sua rotina:</strong> os sites e, para cada um, os dias, os horários e o que fazer (bloquear ou esconder partes).</li>
+<li><strong>Ambientes</strong> do timer (regras por site) e configurações (tema, estilo da vela, se a rotina está ligada).</li>
+<li><strong>Timer em andamento:</strong> quando começou, quando termina, o ambiente e o estado do Pomodoro.</li>
 <li><strong>Histórico de sessões:</strong> data, duração, ambiente, se foi concluída e quantas vezes você tentou abrir um site bloqueado.</li>
 <li><strong>Modo intenção:</strong> o texto que você digita ("o que você vai fazer aqui") e o tempo escolhido, apenas durante a sessão.</li>
 </ul>
@@ -46,17 +46,17 @@
 </ul>
 <h2>Como o Pavio atua nas páginas</h2>
 <ul>
-<li><strong>Bloqueio de sites:</strong> quando você inicia uma sessão, o Pavio usa a API <code>declarativeNetRequest</code> do Chrome para redirecionar os sites que você escolheu bloquear para uma página do próprio Pavio. Isso não exige ler o conteúdo das páginas.</li>
-<li><strong>Abas já abertas:</strong> ao iniciar uma sessão, o Pavio consulta o endereço das abas abertas nos sites que você bloqueou, só para levá-las à página da vela.</li>
-<li><strong>YouTube, Instagram, LinkedIn e X:</strong> durante uma sessão cujo ambiente trate o serviço como "restrito", um script local esconde as partes que você marcou (por exemplo, feed, Shorts, Reels, comentários) e redireciona páginas específicas com base no <strong>endereço (URL)</strong>. No YouTube, se você usa uma lista de vídeos/canais permitidos, o script compara o link do canal do vídeo aberto com a sua lista. No X, o script lê os rótulos das abas ("Para você", "Seguindo") para identificar qual esconder. Tudo acontece no seu navegador; nada é lido para outro fim nem transmitido.</li>
+<li><strong>Bloqueio de sites:</strong> nos dias e horários da sua rotina, ou enquanto uma vela (timer) está acesa, o Pavio usa a API <code>declarativeNetRequest</code> do Chrome para redirecionar os sites que você escolheu bloquear para uma página do próprio Pavio. Isso não exige ler o conteúdo das páginas.</li>
+<li><strong>Abas já abertas:</strong> quando um bloqueio começa a valer, o Pavio consulta o endereço das abas abertas nos sites que você bloqueou, só para levá-las à página da vela.</li>
+<li><strong>YouTube, Instagram, LinkedIn e X:</strong> nos horários em que sua rotina (ou o timer) trata o serviço como "restrito", um script local esconde as partes que você marcou (por exemplo, feed, Shorts, Reels, comentários) e redireciona páginas específicas com base no <strong>endereço (URL)</strong>. No YouTube, se você usa uma lista de vídeos/canais permitidos, o script compara o link do canal do vídeo aberto com a sua lista. No X, o script lê os rótulos das abas ("Para você", "Seguindo") para identificar qual esconder. Tudo acontece no seu navegador; nada é lido para outro fim nem transmitido.</li>
 </ul>
 <h2>Permissões e por que são necessárias</h2>
 <table><thead><tr><th>Permissão</th><th>Para que serve</th></tr></thead><tbody>
 <tr><td>Armazenamento (<code>storage</code>)</td><td>Guardar localmente seus ambientes, horários, sessão e histórico.</td></tr>
-<tr><td>Alarmes (<code>alarms</code>)</td><td>Disparar o fim da vela, o início de uma faixa de horário, as trocas do Pomodoro e o aviso do modo intenção no momento certo.</td></tr>
-<tr><td>Notificações (<code>notifications</code>)</td><td>Avisar "a vela acabou", "seu horário começou", "hora da pausa" e "ainda está na tarefa?".</td></tr>
-<tr><td>Bloqueio de rede declarativo (<code>declarativeNetRequest</code>)</td><td>Redirecionar os sites bloqueados para a página da vela durante a sessão.</td></tr>
-<tr><td>Acesso opcional a sites</td><td>Necessário para o redirecionamento. É <strong>opcional</strong>: só é pedido, site a site, quando você adiciona o site a um ambiente.</td></tr>
+<tr><td>Alarmes (<code>alarms</code>)</td><td>Disparar o fim da vela, o início e o fim das faixas da rotina, as trocas do Pomodoro e o aviso do modo intenção no momento certo.</td></tr>
+<tr><td>Notificações (<code>notifications</code>)</td><td>Avisar "a vela acabou", "hora da pausa" e "ainda está na tarefa?".</td></tr>
+<tr><td>Bloqueio de rede declarativo (<code>declarativeNetRequest</code>)</td><td>Redirecionar os sites bloqueados para a página da vela nos horários da sua rotina ou durante o timer.</td></tr>
+<tr><td>Acesso opcional a sites</td><td>Necessário para o redirecionamento. É <strong>opcional</strong>: só é pedido, site a site, quando você liga a rotina ou adiciona o site a uma faixa ou ambiente.</td></tr>
 <tr><td>Acesso a youtube.com, instagram.com, linkedin.com, x.com e twitter.com</td><td>Para esconder as partes que você escolheu desses serviços durante a sessão.</td></tr>
 </tbody></table>
 <h2>Seus direitos e controles</h2>

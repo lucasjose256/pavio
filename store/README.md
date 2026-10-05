@@ -10,7 +10,7 @@ Tudo o que é preciso para enviar a extensão está nesta pasta e no `.zip` gera
 | `listing.en.md` | Versão em inglês (opcional; veja a seção "Inglês") |
 | `privacy-practices.md` | Respostas da aba **Práticas de privacidade**: justificativa de cada permissão, código remoto, uso de dados, instruções para o revisor |
 | `privacy-policy.md` / `privacy-policy.html` | Política de privacidade (o `.html` é a página para hospedar) |
-| `assets/screenshots/*.jpg` | 5 capturas 1280×800 |
+| `assets/screenshots/*.jpg` | 5 capturas 1280×800 (popup com Pomodoro, rotina, editor de faixa, histórico e a página da vela) |
 | `assets/promo-*.jpg` | Banner pequeno (440×280) e de destaque (1400×560) |
 
 ## Antes de enviar: o que só você pode fazer

@@ -10,9 +10,9 @@ Pavio
 
 ## Resumo (máx. 132 caracteres — vem do `description` do manifest)
 ```
-Foco com calma: ambientes, horários, Pomodoro e uma vela que queima enquanto você faz o que importa. Tudo local, sem contas.
+Foco com calma: bloqueie sites por dia e horário, com rotina pronta, timer em forma de vela e Pomodoro. Tudo local, sem contas.
 ```
-*(124 caracteres)*
+*(127 caracteres)*
 
 ## Categoria
 **Produtividade**
@@ -24,21 +24,21 @@ Português (Brasil)
 ```
 Você não controla você, mas pode controlar seu ambiente.
 
-O Pavio é uma extensão de foco para quem se distrai com facilidade. Em vez de só "bloquear sites", você monta ambientes: cada um decide, site por site, o que fica liberado, bloqueado ou restrito. Quando a sessão começa, uma vela acende e vai derretendo conforme o tempo passa. Quando ela acaba, você recebe um aviso.
+O Pavio é uma extensão de foco para quem se distrai com facilidade. Em vez de depender de força de vontade, você monta uma rotina: para cada site, escolhe em quais dias e horas ele fica bloqueado ou com as partes de distração escondidas. E quando precisar de um foco a mais, acende uma vela: um timer que derrete enquanto você trabalha.
 
 COMO FUNCIONA
 
-• Ambientes. Crie perfis como "Estudo", "Trabalho profundo" ou "Noite". Cada site tem uma regra: liberado, bloqueado ou restrito. Já vêm três ambientes de exemplo.
+• Rotina por site e horário. Veja suas 24 horas numa linha do tempo por site (YouTube, Instagram, TikTok, X, LinkedIn…) e desenhe quando cada um fica restrito: só no expediente, só à noite, no fim de semana, ou para sempre. A rotina trabalha sozinha, sem você precisar fazer nada.
 
-• A vela. Inicie uma sessão de 25, 50, 90 minutos ou o tempo que quiser. A vela é o seu timer: a altura dela mostra quanto falta, e a cera derrete de verdade, com chama animada. Há duas versões visuais (clássica e minimalista).
+• Programação pronta. Já vem uma rotina de exemplo (dias úteis das 9h às 18h e uma noite sem telas das 22h às 6h). Ela começa desligada: você confere, ajusta o que quiser e liga quando estiver bom para você.
 
-• Horários. Monte sua semana: escolha os dias, as horas e o ambiente de cada faixa, e crie quantas faixas quiser (por exemplo, "Manhã de estudo" nos dias úteis e "Noite sem telas" todo dia). Na hora marcada, o Pavio acende a vela sozinho. Uma grade semanal mostra tudo de relance.
+• Timer em forma de vela. Para um foco a mais, inicie uma sessão de 25, 50, 90 minutos ou o tempo que quiser. A vela derrete de verdade, com chama animada, e as regras do ambiente que você escolher (por exemplo, "Estudo") valem por cima da sua rotina. Quando ela acaba, você recebe um aviso.
 
-• Pomodoro automático. Ative pausas no ritmo que preferir (por exemplo, 25 minutos de foco e 5 de pausa, com pausa longa opcional). Na pausa, os bloqueios se desligam sozinhos e voltam quando o foco recomeça.
+• Pomodoro automático. No timer, ative pausas no ritmo que preferir (por exemplo, 25 minutos de foco e 5 de pausa, com pausa longa opcional). Na pausa, os bloqueios do timer se desligam sozinhos e voltam quando o foco recomeça; as regras da rotina continuam firmes.
 
 • Modo intenção. Em sites restritos, o Pavio pergunta "o que você vai fazer aqui?" e por quanto tempo. Passou do tempo, você recebe um aviso gentil: "ainda está na tarefa?".
 
-• Atrito para desistir. Parar antes da hora de propósito dá um pouco de trabalho: uma mensagem, uma espera de 10 segundos e uma frase para digitar. Se preferir, use o modo leve, só com confirmação.
+• Atrito para desistir. Parar a vela antes da hora de propósito dá um pouco de trabalho: uma mensagem, uma espera de 10 segundos e uma frase para digitar (ou, se preferir, o modo leve, só com confirmação). Mexer na rotina enquanto ela está protegendo você também pede confirmação.
 
 ESCONDER PARTES, NÃO O SITE INTEIRO
 
@@ -69,8 +69,8 @@ OBSERVAÇÕES
 
 ## Legendas sugeridas para as capturas de tela
 1. `01-popup.jpg` — **Sua vela, seu foco.** Timer em forma de vela, com Pomodoro automático.
-2. `02-ambientes.jpg` — **Escolha o que esconder em cada serviço.** Ambientes com regras por site.
-3. `03-horarios.jpg` — **Monte a sua semana.** Faixas de horário que acendem a vela sozinhas.
+2. `02-rotina.jpg` — **Sua rotina, hora a hora.** Uma linha do tempo por site, com o que fica restrito em cada horário.
+3. `03-rotina-editar.jpg` — **Escolha exatamente o que esconder.** Dias, horário e as partes de cada serviço.
 4. `04-historico.jpg` — **Horas devolvidas.** Seu histórico, só no seu navegador.
 5. `05-vela-bloqueio.jpg` — **Em vez de uma página bloqueada, uma vela.** Um convite gentil para voltar.
 
