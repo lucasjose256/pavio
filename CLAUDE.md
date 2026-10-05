@@ -38,6 +38,7 @@ Vite + `@crxjs/vite-plugin` (manifest tipado em `manifest.ts`), TypeScript stric
 - `ChromeBlocker.apply` troca as regras dinâmicas (só `main_frame`, `redirect` para `blocked/index.html?site=...`), é idempotente e, ao bloquear um domínio novo, redireciona as abas já abertas (usa `chrome.tabs.query` por padrão de host; não precisa da permissão `tabs`).
 - O background chama `syncBlocking()` ao acordar e em todo `storage.onChanged` de `activeSession`. Sem sessão ativa não há regras.
 - O redirect exige permissão de host: o popup chama `ensureHostAccess` no clique de "Acender vela"; se negada, a sessão não inicia.
+- **Armadilha de build:** `blocked/index.html` só está em `web_accessible_resources`, e o CRXJS copia esse HTML sem compilar (página em branco). Por isso ele é entrada explícita em `vite.config.ts` (`build.rollupOptions.input`). Toda página nova só acessível por redirect/link externo precisa disso; confira que `dist/.../index.html` aponta para `/assets/...`.
 - A página de bloqueio conta a tentativa (`recordBlockedAttempt`) e, com a vela já apagada, oferece abrir o site.
 
 ## Storage (`chrome.storage.local`)
