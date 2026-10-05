@@ -119,6 +119,12 @@ Evitar: `tabs`, `history`, `webNavigation`, `scripting`, `<all_urls>` obrigatór
 - Na pausa: regras DNR são removidas, content scripts desligam, a página de bloqueio mostra "Hora da pausa" com botão para abrir o site e a de intenção segue direto. Concedidas permissões de intenção são mantidas.
 - Popup: mostra "Foco N · pausa em mm:ss" / "Pausa · mm:ss · bloqueios liberados" (calculado pelo relógio local). Campos compartilhados: `ui/shared/PomodoroFields.tsx`. O popup tem limite de ~600 px de altura (Chrome): cuidado ao adicionar campos.
 
+## Chrome Web Store (`store/`, `scripts/`)
+- `npm run package` → build + `release/pavio-<versão>.zip` (confere se a versão do manifest bate com a do package.json; `release/` está no `.gitignore`). `publicDir: false` no Vite: os ícones vão só em `public/icons/` (referenciados pelo manifest), sem duplicar.
+- `store/README.md` é o roteiro: pendências que só o dono resolve (e-mail de contato na política, hospedar `privacy-policy.html`, conta de desenvolvedor, versão 1.0.0), passo a passo de envio, pontos que a revisão pode questionar. `listing.pt-BR.md` (textos), `privacy-practices.md` (justificativa de cada permissão, instruções ao revisor), `privacy-policy.md` → `npm run store:assets` / `node scripts/make-privacy-html.mjs` gera o HTML.
+- Capturas 1280×800 e banners em `store/assets/` (JPEG, sem transparência). **Se mudar permissões, content scripts ou o que a extensão guarda/lê, atualize `privacy-practices.md` e `privacy-policy.md` junto** (as justificativas foram escritas a partir do código: sem fetch/XHR/WebSocket/eval, só `chrome.storage.local`).
+- Ao incluir novo domínio em `content_scripts`, o aviso de instalação cresce: documentar na justificativa e na descrição.
+
 ## Fora da V1
 Desafios, compartilhamento, loja de skins, Safari/Firefox, app macOS, contas, backend.
 

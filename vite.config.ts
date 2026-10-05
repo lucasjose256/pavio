@@ -4,6 +4,9 @@ import { crx } from '@crxjs/vite-plugin';
 import manifest from './manifest.ts';
 
 export default defineConfig({
+  // Os ícones são referenciados pelo manifest (public/icons/...); a cópia automática da pasta public
+  // duplicaria tudo na raiz do pacote (e levaria o icon.svg de origem).
+  publicDir: false,
   plugins: [preact(), crx({ manifest })],
   // Páginas que o manifest não referencia como popup/opções (bloqueio: alvo de redirect;
   // fricção: aberta via chrome.tabs.create) não são compiladas pelo CRXJS: entradas explícitas.

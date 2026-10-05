@@ -6,7 +6,7 @@ export default defineManifest({
   manifest_version: 3,
   name: 'Pavio',
   version: '0.1.0',
-  description: 'Você não controla você, mas pode controlar seu ambiente.',
+  description: 'Foco com calma: ambientes, horários, Pomodoro e uma vela que queima enquanto você faz o que importa. Tudo local, sem contas.',
   minimum_chrome_version: '120',
   permissions: ['storage', 'alarms', 'notifications', 'declarativeNetRequest'],
   // Pedida por site, no clique do usuário (ao salvar um ambiente com sites bloqueados/restritos).
