@@ -4,6 +4,7 @@ import {
 } from '../../core/repositories';
 import { SessionService } from '../../core/session-service';
 import { ChromeScheduler } from './alarms';
+import { ChromeBlocker } from './blocking';
 import { ChromeNotifier } from './notifications';
 import { ChromeStorage } from './storage';
 
@@ -18,6 +19,7 @@ export function createServices() {
     settings: new SettingsRepository(storage),
     sessions,
     history,
+    blocker: new ChromeBlocker(),
     sessionService: new SessionService({
       sessions,
       history,

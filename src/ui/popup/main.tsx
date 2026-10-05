@@ -8,6 +8,8 @@ import {
 } from '../../core/session';
 import type { Environment, Session, Settings, Strictness } from '../../core/models';
 import { DEFAULT_SETTINGS } from '../../core/models';
+import { planForEnvironment } from '../../core/blocking';
+import { ensureHostAccess } from '../../platform/chrome/permissions';
 import { createServices } from '../../platform/chrome/services';
 import { useNow } from '../shared/useNow';
 import { useStorageValue } from '../shared/useStorageValue';
@@ -33,6 +35,11 @@ function StartForm({ skin }: { skin: string }) {
     const environment = envs.find((e) => e.id === envId);
     if (!environment) return setError('Crie um ambiente nas opções primeiro.');
     if (!isValidDuration(minutes)) return setError(`Escolha entre ${MIN_DURATION_MIN} e ${MAX_DURATION_MIN} minutos.`);
+    // O redirect do bloqueio precisa de acesso aos sites. Pedido aqui, direto do clique.
+    const { block } = planForEnvironment(environment);
+    if (!(await ensureHostAccess(block))) {
+      return setError('Sem acesso aos sites bloqueados, a vela não conseguiria protegê-lo. Permita o acesso ou use outro ambiente.');
+    }
     try {
       await services.sessionService.start({ environment, minutes, strictness });
     } catch {

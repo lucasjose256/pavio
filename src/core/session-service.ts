@@ -49,6 +49,13 @@ export class SessionService {
     return session;
   }
 
+  /** Chamado pela página de bloqueio. Conta tentativas de acesso para o relatório futuro. */
+  async recordBlockedAttempt(): Promise<void> {
+    const session = await this.d.sessions.get();
+    if (!session || session.status !== 'active') return;
+    await this.d.sessions.set({ ...session, blockedAttempts: session.blockedAttempts + 1 });
+  }
+
   /** Desistência. A fricção (etapa 5) acontece na UI, antes de chamar isto. */
   async abandon(): Promise<HistoryEntry | undefined> {
     const session = await this.d.sessions.get();

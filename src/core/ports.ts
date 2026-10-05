@@ -1,4 +1,4 @@
-import type { HistoryEntry } from './models';
+import type { BlockPlan, HistoryEntry } from './models';
 
 /**
  * Ports: o que o domínio precisa do mundo exterior.
@@ -28,4 +28,9 @@ export interface SchedulerPort {
 
 export interface NotifierPort {
   sessionCompleted(entry: HistoryEntry): Promise<void>;
+}
+
+/** Aplica o plano de bloqueio (no Chrome: regras declarativeNetRequest). Idempotente. */
+export interface BlockerPort {
+  apply(plan: BlockPlan): Promise<void>;
 }

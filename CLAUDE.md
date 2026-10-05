@@ -33,6 +33,13 @@ Vite + `@crxjs/vite-plugin` (manifest tipado em `manifest.ts`), TypeScript stric
 - Quem inicia a sessão só grava no storage; reações (ex.: sincronizar regras DNR na etapa 4) vêm de `chrome.storage.onChanged` no background, não de chamadas diretas.
 - **Pendência temporária:** "Encerrar antes da hora" no popup usa `confirm()` para os dois modos; a etapa 5 troca por uma aba de fricção (modo `focus`: 10s + frase).
 
+## Bloqueio (`core/blocking.ts`, `platform/chrome/blocking.ts`)
+- `planFor(session)` → `BlockPlan { block, allow }`: só `blocked` vira regra de rede (`restricted` passa; é dos content scripts). Subdomínio não bloqueado de um domínio bloqueado vira exceção `allow` (prioridade maior).
+- `ChromeBlocker.apply` troca as regras dinâmicas (só `main_frame`, `redirect` para `blocked/index.html?site=...`), é idempotente e, ao bloquear um domínio novo, redireciona as abas já abertas (usa `chrome.tabs.query` por padrão de host; não precisa da permissão `tabs`).
+- O background chama `syncBlocking()` ao acordar e em todo `storage.onChanged` de `activeSession`. Sem sessão ativa não há regras.
+- O redirect exige permissão de host: o popup chama `ensureHostAccess` no clique de "Acender vela"; se negada, a sessão não inicia.
+- A página de bloqueio conta a tentativa (`recordBlockedAttempt`) e, com a vela já apagada, oferece abrir o site.
+
 ## Storage (`chrome.storage.local`)
 Chaves em `KEYS` (`repositories.ts`): `schemaVersion`, `environments`, `settings`, `activeSession`, `history` (máx. 1000).
 Mudou o formato? Suba `CURRENT_SCHEMA_VERSION` e adicione um passo em `core/migrations.ts`.
@@ -44,7 +51,7 @@ Estado do modo intenção irá em `chrome.storage.session`.
 | `storage` | Ambientes, sessão ativa, histórico, tudo local | ✅ etapa 1 |
 | `alarms` | Fim da sessão e aviso do modo intenção com service worker suspenso | ✅ etapa 3 |
 | `notifications` | Avisar que a vela acabou | ✅ etapa 3 |
-| `declarativeNetRequest` | Bloquear/redirecionar sites sem ler conteúdo | planejada (etapa 4) |
+| `declarativeNetRequest` | Bloquear/redirecionar sites sem ler conteúdo | ✅ etapa 4 |
 | `host_permissions` youtube/instagram/x | Content scripts do modo restrito | planejada (etapas 6-7) |
 | `optional_host_permissions: <all_urls>` | Redirect do DNR exige acesso ao host; pedido por site (`*://*.dominio/*`), no clique em Salvar da página de opções (`platform/chrome/permissions.ts`) | ✅ etapa 2 |
 Evitar: `tabs`, `history`, `webNavigation`, `<all_urls>` obrigatório.
@@ -63,7 +70,7 @@ Agenda recorrente, desafios, compartilhamento, loja de skins, Safari/Firefox, ap
 1. ✅ Modelos + storage (+ testes do core)
 2. ✅ Página de opções (ambientes/regras, sugestões, permissão por site) + identidade visual da vela
 3. ✅ Sessão + timer (alarms) + iniciar sessão no popup + notificação
-4. Bloqueio (DNR) + página de bloqueio
+4. ✅ Bloqueio (DNR) + página de bloqueio
 5. Página de fricção
 6. Modo restrito do YouTube (+ allowlist)
 7. Instagram (só DMs) e X (sem "Para você")

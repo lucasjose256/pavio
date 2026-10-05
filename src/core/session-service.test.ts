@@ -82,4 +82,15 @@ describe('SessionService', () => {
     expect(notified).toHaveLength(0);
     expect(await service.abandon()).toBeUndefined();
   });
+
+  it('conta tentativas bloqueadas só com sessão ativa', async () => {
+    await service.recordBlockedAttempt(); // sem sessão: não faz nada
+    await service.start(input);
+    await service.recordBlockedAttempt();
+    await service.recordBlockedAttempt();
+    expect((await sessions.get())?.blockedAttempts).toBe(2);
+    now += 60_000;
+    const entry = await service.abandon();
+    expect(entry?.blockedAttempts).toBe(2);
+  });
 });

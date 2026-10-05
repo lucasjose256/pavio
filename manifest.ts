@@ -8,7 +8,7 @@ export default defineManifest({
   version: '0.1.0',
   description: 'Você não controla você, mas pode controlar seu ambiente.',
   minimum_chrome_version: '120',
-  permissions: ['storage', 'alarms', 'notifications'],
+  permissions: ['storage', 'alarms', 'notifications', 'declarativeNetRequest'],
   // Pedida por site, no clique do usuário (ao salvar um ambiente com sites bloqueados/restritos).
   optional_host_permissions: ['<all_urls>'],
   icons: { 16: 'public/icons/icon-16.png', 32: 'public/icons/icon-32.png', 48: 'public/icons/icon-48.png', 128: 'public/icons/icon-128.png' },
