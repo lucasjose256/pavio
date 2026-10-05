@@ -9,5 +9,11 @@ export default defineManifest({
   description: 'Você não controla você, mas pode controlar seu ambiente.',
   minimum_chrome_version: '120',
   permissions: ['storage'],
+  // Pedida por site, no clique do usuário (ao salvar um ambiente com sites bloqueados/restritos).
+  optional_host_permissions: ['<all_urls>'],
+  action: { default_popup: 'src/ui/popup/index.html', default_title: 'Pavio' },
+  options_ui: { page: 'src/ui/options/index.html', open_in_tab: true },
+  // Alvo dos redirecionamentos do bloqueio (etapa 4).
+  web_accessible_resources: [{ resources: ['src/ui/blocked/index.html'], matches: ['<all_urls>'] }],
   background: { service_worker: 'src/background/service-worker.ts', type: 'module' },
 });

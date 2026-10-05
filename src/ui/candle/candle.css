@@ -1,0 +1,58 @@
+.pv-candle { display: block; width: 100%; height: auto; overflow: visible; }
+
+/* a cera e a chama descem juntas, suavemente */
+.pv-rise { transition: transform 1s linear; }
+.pv-puddle { transition: rx 1s linear, ry 1s linear; }
+
+.pv-flame-body {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: pv-flicker 2.6s ease-in-out infinite;
+}
+.pv-flame-inner {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: pv-flicker 1.9s ease-in-out infinite reverse;
+}
+.pv-glow { animation: pv-glow 3.2s ease-in-out infinite; }
+.pv-pool { animation: pv-glow 3.2s ease-in-out infinite; }
+
+.pv-drip {
+  transform-box: fill-box;
+  transform-origin: 50% 0;
+  animation: pv-drip 7s ease-in-out infinite;
+}
+.pv-drop {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: pv-drop 7s ease-in infinite;
+  opacity: 0;
+}
+.pv-smoke path { stroke-dasharray: 120; animation: pv-smoke 4s ease-out infinite; }
+
+@keyframes pv-flicker {
+  0%, 100% { transform: scale(1, 1) skewX(0deg); }
+  18% { transform: scale(0.95, 1.06) skewX(-2.5deg); }
+  42% { transform: scale(1.04, 0.95) skewX(2deg); }
+  66% { transform: scale(0.97, 1.05) skewX(-1deg); }
+  85% { transform: scale(1.02, 0.98) skewX(1.5deg); }
+}
+@keyframes pv-glow { 0%, 100% { opacity: 0.75; } 50% { opacity: 1; } }
+@keyframes pv-drip {
+  0%, 100% { transform: scaleY(0.72); }
+  55% { transform: scaleY(1); }
+}
+@keyframes pv-drop {
+  0%, 55% { opacity: 0; transform: translateY(0) scale(0.6); }
+  62% { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(46px) scale(0.8); }
+}
+@keyframes pv-smoke {
+  0% { stroke-dashoffset: 120; opacity: 0.9; }
+  100% { stroke-dashoffset: 0; opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pv-flame-body, .pv-flame-inner, .pv-glow, .pv-pool, .pv-drip, .pv-drop, .pv-smoke path { animation: none; }
+  .pv-rise, .pv-puddle { transition: none; }
+}

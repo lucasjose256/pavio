@@ -40,16 +40,22 @@ Estado do modo intenção irá em `chrome.storage.session`.
 | `notifications` | Avisar que a vela acabou | planejada (etapa 3) |
 | `declarativeNetRequest` | Bloquear/redirecionar sites sem ler conteúdo | planejada (etapa 4) |
 | `host_permissions` youtube/instagram/x | Content scripts do modo restrito | planejada (etapas 6-7) |
-| `optional_host_permissions: <all_urls>` | Redirect do DNR exige acesso ao host; pedido por site, no clique do usuário, ao adicionar na página de opções | planejada (etapa 2/4) |
+| `optional_host_permissions: <all_urls>` | Redirect do DNR exige acesso ao host; pedido por site (`*://*.dominio/*`), no clique em Salvar da página de opções (`platform/chrome/permissions.ts`) | ✅ etapa 2 |
 Evitar: `tabs`, `history`, `webNavigation`, `<all_urls>` obrigatório.
+
+## Identidade visual: a vela (`src/ui/candle/`)
+- `<Candle progress skin lit />`: `progress` 1 = cheia, 0 = apagada. Cera e chama descem juntas (transição CSS de 1s linear, por isso o popup atualiza a cada 1s); a poça na base cresce e as gotas escorrem. `prefers-reduced-motion` desliga animações.
+- Skin = `{ id, name, flame (cores), Body }` em `skins/`; pavio/chama/fumaça são comuns. Nova skin: criar arquivo + registrar em `skins/index.ts`. Geometria em `geometry.ts` (testada).
+- Tema: `src/ui/theme.css` (tokens escuros). Frases motivacionais em `ui/i18n/pt-BR.ts` (`quotes`).
+- Popup mostra a vela derretendo com o tempo restante quando há sessão; `blocked/` mostra a vela grande, chama animada, frase e tempo restante.
 
 ## Fora da V1
 Agenda recorrente, desafios, compartilhamento, loja de skins, Safari/Firefox, app macOS, contas, backend.
 
 ## Roadmap (uma etapa = um commit)
 1. ✅ Modelos + storage (+ testes do core)
-2. Página de opções (ambientes/regras, sugestões, permissão por site)
-3. Sessão + timer + vela no popup
+2. ✅ Página de opções (ambientes/regras, sugestões, permissão por site) + identidade visual da vela
+3. Sessão + timer (alarms) + iniciar sessão no popup (a vela do popup já existe)
 4. Bloqueio (DNR) + página de bloqueio
 5. Página de fricção
 6. Modo restrito do YouTube (+ allowlist)

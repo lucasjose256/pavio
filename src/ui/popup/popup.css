@@ -1,0 +1,6 @@
+body { width: 300px; }
+.popup { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 18px 20px 14px;
+  background: radial-gradient(ellipse at 50% 28%, rgba(244,184,96,.10), transparent 60%); }
+.popup-candle { width: 170px; }
+.time { margin: 0; font-size: 34px; font-weight: 300; letter-spacing: .04em; font-variant-numeric: tabular-nums; }
+.sub { margin: 0 0 8px; color: var(--muted); font-size: 14px; }
