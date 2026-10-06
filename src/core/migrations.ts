@@ -1,17 +1,37 @@
 import { createBuiltinEnvironment, createBuiltinEnvironments } from './environments';
 import type { Environment, RoutineSite } from './models';
 import { defaultRoutine } from './routine-defaults';
+import { defaultSpec } from './restrictions';
 import { DEFAULT_SETTINGS } from './models';
 import type { Clock, StoragePort } from './ports';
 import { KEYS } from './repositories';
 
-export const CURRENT_SCHEMA_VERSION = 3;
+export const CURRENT_SCHEMA_VERSION = 4;
 
 /**
  * Roda ao instalar/atualizar e ao acordar o service worker (é idempotente).
  * Para mudar o formato dos dados: aumente CURRENT_SCHEMA_VERSION e
  * adicione um passo `if (version < N) { ... }` abaixo.
  */
+/**
+ * A programação pronta que a v3 instalava (agora a rotina nasce limpa). Cópia congelada, só para reconhecer
+ * quem nunca mexeu nela e limpar; quem personalizou não é tocado.
+ */
+function legacyPrefilledRoutine(): RoutineSite[] {
+  const work = (domain: string, mode: 'blocked' | 'restricted') => ({ id: `default:${domain}:work`, days: [1, 2, 3, 4, 5], startMin: 540, endMin: 1080, ...defaultSpec(domain, mode) });
+  const night = (domain: string, mode: 'blocked' | 'restricted') => ({ id: `default:${domain}:night`, days: [0, 1, 2, 3, 4, 5, 6], startMin: 1320, endMin: 360, ...defaultSpec(domain, mode) });
+  const site = (domain: string, ...slots: RoutineSite['slots']): RoutineSite => ({ id: `default:${domain}`, domain, enabled: true, slots });
+  return [
+    site('youtube.com', work('youtube.com', 'restricted'), night('youtube.com', 'restricted')),
+    site('instagram.com', work('instagram.com', 'restricted'), night('instagram.com', 'blocked')),
+    site('tiktok.com', work('tiktok.com', 'blocked'), night('tiktok.com', 'blocked')),
+    site('x.com', work('x.com', 'restricted'), night('x.com', 'restricted')),
+    site('facebook.com', work('facebook.com', 'blocked'), night('facebook.com', 'blocked')),
+    site('reddit.com', work('reddit.com', 'restricted'), night('reddit.com', 'blocked')),
+    site('linkedin.com', work('linkedin.com', 'restricted')),
+  ];
+}
+
 /** Faixa de horário do formato antigo (antes da Rotina). */
 export interface LegacyBlock {
   id: string;
@@ -90,6 +110,17 @@ export async function migrate(storage: StoragePort, clock: Clock): Promise<void>
     }
     await storage.remove('schedule');
     await storage.remove('skippedOccurrences');
+  }
+
+  if (version < 4) {
+    // A rotina agora nasce LIMPA (nada bloqueado por padrão). Quem ficou com a programação pronta sem alterar
+    // volta ao zero e a rotina fica ligada; quem personalizou fica como está.
+    const routine = await storage.get<RoutineSite[]>(KEYS.routine);
+    if (routine && JSON.stringify(routine) === JSON.stringify(legacyPrefilledRoutine())) {
+      await storage.set(KEYS.routine, defaultRoutine());
+      const settings = (await storage.get<Record<string, unknown>>(KEYS.settings)) ?? {};
+      await storage.set(KEYS.settings, { ...DEFAULT_SETTINGS, ...settings, routineEnabled: true });
+    }
   }
 
   if (version < CURRENT_SCHEMA_VERSION) {

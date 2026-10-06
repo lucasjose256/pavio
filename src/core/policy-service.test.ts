@@ -42,7 +42,8 @@ beforeEach(async () => {
 });
 
 describe('PolicyService.sync', () => {
-  it('rotina desligada (padrão): política vazia e sem alarme', async () => {
+  it('horários desligados: política vazia e sem alarme', async () => {
+    await settings.update({ routineEnabled: false });
     const p = await service.sync();
     expect(p.rules).toEqual([]);
     expect(alarms.has(ROUTINE_ALARM)).toBe(false);

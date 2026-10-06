@@ -26,3 +26,13 @@ body { width: 310px; }
 .routine-line:hover { background: var(--surface-2); color: var(--text); }
 .routine-line.on { color: var(--accent-text); font-weight: 600; }
 .routine-line.off { color: var(--accent-text); text-decoration: underline; }
+
+.quick { width: 100%; margin-top: 2px; }
+.quick summary { cursor: pointer; font-size: 12px; font-weight: 600; color: var(--accent-text); text-align: center; list-style: none; padding: 2px 0; }
+.quick summary::-webkit-details-marker { display: none; }
+.quick summary::after { content: ' ▾'; }
+.quick[open] summary::after { content: ' ▴'; }
+.quick-chips { display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; margin: 6px 0 4px; }
+.chip.block[aria-pressed="true"] { background: var(--mode-blocked); color: #fff; border-color: transparent; }
+:root[data-theme='night'] .chip.block[aria-pressed="true"] { color: #2a0a05; }
+.quick .hint { text-align: center; }

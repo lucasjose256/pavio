@@ -31,16 +31,37 @@ function strictestPerDomain(items: { domain: string; spec: RestrictionSpec }[]):
   return [...byDomain].map(([domain, s]) => toRule(domain, s));
 }
 
-/** Regras da rotina valendo em `now` (rotina desligada = nenhuma). */
+const BLOCKED: RestrictionSpec = { mode: 'blocked' };
+
+/** Sites com o bloqueio rápido ligado (app inteiro, o tempo todo). */
+const blockedAll = (routine: RoutineSite[]) => routine.filter((s) => s.enabled && s.blockAll).map((s) => ({ domain: s.domain, spec: BLOCKED }));
+
+/**
+ * Regras da rotina valendo em `now`: as faixas ativas (só com os horários ligados) somadas ao bloqueio rápido,
+ * que vale sempre. Por site, a mais rigorosa vence.
+ */
 export function activeRules(routine: RoutineSite[], enabled: boolean, now: number): Rule[] {
-  if (!enabled) return [];
-  const active = occurrencesAround(flatten(routine), now, 1, 1).filter((o) => o.start <= now && now < o.end);
-  return strictestPerDomain(active.map((o) => ({ domain: o.slot.domain, spec: spec(o.slot) })));
+  const active = enabled ? occurrencesAround(flatten(routine), now, 1, 1).filter((o) => o.start <= now && now < o.end) : [];
+  return strictestPerDomain([...active.map((o) => ({ domain: o.slot.domain, spec: spec(o.slot) })), ...blockedAll(routine)]);
 }
 
 /** O tratamento mais rigoroso de cada site em QUALQUER faixa (para pedir as permissões de acesso certas). */
 export function rulesAnyTime(routine: RoutineSite[]): Rule[] {
-  return strictestPerDomain(flatten(routine).map((s) => ({ domain: s.domain, spec: spec(s) })));
+  return strictestPerDomain([...flatten(routine).map((s) => ({ domain: s.domain, spec: spec(s) })), ...blockedAll(routine)]);
+}
+
+/** O app está com o bloqueio rápido ligado? */
+export const isBlockedAll = (routine: RoutineSite[], domain: string): boolean =>
+  routine.some((s) => s.domain === domain && s.enabled && !!s.blockAll);
+
+/**
+ * Liga/desliga o bloqueio rápido de um app. Se o site ainda não está na rotina, entra (sem faixas).
+ * Ligar um site que estava desligado na rotina o religa.
+ */
+export function setBlockAll(routine: RoutineSite[], domain: string, on: boolean, newId: () => string): RoutineSite[] {
+  const exists = routine.some((s) => s.domain === domain);
+  if (!exists) return on ? [...routine, { id: newId(), domain, enabled: true, slots: [], blockAll: true }] : routine;
+  return routine.map((s) => (s.domain === domain ? { ...s, blockAll: on, enabled: on ? true : s.enabled } : s));
 }
 
 /** Próximo instante (início ou fim de alguma faixa) em que o que vale pode mudar. */

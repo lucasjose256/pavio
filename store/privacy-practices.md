@@ -67,10 +67,10 @@ Hospede `store/privacy-policy.html` em um endereço público (veja `store/README
 ```
 Não é necessária conta nem login para testar o fluxo principal.
 
-1. Instale a extensão: as Opções abrem sozinhas na aba "Rotina", com uma programação pronta DESLIGADA.
-2. Em "Adicionar site à rotina" digite reddit.com e clique em "Adicionar"; no editor deixe "Bloqueado", marque "Dia todo" e todos os dias (atalho "Sempre") e clique em "Salvar faixa". Depois clique em "Ligar a rotina" e permita o acesso quando o Chrome pedir.
-3. Abra reddit.com em uma nova aba: a navegação é redirecionada para a página da vela (bloqueio). Desligue o interruptor da rotina e o site volta a abrir.
+1. Instale a extensão: as Opções abrem sozinhas na aba "Rotina", que começa LIMPA (nada bloqueado).
+2. No painel "Bloqueio rápido" clique em "reddit.com" (ou digite um site e clique em "Bloquear") e permita o acesso quando o Chrome pedir. Para um horário: em "Adicionar site à rotina" digite um site, escolha os dias e o horário, marque "Bloqueado" e salve a faixa.
+3. Abra reddit.com em uma nova aba: a navegação é redirecionada para a página da vela (bloqueio). Clique de novo no botão do reddit.com e o site volta a abrir.
 4. Timer: clique no ícone do Pavio, escolha "Outro" e 2 (minutos), ambiente "Estudo", e "Acender vela" (o Chrome pede acesso aos sites do ambiente). "Preciso parar antes da hora" abre a tela de atrito (espera de 10 s + frase "eu quero desistir do meu foco agora").
-5. Modo restrito (sem login): com a rotina ligada e o Instagram/LinkedIn/YouTube restritos pela rotina pronta nos horários dela (ou criando uma faixa "Sempre" restrita), abrir instagram.com/reels/, instagram.com/explore/ ou linkedin.com/video/ redireciona para a vela (a decisão é só pela URL). No YouTube, youtube.com/shorts/... redireciona e a home mostra um aviso no lugar do feed.
+5. Modo restrito (sem login): criando uma faixa "Sempre" restrita ("Esconder partes") para Instagram, LinkedIn ou YouTube, abrir instagram.com/reels/, instagram.com/explore/ ou linkedin.com/video/ redireciona para a vela (a decisão é só pela URL). No YouTube, youtube.com/shorts/... redireciona e a home mostra um aviso no lugar do feed.
 6. Pomodoro: no timer, ligue "Pomodoro automático" com foco 1 min e pausa 1 min: na pausa os bloqueios do timer se desligam.
 ```

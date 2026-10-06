@@ -250,3 +250,31 @@ input[type="range"] { accent-color: var(--accent); }
 .rt-legend { list-style: none; margin: 0 0 14px; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 12px; color: var(--muted); }
 .rt-legend li { display: flex; align-items: center; gap: 6px; }
 .swatch-ghost { width: 14px; height: 10px; border: 2px dashed var(--accent); border-radius: 4px; background: color-mix(in srgb, var(--accent) 25%, transparent); }
+
+/* ---- cores vivas dos tipos de regra (texto escuro sobre o âmbar para manter a leitura) ---- */
+.rt-seg { color: #fff; }
+.rt-seg.m-restricted { color: #2b1a00; }
+:root[data-theme='night'] .rt-seg { color: #2a0a05; }
+:root[data-theme='night'] .rt-seg.m-restricted { color: #2b1a00; }
+.badge.m-restricted { color: #2b1a00; }
+.seg-btn[aria-pressed="true"].m-restricted { color: #2b1a00; }
+:root[data-theme='night'] .seg-btn[aria-pressed="true"] { color: #2a0a05; }
+:root[data-theme='night'] .badge { color: #2a0a05; }
+.rt-seg { box-shadow: 0 2px 8px -2px color-mix(in srgb, var(--c) 60%, transparent); }
+.rt-track { background-color: color-mix(in srgb, var(--text) 5%, var(--bg)); }
+.rt-seg.alt { filter: brightness(.88) saturate(1.1); }
+
+/* ---- bloqueio rápido ---- */
+.quick-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; flex-wrap: wrap; }
+.quick h3 { margin: 0; }
+.quick-actions { display: flex; gap: 6px; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin: 6px 0 16px; }
+.tile { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; background: var(--bg); border: 2px solid var(--border); border-radius: 14px; padding: 10px 14px; transition: all .15s; }
+.tile:hover { border-color: var(--mode-blocked); }
+.tile-name { font-weight: 600; font-size: 14px; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.tile strong { font-size: 12px; color: var(--muted); font-weight: 600; }
+.tile.on { background: var(--mode-blocked); border-color: var(--mode-blocked); color: #fff; box-shadow: 0 6px 16px -8px var(--mode-blocked); }
+.tile.on strong { color: #fff; }
+:root[data-theme='night'] .tile.on, :root[data-theme='night'] .tile.on strong { color: #2a0a05; }
+.rt-track.locked { height: 40px; cursor: default; }
+.rt-seg.all { top: 4px; bottom: 4px; height: auto; pointer-events: none; font-weight: 700; }

@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { accessDomains } from '../../core/blocking';
 import { normalizeDomain } from '../../core/matching';
-import type { RoutineSite, RoutineSlot } from '../../core/models';
+import type { RestrictionSpec, RoutineSite, RoutineSlot } from '../../core/models';
 import { randomId } from '../../core/ports';
-import { activeRules, featureSlotsOf, loosensNow, newFeatureSlot, nextBoundary, retimeFeature, rulesAnyTime, serviceOf, validateSlot } from '../../core/routine';
+import { activeRules, featureSlotsOf, isBlockedAll, loosensNow, newFeatureSlot, nextBoundary, retimeFeature, rulesAnyTime, serviceOf, setBlockAll, validateSlot } from '../../core/routine';
 import { ROUTINE_SUGGESTIONS, SLOT_PRESETS, defaultRoutine } from '../../core/routine-defaults';
-import { FEATURE_DEFS, defaultSpec, featuresOf } from '../../core/restrictions';
+import { FEATURE_DEFS, featuresOf } from '../../core/restrictions';
 import { MINUTES_PER_DAY, SNAP_MIN, formatMinutes, layoutLanes, moveSlot, parseTime, resizeSlot, segmentsForDay, slotDurationMin, snapMinute, suggestFreeTime } from '../../core/timeslots';
 import { ensureHostAccess } from '../../platform/chrome/permissions';
 import { featureLabel } from '../i18n/pt-BR';
@@ -16,15 +16,19 @@ import { services } from './shared';
 
 type Notice = { kind: 'ok' | 'warn' | 'error'; text: string };
 
-/** Faixa em edição. `siteId` ausente = site novo. */
+/** Faixa em edição: o "o que fazer" começa SEM escolha (a pessoa decide). `siteId` ausente = site novo. */
+type DraftSlot = Omit<RoutineSlot, keyof RestrictionSpec> & Partial<RestrictionSpec>;
 interface Draft {
   domain: string;
   siteId?: string;
   isNewSlot: boolean;
-  slot: RoutineSlot;
+  slot: DraftSlot;
 }
 
 const WEEKDAYS = [1, 2, 3, 4, 5];
+
+/** Com os horários desligados só o bloqueio rápido vale: as faixas não pedem permissão. */
+const effectiveSites = (sites: RoutineSite[], enabled: boolean): RoutineSite[] => (enabled ? sites : sites.map((s) => ({ ...s, slots: [] })));
 const DRAG_THRESHOLD_PX = 4;
 
 /** Gesto em andamento na linha do tempo de um site. */
@@ -41,6 +45,7 @@ const slotErrorText = (code: string): string =>
     'time:same': 'O início e o fim não podem ser iguais.',
     'time:range': 'Horário inválido.',
     'kind:missing': 'Escolha como restringir.',
+    'mode:invalid': 'Escolha o que fazer com o site: Bloqueado ou Restrito.',
   })[code] ?? 'Faixa inválida.';
 
 /** Rótulo curto do que a faixa faz. */
@@ -55,12 +60,13 @@ function slotLabel(slot: RoutineSlot): string {
 
 export function RoutineTab({ active }: { active: boolean }) {
   const [sites, setSites] = useState<RoutineSite[]>([]);
-  const [enabled, setEnabled] = useState(false);
+  const [enabled, setEnabled] = useState(true);
   const [day, setDay] = useState(new Date().getDay());
   const [draft, setDraft] = useState<Draft>();
   const [notice, setNotice] = useState<Notice>();
   const [missing, setMissing] = useState<string[]>([]);
   const [newDomain, setNewDomain] = useState('');
+  const [quickDomain, setQuickDomain] = useState('');
   const [now, setNow] = useState(Date.now());
   const [expanded, setExpanded] = useState<Set<string>>(new Set()); // sites com uma barra por recurso
   const [drag, setDrag] = useState<Drag>();
@@ -76,7 +82,7 @@ export function RoutineTab({ active }: { active: boolean }) {
     const [list, settings] = await Promise.all([services.routine.list(), services.settings.get()]);
     setSites(list);
     setEnabled(settings.routineEnabled);
-    setMissing(settings.routineEnabled ? await missingAccess(accessDomains({ rules: rulesAnyTime(list) })) : []);
+    setMissing(await missingAccess(accessDomains({ rules: rulesAnyTime(effectiveSites(list, settings.routineEnabled)) })));
   }
 
   useEffect(() => {
@@ -102,7 +108,8 @@ export function RoutineTab({ active }: { active: boolean }) {
   async function commit(nextSites: RoutineSite[], nextEnabled = enabled, okText = 'Rotina salva.'): Promise<boolean> {
     if (loosensNow({ sites, enabled }, { sites: nextSites, enabled: nextEnabled }, Date.now())
       && !confirm('Isso afrouxa uma regra que está protegendo agora. Tem certeza?')) return false;
-    const granted = nextEnabled ? await ensureHostAccess(accessDomains({ rules: rulesAnyTime(nextSites) })) : true;
+    const needed = accessDomains({ rules: rulesAnyTime(effectiveSites(nextSites, nextEnabled)) });
+    const granted = needed.length ? await ensureHostAccess(needed) : true;
     await services.routine.save(nextSites);
     if (nextEnabled !== enabled) await services.settings.update({ routineEnabled: nextEnabled });
     await reload();
@@ -113,16 +120,14 @@ export function RoutineTab({ active }: { active: boolean }) {
   }
 
   function openNew(site: RoutineSite, atMin?: number, endAt?: number, feature?: string) {
-    const last = site.slots[site.slots.length - 1];
     // Sem gesto (botão "+"): sugere o primeiro horário livre do dia mostrado, para a faixa nova não nascer por cima de outra.
     const free = atMin === undefined ? suggestFreeTime(segmentsForDay(feature ? featureSlotsOf(site, feature) : site.slots, day)) : null;
     const start = atMin !== undefined ? Math.min(atMin, MINUTES_PER_DAY - 30) : free?.startMin ?? 9 * 60;
-    const slot: RoutineSlot = {
+    const slot: DraftSlot = {
       id: randomId(),
       days: [day],
       startMin: start,
       endMin: endAt ?? free?.endMin ?? Math.min(start + 120, MINUTES_PER_DAY),
-      ...(last ? { mode: last.mode, restrictedKind: last.restrictedKind, features: last.features } : defaultSpec(site.domain, 'blocked')),
     };
     // Numa barra de recurso, a faixa nasce escondendo só aquele recurso.
     const featureSlot = feature ? newFeatureSlot(site, feature, slot.days, { startMin: slot.startMin, endMin: slot.endMin }, randomId) : undefined;
@@ -200,8 +205,7 @@ export function RoutineTab({ active }: { active: boolean }) {
     if (!domain) return setNotice({ kind: 'error', text: 'Esse endereço não parece um site válido (ex.: reddit.com).' });
     const existing = sites.find((s) => s.domain === domain);
     if (existing) return openNew(existing);
-    const spec = defaultSpec(domain, 'blocked');
-    setDraft({ domain, isNewSlot: true, slot: { id: randomId(), days: WEEKDAYS, startMin: 9 * 60, endMin: 18 * 60, ...spec } });
+    setDraft({ domain, isNewSlot: true, slot: { id: randomId(), days: WEEKDAYS, startMin: 9 * 60, endMin: 18 * 60 } });
     setNewDomain('');
     setNotice(undefined);
   }
@@ -210,11 +214,12 @@ export function RoutineTab({ active }: { active: boolean }) {
 
   async function saveDraft(andAddAnother = false) {
     if (!draft) return;
-    const errors = validateSlot(draft.slot);
+    const errors = draft.slot.mode ? validateSlot(draft.slot as RoutineSlot) : ['mode:invalid'];
     if (errors.length) return setNotice({ kind: 'error', text: errors.map(slotErrorText).join(' ') });
+    const saving = draft.slot as RoutineSlot;
     const next = draft.siteId
-      ? sites.map((s) => s.id !== draft.siteId ? s : { ...s, slots: draft.isNewSlot ? [...s.slots, draft.slot] : s.slots.map((x) => x.id === draft.slot.id ? draft.slot : x) })
-      : [...sites, { id: randomId(), domain: draft.domain, enabled: true, slots: [draft.slot] }];
+      ? sites.map((s) => s.id !== draft.siteId ? s : { ...s, slots: draft.isNewSlot ? [...s.slots, saving] : s.slots.map((x) => x.id === saving.id ? saving : x) })
+      : [...sites, { id: randomId(), domain: draft.domain, enabled: true, slots: [saving] }];
     if (!(await commit(next, enabled, 'Faixa salva.'))) return;
     setDraft(undefined);
     const saved = next.find((x) => x.domain === draft.domain);
@@ -233,9 +238,25 @@ export function RoutineTab({ active }: { active: boolean }) {
     if (await commit(next, enabled, 'Faixa apagada.')) setDraft(undefined);
   }
 
+  // ---- bloqueio rápido: o app inteiro, sempre ----
+  const quickDomains = [...new Set([...ROUTINE_SUGGESTIONS, ...sites.map((x) => x.domain)])];
+  const quickBlocked = quickDomains.filter((d) => isBlockedAll(sites, d));
+  const toggleQuick = (domain: string) => {
+    const on = !isBlockedAll(sites, domain);
+    return commit(setBlockAll(sites, domain, on, randomId), enabled, on ? `${domain} bloqueado por inteiro.` : `${domain} liberado.`);
+  };
+  const setAllQuick = (on: boolean) =>
+    commit(quickDomains.reduce((acc, d) => setBlockAll(acc, d, on, randomId), sites), enabled, on ? 'Todos os apps bloqueados.' : 'Todos os apps liberados.');
+  function quickAdd(input: string) {
+    const domain = normalizeDomain(input);
+    if (!domain) return setNotice({ kind: 'error', text: 'Esse endereço não parece um site válido (ex.: reddit.com).' });
+    setQuickDomain('');
+    return commit(setBlockAll(sites, domain, true, randomId), enabled, `${domain} bloqueado por inteiro.`);
+  }
+
   const toggleSite = (site: RoutineSite) => commit(sites.map((s) => s.id === site.id ? { ...s, enabled: !s.enabled } : s), enabled, site.enabled ? 'Site desligado na rotina.' : 'Site ligado na rotina.');
   const removeSite = (site: RoutineSite) => confirm(`Tirar ${site.domain} da rotina?`) && commit(sites.filter((s) => s.id !== site.id), enabled, 'Site removido.');
-  const restoreDefaults = () => confirm('Voltar à programação pronta? Suas faixas atuais serão substituídas.') && commit(defaultRoutine(), enabled, 'Programação pronta restaurada.');
+  const clearRoutine = () => confirm('Limpar a rotina? Todos os sites, faixas e bloqueios rápidos serão removidos.') && commit(defaultRoutine(), enabled, 'Rotina limpa.');
   const grantAccess = async () => {
     await ensureHostAccess(missing);
     await reload();
@@ -243,13 +264,19 @@ export function RoutineTab({ active }: { active: boolean }) {
 
   const draftSite = draft?.siteId ? sites.find((x) => x.id === draft.siteId) : undefined;
   const allDay = !!draft && draft.slot.startMin === 0 && draft.slot.endMin === MINUTES_PER_DAY;
-  const status = !enabled
-    ? 'Rotina desligada: nada é bloqueado por horário.'
-    : activeNow.length
-      ? `Protegendo agora: ${activeNow.map((r) => r.domain).join(', ')}${boundary ? ` · muda ${formatWhen(boundary, now)}` : ' · sem hora para acabar'}.`
+  const directNow = sites.filter((x) => x.enabled && x.blockAll).map((x) => x.domain);
+  const byHour = activeNow.map((r) => r.domain).filter((d) => !directNow.includes(d));
+  const parts = [
+    directNow.length ? `bloqueados por inteiro: ${directNow.join(', ')}` : '',
+    byHour.length ? `pelos horários: ${byHour.join(', ')}${boundary ? ` (muda ${formatWhen(boundary, now)})` : ''}` : '',
+  ].filter(Boolean);
+  const status = parts.length
+    ? `Protegendo agora → ${parts.join(' · ')}.`
+    : !enabled
+      ? 'Os horários estão desligados: só o bloqueio rápido vale.'
       : boundary
         ? `Livre agora. Próxima proteção: ${formatWhen(boundary, now)}.`
-        : 'Nenhuma faixa ativa. Crie uma abaixo.';
+        : 'Nada bloqueado. Use o bloqueio rápido ou desenhe faixas abaixo.';
 
   /**
    * Barra de 24 h de um site (ou, com `feature`, de um recurso dele): faixas com alças, rascunho e linha do "agora".
@@ -267,6 +294,15 @@ export function RoutineTab({ active }: { active: boolean }) {
     const unit = feature ? 24 : 32; // altura da faixa quando há uma só pista
     const laneH = placed.lanes === 1 ? unit : Math.max(14, Math.floor((unit * 1.7) / placed.lanes));
     const trackH = placed.lanes === 1 ? unit + 8 : placed.lanes * (laneH + 3) + 5;
+
+    // App bloqueado por inteiro: barra cheia, sem faixas para mexer.
+    if (!feature && site.blockAll && site.enabled) {
+      return (
+        <div class="rt-track locked" title="Bloqueio rápido: o app inteiro, o tempo todo (desligue no painel de Bloqueio rápido)">
+          <div class="rt-seg m-blocked all" style={{ left: 0, width: '100%' }}><span>🔒 Bloqueado o tempo todo</span></div>
+        </div>
+      );
+    }
 
     return (
       <div class="rt-track" style={{ height: `${trackH}px` }} title="Arraste num espaço vazio para criar uma faixa; clique para uma de 2 h"
@@ -311,19 +347,47 @@ export function RoutineTab({ active }: { active: boolean }) {
       <section class="card status">
         <div class="grow">
           <h2 class="section-title">Sua rotina</h2>
-          <p class="section-sub">Para cada site, escolha em quais dias e horas ele fica bloqueado ou com partes escondidas. A rotina trabalha sozinha, sem precisar acender a vela; o <strong>Timer</strong> do popup serve para um foco extra por cima dela.</p>
+          <p class="section-sub">Bloqueie um app inteiro com um clique, ou escolha para cada site em quais dias e horas ele fica bloqueado ou com partes escondidas. Tudo trabalha sozinho, sem precisar acender a vela; o <strong>Timer</strong> do popup serve para um foco extra por cima.</p>
           <p class={`status-line ${enabled && activeNow.length ? 'on' : ''}`} role="status">{status}</p>
         </div>
-        <label class="master" title="Liga ou desliga toda a rotina">
-          <span class="switch"><input type="checkbox" checked={enabled} onChange={() => commit(sites, !enabled, enabled ? 'Rotina desligada.' : 'Rotina ligada.')} aria-label="Rotina ligada" /><span /></span>
-          <strong>{enabled ? 'Ligada' : 'Desligada'}</strong>
+        <label class="master" title="Liga ou desliga as faixas de horário (o bloqueio rápido continua valendo)">
+          <span class="switch"><input type="checkbox" checked={enabled} onChange={() => commit(sites, !enabled, enabled ? 'Horários desligados.' : 'Horários ligados.')} aria-label="Horários ligados" /><span /></span>
+          <strong>Horários {enabled ? 'ligados' : 'desligados'}</strong>
         </label>
+      </section>
+
+      <section class="card quick" aria-label="Bloqueio rápido">
+        <div class="quick-head">
+          <div class="grow">
+            <h3>Bloqueio rápido</h3>
+            <p class="hint">Bloqueia o app <strong>inteiro</strong>, o tempo todo, com um clique. Clique de novo para liberar.</p>
+          </div>
+          <div class="quick-actions">
+            <button class="btn" onClick={() => setAllQuick(true)} disabled={quickBlocked.length === quickDomains.length}>Bloquear todos</button>
+            <button class="btn btn-ghost" onClick={() => setAllQuick(false)} disabled={quickBlocked.length === 0}>Liberar todos</button>
+          </div>
+        </div>
+        <div class="tiles">
+          {quickDomains.map((d) => {
+            const on = isBlockedAll(sites, d);
+            return (
+              <button key={d} class={`tile ${on ? 'on' : ''}`} aria-pressed={on} onClick={() => toggleQuick(d)} title={on ? `Liberar ${d}` : `Bloquear ${d} por inteiro`}>
+                <span class="tile-name">{d}</span>
+                <strong>{on ? '🔒 Bloqueado' : 'Bloquear'}</strong>
+              </button>
+            );
+          })}
+        </div>
+        <form class="add" onSubmit={(e) => { e.preventDefault(); void quickAdd(quickDomain); }}>
+          <input class="field grow" placeholder="Bloquear outro site por inteiro (ex.: twitch.tv)" value={quickDomain} aria-label="Outro site para bloquear" onInput={(e) => setQuickDomain(e.currentTarget.value)} />
+          <button class="btn" type="submit">Bloquear</button>
+        </form>
       </section>
 
       {!enabled && (
         <p class="notice warn onboarding">
-          <span>A programação pronta já está aqui embaixo, mas <strong>desligada</strong>. Confira os horários, ajuste o que quiser e ligue quando estiver bom para você.</span>
-          <button class="btn btn-primary" onClick={() => commit(sites, true, 'Rotina ligada.')}>Ligar a rotina</button>
+          <span>Os <strong>horários estão desligados</strong>: as faixas abaixo não valem até você ligá-los. O bloqueio rápido continua funcionando.</span>
+          <button class="btn btn-primary" onClick={() => commit(sites, true, 'Horários ligados.')}>Ligar os horários</button>
         </p>
       )}
       {enabled && missing.length > 0 && (
@@ -355,24 +419,25 @@ export function RoutineTab({ active }: { active: boolean }) {
             <div>{[0, 3, 6, 9, 12, 15, 18, 21, 24].map((h) => <b key={h} style={{ left: `${(h / 24) * 100}%` }}>{h}</b>)}</div>
             <span />
           </div>
-          {sites.length === 0 && <p class="empty">Nenhum site ainda. Adicione o primeiro abaixo.</p>}
+          {sites.length === 0 && <p class="empty">A rotina está limpa. Use o bloqueio rápido acima, ou adicione um site abaixo e desenhe quando ele deve ficar bloqueado ou com partes escondidas.</p>}
           {sites.map((site) => {
             const service = serviceOf(site);
-            const open = !!service && expanded.has(site.id);
+            const locked = !!site.blockAll && site.enabled;
+            const open = !!service && !locked && expanded.has(site.id);
             return (
               <div key={site.id} class="rt-group">
                 <div class={`rt-row ${site.enabled ? '' : 'off'}`}>
                   <div class="rt-label">
                     <div class="rt-name">
-                      {!service && <span class="rt-expander-spacer" aria-hidden="true" />}
-                      {service && (
+                      {(!service || locked) && <span class="rt-expander-spacer" aria-hidden="true" />}
+                      {service && !locked && (
                         <button class="rt-expander" aria-expanded={open} aria-label={`${open ? 'Recolher' : 'Expandir'} os recursos de ${site.domain}`}
                           title="Horário separado para cada recurso (feed, Shorts, recomendados…)"
                           onClick={() => setExpanded((cur) => { const n = new Set(cur); if (!n.delete(site.id)) n.add(site.id); return n; })}>{open ? '▾' : '▸'}</button>
                       )}
                       <button class="rt-site" onClick={() => openNew(site)} title="Adicionar uma faixa neste site">{site.domain}</button>
                     </div>
-                    {site.slots.length === 0 && <small>sem faixas</small>}
+                    {locked ? <small>bloqueio rápido</small> : site.slots.length === 0 && <small>sem faixas</small>}
                   </div>
                   {renderTrack(site, site.slots)}
                   <div class="rt-actions">
@@ -461,7 +526,7 @@ export function RoutineTab({ active }: { active: boolean }) {
 
       <p class="hint footnote">
         O acesso aos sites serve só para bloquear ou limitar essas páginas; nada sai do seu computador.{' '}
-        <button class="link" onClick={restoreDefaults}>Restaurar a programação pronta</button>
+        <button class="link" onClick={clearRoutine}>Limpar a rotina</button>
       </p>
     </main>
   );

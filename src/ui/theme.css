@@ -17,9 +17,9 @@
   --shadow: 0 1px 0 rgba(255, 255, 255, 0.7) inset, 0 10px 28px -14px rgba(120, 80, 30, 0.35);
   --radius: 18px;
   /* cores dos tipos de regra */
-  --mode-allowed: #5f8a54;
-  --mode-blocked: #b5523a;
-  --mode-restricted: #c98a1f;
+  --mode-allowed: #1f9d55;
+  --mode-blocked: #dc2626;
+  --mode-restricted: #f59e0b;
   /* cores das faixas de horário */
   --blk-1: #c4672a; --blk-2: #5f8a54; --blk-3: #b8860b; --blk-4: #8a5a7a;
   --min-line: #4a3426;
@@ -46,9 +46,9 @@
   --shadow: 0 10px 28px -14px rgba(0, 0, 0, 0.6);
   --min-line: #d8c9b0;
   --min-body: #2a221b;
-  --mode-allowed: #8fc482;
-  --mode-blocked: #e8917a;
-  --mode-restricted: #f2b361;
+  --mode-allowed: #4ade80;
+  --mode-blocked: #ff5a4e;
+  --mode-restricted: #fbbf24;
   --blk-1: #f2a266; --blk-2: #8fc482; --blk-3: #e6c15a; --blk-4: #c99ab8;
 }
 

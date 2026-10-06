@@ -75,11 +75,11 @@ export type ThemeName = 'cream' | 'night';
 export interface Settings {
   candleSkin: string;
   theme: ThemeName;
-  /** Rotina por site ligada? Vem desligada: o usuário ativa depois de conferir. */
+  /** Faixas de horário da rotina ligadas? (Vem ligado; a rotina nasce vazia. O bloqueio rápido não depende disto.) */
   routineEnabled: boolean;
 }
 
-export const DEFAULT_SETTINGS: Settings = { candleSkin: 'classic', theme: 'cream', routineEnabled: false };
+export const DEFAULT_SETTINGS: Settings = { candleSkin: 'classic', theme: 'cream', routineEnabled: true };
 
 /** Regras de rede desejadas agora. `allow` = exceções (subdomínios de um domínio bloqueado/com intenção). */
 export interface BlockPlan {
@@ -145,6 +145,11 @@ export interface RoutineSite {
   domain: string;
   enabled: boolean;
   slots: RoutineSlot[];
+  /**
+   * Bloqueio rápido: o app INTEIRO bloqueado o tempo todo, sem depender das faixas nem do interruptor dos horários.
+   * (Desligar o site na rotina também o libera.)
+   */
+  blockAll?: boolean;
 }
 
 /**

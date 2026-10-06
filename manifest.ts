@@ -6,7 +6,7 @@ export default defineManifest({
   manifest_version: 3,
   name: 'Pavio',
   version: '0.1.0',
-  description: 'Foco com calma: bloqueie sites por dia e horário, com rotina pronta, timer em forma de vela e Pomodoro. Tudo local, sem contas.',
+  description: 'Foco com calma: bloqueie apps inteiros com um clique ou por dia e horário, com timer em vela e Pomodoro. Tudo local, sem contas.',
   minimum_chrome_version: '120',
   permissions: ['storage', 'alarms', 'notifications', 'declarativeNetRequest'],
   // Pedida por site, no clique do usuário (ao salvar um ambiente com sites bloqueados/restritos).

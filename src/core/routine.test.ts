@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { RoutineSite, RoutineSlot } from './models';
-import { activeRules, dropFeature, featureSlotsOf, loosensNow, mergeRules, newFeatureSlot, nextBoundary, retimeFeature, rulesAnyTime, validateSite } from './routine';
+import { activeRules, dropFeature, featureSlotsOf, isBlockedAll, loosensNow, mergeRules, newFeatureSlot, nextBoundary, retimeFeature, rulesAnyTime, setBlockAll, validateSite } from './routine';
 import { defaultRoutine } from './routine-defaults';
 
 const t = (h: number, m = 0) => h * 60 + m;
@@ -98,22 +98,54 @@ describe('loosensNow (confirmação ao afrouxar o que protege agora)', () => {
   });
 });
 
-describe('validação e programação pronta', () => {
+describe('validação e rotina limpa', () => {
   it('valida domínio, horário e tipo de restrição', () => {
     expect(validateSite(site('instagram.com', [slot('a')]))).toEqual([]);
     expect(validateSite(site('lixo', [slot('a')]))).toContain('site:invalid-domain');
     expect(validateSite(site('x.com', [slot('a', { days: [] })]))).toContain('days:empty');
     expect(validateSite(site('x.com', [slot('a', { mode: 'restricted' })]))).toContain('kind:missing');
   });
-  it('a rotina pronta é válida, cobre as redes principais e traz LinkedIn sem feed', () => {
-    const routine = defaultRoutine();
-    for (const s of routine) expect(validateSite(s), s.domain).toEqual([]);
-    expect(routine.map((s) => s.domain)).toEqual(['youtube.com', 'instagram.com', 'tiktok.com', 'x.com', 'facebook.com', 'reddit.com', 'linkedin.com']);
-    const linkedin = activeRules(routine, true, mon(10)).find((r) => r.domain === 'linkedin.com')!;
-    expect(linkedin).toMatchObject({ mode: 'restricted', restrictedKind: 'linkedin' });
-    expect(activeRules(routine, true, mon(20))).toEqual([]); // fim do expediente: livre
-    expect(activeRules(routine, true, mon(23)).find((r) => r.domain === 'instagram.com')!.mode).toBe('blocked'); // noite
-    expect(activeRules(routine, true, sat(11))).toEqual([]); // sábado de manhã: livre
+  it('a rotina inicial é limpa: nada bloqueado nem programado', () => {
+    expect(defaultRoutine()).toEqual([]);
+    expect(activeRules(defaultRoutine(), true, mon(10))).toEqual([]);
+  });
+});
+
+describe('bloqueio rápido (o app inteiro, sempre)', () => {
+  let n = 0;
+  const id = () => `q${++n}`;
+
+  it('setBlockAll adiciona o site à rotina sem faixas, liga e desliga', () => {
+    const on = setBlockAll([], 'tiktok.com', true, id);
+    expect(on).toEqual([{ id: 'q1', domain: 'tiktok.com', enabled: true, slots: [], blockAll: true }]);
+    expect(isBlockedAll(on, 'tiktok.com')).toBe(true);
+    const off = setBlockAll(on, 'tiktok.com', false, id);
+    expect(isBlockedAll(off, 'tiktok.com')).toBe(false);
+    expect(setBlockAll([], 'tiktok.com', false, id)).toEqual([]); // desligar o que não existe não cria nada
+  });
+
+  it('bloqueia o tempo todo, mesmo com os horários desligados e fora de qualquer faixa', () => {
+    const routine = setBlockAll([site('instagram.com', [slot('a')])], 'instagram.com', true, id);
+    for (const when of [mon(3), mon(10), sat(23, 59)]) {
+      expect(activeRules(routine, true, when).find((r) => r.domain === 'instagram.com')!.mode).toBe('blocked');
+      expect(activeRules(routine, false, when).find((r) => r.domain === 'instagram.com')!.mode).toBe('blocked'); // interruptor geral não importa
+    }
+    expect(nextBoundary(routine, false, mon(8))).toBeUndefined();
+  });
+
+  it('ganha de faixas mais leves; site desligado na rotina não bloqueia; ligar religa o site', () => {
+    const restricted = site('youtube.com', [slot('r', { mode: 'restricted', restrictedKind: 'youtube' })]);
+    expect(activeRules(setBlockAll([restricted], 'youtube.com', true, id), true, mon(10))[0]!.mode).toBe('blocked');
+    const off = { ...setBlockAll([restricted], 'youtube.com', true, id)[0]!, enabled: false };
+    expect(activeRules([off], true, mon(10))).toEqual([]);
+    expect(isBlockedAll(setBlockAll([off], 'youtube.com', true, id), 'youtube.com')).toBe(true);
+  });
+
+  it('entra no pedido de permissões e na confirmação ao afrouxar', () => {
+    const routine = setBlockAll([], 'tiktok.com', true, id);
+    expect(rulesAnyTime(routine).map((r) => r.domain)).toEqual(['tiktok.com']);
+    expect(loosensNow({ sites: routine, enabled: true }, { sites: setBlockAll(routine, 'tiktok.com', false, id), enabled: true }, mon(10))).toBe(true);
+    expect(loosensNow({ sites: [], enabled: true }, { sites: routine, enabled: true }, mon(10))).toBe(false); // bloquear não pede confirmação
   });
 });
 
@@ -145,9 +177,7 @@ describe('horário por recurso', () => {
     expect(next.slots.find((s) => s.id === 'work')).toMatchObject({ features: ['shorts', 'related'], startMin: t(9), endMin: t(18) });
     const detached = next.slots.find((s) => !['work', 'night', 'blk'].includes(s.id))!;
     expect(detached).toMatchObject({ mode: 'restricted', restrictedKind: 'youtube', features: ['home'], startMin: t(14), endMin: t(16), days: WEEK });
-    // efeito real: às 10h o feed já não está escondido pela faixa de trabalho, mas os recomendados continuam
-    const at10 = activeRules([next], true, mon(10))[0]!;
-    expect(at10.features).toEqual(['shorts', 'related']);
+    expect(activeRules([next], true, mon(10))[0]!.features).toEqual(['shorts', 'related']);
     expect(activeRules([next], true, mon(15))[0]!.features).toEqual(['home', 'shorts', 'related']);
   });
 

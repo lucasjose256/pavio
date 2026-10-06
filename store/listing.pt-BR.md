@@ -10,9 +10,9 @@ Pavio
 
 ## Resumo (máx. 132 caracteres — vem do `description` do manifest)
 ```
-Foco com calma: bloqueie sites por dia e horário, com rotina pronta, timer em forma de vela e Pomodoro. Tudo local, sem contas.
+Foco com calma: bloqueie apps inteiros com um clique ou por dia e horário, com timer em vela e Pomodoro. Tudo local, sem contas.
 ```
-*(127 caracteres)*
+*(128 caracteres)*
 
 ## Categoria
 **Produtividade**
@@ -28,9 +28,9 @@ O Pavio é uma extensão de foco para quem se distrai com facilidade. Em vez de 
 
 COMO FUNCIONA
 
-• Rotina por site e horário. Veja suas 24 horas numa linha do tempo por site (YouTube, Instagram, TikTok, X, LinkedIn…) e desenhe quando cada um fica restrito: só no expediente, só à noite, no fim de semana, ou para sempre. A rotina trabalha sozinha, sem você precisar fazer nada.
+• Rotina por site e horário. Veja suas 24 horas numa linha do tempo por site (YouTube, Instagram, TikTok, X, LinkedIn…) e desenhe quando cada um fica bloqueado ou com partes escondidas: só no expediente, só à noite, no fim de semana, ou para sempre. Arraste na barra para ajustar início e fim. A rotina trabalha sozinha, sem você precisar fazer nada.
 
-• Programação pronta. Já vem uma rotina de exemplo (dias úteis das 9h às 18h e uma noite sem telas das 22h às 6h). Ela começa desligada: você confere, ajusta o que quiser e liga quando estiver bom para você.
+• Bloqueio rápido. Para bloquear um app inteiro (YouTube, Instagram, TikTok…), é só um clique, e outro para liberar. Nada vem bloqueado por padrão: a rotina começa limpa e é você quem escolhe.
 
 • Timer em forma de vela. Para um foco a mais, inicie uma sessão de 25, 50, 90 minutos ou o tempo que quiser. A vela derrete de verdade, com chama animada, e as regras do ambiente que você escolher (por exemplo, "Estudo") valem por cima da sua rotina. Quando ela acaba, você recebe um aviso.
 

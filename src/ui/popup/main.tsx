@@ -19,6 +19,7 @@ import { ensureHostAccess } from '../../platform/chrome/permissions';
 import { createServices } from '../../platform/chrome/services';
 import { initTheme } from '../shared/theme';
 import { RoutineStatus } from '../shared/RoutineStatus';
+import { QuickBlock } from './QuickBlock';
 import { useNow } from '../shared/useNow';
 import { useStorageValue } from '../shared/useStorageValue';
 
@@ -165,6 +166,7 @@ function Popup() {
   return (
     <main class="popup">
       {!loaded ? null : active ? <Running session={active} skin={skin} now={now} /> : <StartForm skin={skin} />}
+      <QuickBlock />
       <div class="links">
         <button class="btn btn-ghost" onClick={() => chrome.runtime.openOptionsPage()}>Ambientes e opções</button>
         <button class="btn btn-ghost" onClick={() => chrome.tabs.create({ url: chrome.runtime.getURL('src/ui/options/index.html#historico') })}>Histórico</button>
