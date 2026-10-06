@@ -47,3 +47,11 @@ body { width: 300px; padding: 5px; background: var(--surface-2); }
 .foot { display: flex; gap: 14px; justify-content: center; }
 .foot button { background: transparent; border: 0; padding: 2px 4px; font-size: 12px; color: var(--muted); }
 .foot button:hover { color: var(--text); text-decoration: underline; }
+
+/* sugestão de vela de verdade (afiliado), só depois de uma vela concluída */
+.nudge { width: 100%; display: flex; flex-direction: column; gap: 4px; padding: 8px 10px; border: 1px dashed var(--border); border-radius: var(--r); font-size: 12px; color: var(--muted); }
+.nudge a { color: var(--accent-text); font-weight: 600; text-decoration: none; }
+.nudge a:hover { text-decoration: underline; }
+.nudge small { display: flex; align-items: center; justify-content: space-between; }
+.tag-ad { font-size: 10px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; border: 1px solid var(--border); border-radius: 5px; padding: 0 5px; }
+.nudge-off { background: none; border: 0; padding: 0; font-size: 11px; color: var(--muted); text-decoration: underline; }

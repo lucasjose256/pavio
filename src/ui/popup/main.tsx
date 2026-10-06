@@ -13,6 +13,8 @@ import { validatePomodoro } from '../../core/pomodoro';
 import type { PomodoroConfig } from '../../core/models';
 import { PomodoroFields } from '../shared/PomodoroFields';
 import { RunningCandle, openFriction } from '../shared/RunningCandle';
+import { ShopLink } from '../shared/ShopLink';
+import { offersFor, suggestionDue, type CandleOffer } from '../../core/shop';
 import { openFloatingCandle } from '../shared/floating';
 import { findRule } from '../../core/matching';
 import { parseYouTubeLinks } from '../../core/youtube';
@@ -143,6 +145,31 @@ function Running({ session, skin, now }: { session: Session; skin: string; now: 
   );
 }
 
+/** Depois de uma vela concluída (no máximo 1x por semana): sugestão discreta de uma vela de verdade. */
+function ShopNudge({ skin }: { skin: string }) {
+  const [offer, setOffer] = useState<CandleOffer>();
+  useEffect(() => {
+    void (async () => {
+      const [settings, history] = await Promise.all([services.settings.get(), services.history.list()]);
+      const lastCompletedAt = Math.max(-Infinity, ...history.filter((h) => h.outcome === 'completed').map((h) => h.endedAt));
+      const now = Date.now();
+      if (!suggestionDue({ enabled: settings.shopSuggestions, lastCompletedAt: Number.isFinite(lastCompletedAt) ? lastCompletedAt : undefined, lastShownAt: settings.shopLastShownAt, now })) return;
+      const first = offersFor(skin)[0];
+      if (!first) return;
+      setOffer(first);
+      await services.settings.update({ shopLastShownAt: now });
+    })();
+  }, []);
+  if (!offer) return null;
+  return (
+    <aside class="nudge" aria-label="Sugestão">
+      <span>Vela concluída! Que tal uma de verdade? <ShopLink offer={offer}>{offer.name} ↗</ShopLink></span>
+      <small><span class="tag-ad">afiliado</span>
+        <button class="nudge-off" onClick={async () => { await services.settings.update({ shopSuggestions: false }); setOffer(undefined); }}>Não mostrar mais</button></small>
+    </aside>
+  );
+}
+
 function Popup() {
   const { value: session, loaded } = useStorageValue<Session>('activeSession');
   const { value: settings } = useStorageValue<Settings>('settings');
@@ -159,7 +186,7 @@ function Popup() {
 
   return (
     <main class="popup">
-      {!loaded ? null : active ? <Running session={active} skin={skin} now={now} /> : <StartForm skin={skin} />}
+      {!loaded ? null : active ? <Running session={active} skin={skin} now={now} /> : <><StartForm skin={skin} /><ShopNudge skin={skin} /></>}
       <nav class="foot" aria-label="Atalhos">
         <button onClick={() => chrome.runtime.openOptionsPage()}>Opções</button>
         <button onClick={() => chrome.tabs.create({ url: chrome.runtime.getURL('src/ui/options/index.html#historico') })}>Histórico</button>

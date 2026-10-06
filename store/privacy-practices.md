@@ -21,7 +21,7 @@ Precisa disparar eventos no horário certo mesmo com o service worker suspenso: 
 
 ### `notifications`
 ```
-Mostra avisos locais ao usuário: "a vela acabou", "hora da pausa / de volta ao foco" e "ainda está na tarefa?". Não exibe anúncios nem conteúdo promocional.
+Mostra avisos locais ao usuário: "a vela acabou", "hora da pausa / de volta ao foco" e "ainda está na tarefa?". Não exibe anúncios nem conteúdo promocional nas notificações.
 ```
 
 ### `idle`
@@ -80,3 +80,6 @@ Não é necessária conta nem login para testar o fluxo principal.
 6. Pomodoro: no popup, abra "Mais opções", ligue "Pomodoro automático" com foco 1 min e pausa 1 min e acenda a vela: na pausa os bloqueios do timer se desligam.
 7. Limite de tempo: na aba Rotina, no cartão "Limite de tempo", digite 1 (minuto por dia) em um site, clique em "Definir" e permita o acesso. Deixe esse site aberto e em foco por ~2 minutos (a contagem é por minuto): ele passa a mostrar "Você chegou ao limite de hoje". Em "Precisa dele agora?", escolha 5 min e confirme: o site abre por 5 minutos e depois volta a ser bloqueado (o mesmo vale para qualquer site bloqueado pela rotina; em Opções › Para liberar dá para exigir uma frase). O uso por app aparece na aba Histórico; o limite volta a zero na meia-noite.
 ```
+
+## Links de afiliado (declarar no painel)
+O Pavio mostra sugestões opcionais de velas aromáticas com **links de afiliado do Mercado Livre**, sempre identificados ("link de afiliado") e desligáveis (Opções › Vela e tema). Só abrem a loja com um clique do usuário, numa aba nova, com `rel="sponsored noreferrer"`. A extensão **não** insere códigos de afiliado em links ou buscas do usuário, não altera páginas de lojas e não rastreia cliques. Isso está declarado na descrição da loja e na política de privacidade (exigência da política "Affiliate Ads" da Chrome Web Store).

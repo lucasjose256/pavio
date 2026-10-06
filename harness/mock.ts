@@ -19,7 +19,7 @@ const data: Record<string, unknown> = {
     { id: 'c', domain: 'reddit.com', enabled: true, blockAll: true, slots: [] },
   ],
   usage,
-  history: [],
+  history: params.get('done') ? [{ sessionId: 'h', environmentName: 'Estudo', startedAt: now - 40 * 60_000, endedAt: now - 15 * 60_000, plannedMs: 25 * 60_000, actualMs: 25 * 60_000, outcome: 'completed', blockedAttempts: 2 }] : [],
 };
 if (params.get('running')) {
   const env = (data.environments as { id: string }[])[0];

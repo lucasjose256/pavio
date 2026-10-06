@@ -23,7 +23,7 @@ HIDE PARTS, NOT THE WHOLE SITE
 YouTube (feed, Shorts, recommendations, comments; optional allow-list of videos/playlists/channels), Instagram (feed, Reels, Explore, Stories), X ("For you" tab, Explore), LinkedIn (feed, videos, news).
 
 PRIVACY FIRST
-No accounts, no servers, no ads, no analytics. Everything stays in your browser. Site access permissions are optional and requested per site.
+No accounts, no servers, no analytics. Optional scented-candle suggestions use affiliate links (Pavio may earn a commission; you can turn them off). Everything stays in your browser. Site access permissions are optional and requested per site.
 
 Pavio is a focus aid, not a medical device. YouTube, Instagram, X and LinkedIn are trademarks of their owners; Pavio is independent and not affiliated with them. The interface is in Brazilian Portuguese.
 ```

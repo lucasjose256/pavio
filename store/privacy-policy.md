@@ -1,11 +1,11 @@
 # Política de Privacidade — Pavio
 
-**Última atualização:** 5 de outubro de 2026
+**Última atualização:** 6 de outubro de 2026
 
 O Pavio é uma extensão do Chrome que ajuda você a manter o foco. Esta política explica, de forma direta, o que a extensão guarda e o que ela **não** faz.
 
 ## Em resumo
-- **O Pavio não coleta dados pessoais.** Não existe conta, servidor, análise de uso, anúncio nem rastreamento.
+- **O Pavio não coleta dados pessoais.** Não existe conta, servidor, análise de uso nem rastreamento.
 - **Tudo fica no seu navegador**, em armazenamento local da extensão. Nada é enviado para a internet.
 - **Você tem controle total:** pode apagar o histórico, exportar seus dados ou desinstalar a extensão (o que remove tudo).
 
@@ -20,7 +20,10 @@ Esses dados ficam em `chrome.storage.local`, que **não é sincronizado** com a 
 
 ## O que o Pavio **não** faz
 - Não envia nenhum dado para servidores, terceiros ou para o desenvolvedor.
-- Não usa cookies, identificadores, análise de uso ou publicidade.
+- Não usa cookies, identificadores nem análise de uso.
+
+## Links de afiliado
+As sugestões de velas aromáticas (em Opções › Vela e tema e, no máximo uma vez por semana, no popup logo depois de uma vela concluída) são **links de afiliado** do Mercado Livre, identificados como tal. Se você comprar por eles, o desenvolvedor pode receber uma comissão, sem custo extra para você. O Pavio **não** registra cliques nem envia nada: o link só abre a loja numa aba nova quando você clica, sem informar de onde veio. A partir daí vale a política de privacidade da loja. Você pode desligar as sugestões em Opções › Vela e tema.
 - Não vende nem compartilha dados.
 - Não lê nem guarda o conteúdo das páginas que você visita (mensagens, publicações, perfis, e-mails, formulários, senhas) nem o seu histórico de navegação.
 
