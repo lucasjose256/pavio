@@ -48,7 +48,7 @@ O que vale **agora** é a **Política** = regras da rotina ativas agora + regras
   - **Horário por recurso:** seta ▸ em YouTube/Instagram/X/LinkedIn expande **uma barra por recurso**. O modelo não muda: mexer no horário de um recurso que dividia a faixa com outros o **separa numa faixa própria** (`retimeFeature`); criar numa barra de recurso gera faixa só dele (`newFeatureSlot`). Esconder partes do mesmo serviço soma recursos ("recomendados o dia todo + feed só 9h–18h" = duas faixas).
 - Permissão de host opcional é pedida no clique de salvar/ligar/bloquear (`accessDomains`).
 
-## Limite de tempo por app (`core/usage.ts`, `core/usage-service.ts`, `platform/chrome/usage-tracker.ts`) — em construção (passos 1 e 2 feitos)
+## Limite de tempo por app (`core/usage.ts`, `core/usage-service.ts`, `platform/chrome/usage-tracker.ts`) 
 - **Decisões do dono:** limite **diário por app** (`RoutineSite.limitMin`), contando só **aba ativa e em foco**; ao estourar o app fica **bloqueado até a meia-noite** e há **"mais 5 min" que passa pela fricção** de desistir (espera + frase). Fora da v1: limite por dia da semana, por recurso (ex.: só o feed) e semanal.
 - É um conceito **separado** do bloqueio rápido (cota que acumula e zera por dia vs. liga/desliga), mas usa o mesmo `RoutineSite`. **Vale mesmo com os horários desligados** (controle direto) e some se o app for desligado na rotina.
 - Puro e testado: `UsageData` (por dia local → `ms` por app + `extraMin`), `addUsage`, `limitReached`, `remainingMsFor`, `extendLimit` (vale só no dia), `limitedSiteFor` (subdomínio; o mais específico vence), `limitRules` (apps que estouraram viram `blocked`, id `limit:<domínio>`), `limitStatuses` (para a tela), `pruneUsage`, `nextMidnight`.
@@ -88,10 +88,10 @@ O que vale **agora** é a **Política** = regras da rotina ativas agora + regras
 - **Status:** corrigido, mas **ainda sem confirmação de teste no Chrome real**.
 
 ## Interface
-- **Vela** (`ui/candle/`): `<Candle progress skin lit />`; cera e chama descem juntas; skins `{ id, name, flame, Body }` em `skins/` (Clássica cartoon, Minimalista); geometria testada. Ícone: `public/icons/icon.svg` → `npm run icons`.
+- **Vela** (`ui/candle/`): `<Candle progress skin lit />`; cera e chama descem juntas; skins `{ id, name, flame, Body }` em `skins/`: Clássica, Minimalista, Pote de vidro (`jar`: a cera desce dentro do pote), Cera de abelha (`honey`, favos), Lavanda (raminho no pires), Noite estrelada (`starry`). As de pilar cartoon usam `skins/pillar.tsx` (`PillarBody` + `decor` que desce com a cera e `saucerDecor` parado). Skin nova: arquivo em `skins/` + registro em `skins/index.ts` (id desconhecido cai na Clássica); geometria e ids testados. Ícone: `public/icons/icon.svg` → `npm run icons`.
 - **Tema:** tokens para `creme`/`noite` (`data-theme`); `Settings.theme`; `ui/shared/theme.ts` (`initTheme` em cada página, cache em localStorage). Tipografia: `--font-display` (serifa) e `--font-body`. Cores dos tipos de regra: `--mode-allowed|blocked|restricted` (vivas; texto escuro sobre âmbar).
 - **Popup (só o Timer, minimalista):** vela, ambiente, duração (25/50/90/Outro) e "Acender vela"; modo, Pomodoro e links do YouTube em **"Mais opções"** recolhido; rodapé "Opções · Histórico"; bordas de 8 px (`--r`), sem pílulas. Parado ~390 px (limite do Chrome ~600 px; com tudo aberto rola). Sem bloqueio rápido nem status da rotina aqui.
-- **Opções** (hash): `#rotina` (padrão), `#ambientes` ("Ambientes (Timer)": cartões, regras por site, duplicar, restaurar exemplos), `#historico` (horas devolvidas, sequência, 7 dias, lista, exportar/apagar; `core/history.ts`), `#aparencia` (tema + skin). Todas as abas ficam montadas (trocar não perde edição). Na primeira instalação o service worker abre `#rotina`.
+- **Opções** (`ui/options/App.tsx`): menu lateral (no celular vira fileira que rola). No topo, o **cartão do Timer** em destaque (vela acesa; com sessão mostra tempo e ambiente) leva a `#ambientes` (abertura "Timer: um foco a mais" com 3 passos + cartões e editor de ambientes). Grupo **Bloqueios**: `#rotina` Horários (padrão), `#bloqueio` Bloqueio rápido, `#limite` Limite de tempo — as três são o **mesmo `RoutineTab`** com `view` (`schedule|quick|limits`), dividindo estado e `commit()`. Grupo **Você**: `#historico` (horas devolvidas, 7 dias, sessões, tempo por app, exportar/apagar; `core/history.ts`) e `#aparencia` "Vela e tema" (vela primeiro, depois o tema). Ícones de traço em `options/icons.tsx`. Todas as seções ficam montadas (trocar não perde edição). Na primeira instalação o service worker abre `#rotina`.
 - Páginas auxiliares: `blocked/` (vela grande, frase, tempo; libera sozinha), `intent/`, `friction/`.
 
 ## Permissões (justificar cada uma na Web Store)
@@ -103,7 +103,7 @@ O que vale **agora** é a **Política** = regras da rotina ativas agora + regras
 - **Se mudar permissões, content scripts ou o que a extensão guarda/lê, atualize `privacy-practices.md` e `privacy-policy.md` junto.**
 
 ## Como verificar sem o Chrome real (e o que ainda não foi)
-- Lógica: `npm test` (20 arquivos, ~170 testes). Telas: páginas de demonstração com um `chrome` simulado servidas por Vite + navegador do app / Chrome headless (`--screenshot`, 1280×800).
+- Lógica: `npm test` (24 arquivos, ~210 testes). Telas: `npm run harness` → `http://localhost:5199/harness/options.html` (`chrome` simulado em memória com dados de exemplo em `harness/mock.ts`; `?theme=night`, `?skin=jar`, `?running=1`, hash = seção) no navegador do app ou Chrome headless (`--screenshot`, 1280×800; o headless não encolhe abaixo de ~500 px, use o navegador do app para celular).
 - O Chrome estável não carrega extensões por linha de comando: **alarmes, notificações, DNR, content scripts e troca de fases do Pomodoro só se confirmam com a extensão carregada** (`chrome://extensions` › Carregar sem compactação › `dist/`). Pendente de confirmação real: modo intenção, rotina nos horários, seletores de Instagram/X/LinkedIn.
 
 ## Decisões do dono (histórico)

@@ -33,20 +33,8 @@ export function AppearanceTab({ active }: { active: boolean }) {
   return (
     <main class="pane" hidden={!active}>
       <section class="card">
-        <h2 class="section-title">Clima da tela</h2>
-        <div class="themes">
-          {THEMES.map((t) => (
-            <button key={t.id} class={`theme-card ${settings.theme === t.id ? 'on' : ''}`} aria-pressed={settings.theme === t.id} onClick={() => pickTheme(t.id)}>
-              <span class={`swatch ${t.id}`} aria-hidden="true"><i /><i /><i /></span>
-              <strong>{t.name}</strong>
-              <span class="hint">{t.note}</span>
-            </button>
-          ))}
-        </div>
-      </section>
-
-      <section class="card">
-        <h2 class="section-title">Estilo da vela</h2>
+        <h2 class="section-title">Sua vela</h2>
+        <p class="section-sub">Ela aparece no popup, no Timer e na tela de bloqueio.</p>
         <div class="preview-bar">
           <label class="grow">
             <span class="lbl">Cera restante: {Math.round(preview * 100)}%</span>
@@ -67,6 +55,20 @@ export function AppearanceTab({ active }: { active: boolean }) {
           ))}
         </div>
       </section>
+      <section class="card">
+        <h2 class="section-title">Clima da tela</h2>
+        <p class="section-sub">As cores de todas as telas do Pavio.</p>
+        <div class="themes">
+          {THEMES.map((t) => (
+            <button key={t.id} class={`theme-card ${settings.theme === t.id ? 'on' : ''}`} aria-pressed={settings.theme === t.id} onClick={() => pickTheme(t.id)}>
+              <span class={`swatch ${t.id}`} aria-hidden="true"><i /><i /><i /></span>
+              <strong>{t.name}</strong>
+              <span class="hint">{t.note}</span>
+            </button>
+          ))}
+        </div>
+      </section>
+
     </main>
   );
 }

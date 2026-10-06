@@ -11,7 +11,8 @@
     "lint": "eslint src",
     "icons": "node scripts/make-icons.mjs",
     "package": "npm run build && bash scripts/package.sh",
-    "store:assets": "node scripts/make-store-assets.mjs && node scripts/make-privacy-html.mjs"
+    "store:assets": "node scripts/make-store-assets.mjs && node scripts/make-privacy-html.mjs",
+    "harness": "vite --config harness/vite.config.ts"
   },
   "devDependencies": {
     "@crxjs/vite-plugin": "^3.0.0",

@@ -8,6 +8,7 @@ import { randomId } from '../../core/ports';
 import { FEATURE_DEFS, defaultFeatures, featuresOf, serviceKindFor } from '../../core/restrictions';
 import { ensureHostAccess, hostPattern } from '../../platform/chrome/permissions';
 import { featureHelp, featureLabel, kindLabel, modeHelp, modeLabel, validationMessage } from '../i18n/pt-BR';
+import { Candle } from '../candle/Candle';
 import { services } from './shared';
 
 const MODES: RuleMode[] = ['allowed', 'blocked', 'restricted'];
@@ -32,6 +33,7 @@ export function EnvironmentsTab({ active }: { active: boolean }) {
   const [missing, setMissing] = useState<string[]>([]);
   const [newDomain, setNewDomain] = useState('');
   const [newMode, setNewMode] = useState<RuleMode>('blocked');
+  const [skin, setSkin] = useState('classic');
 
   async function reload(selectId?: string) {
     const list = await services.environments.list();
@@ -46,6 +48,7 @@ export function EnvironmentsTab({ active }: { active: boolean }) {
   useEffect(() => {
     void reload();
     void services.sessions.get().then((s) => setSessionActive(s?.status === 'active'));
+    void services.settings.get().then((st) => setSkin(st.candleSkin));
   }, []);
 
   const domains = useMemo(() => new Set(draft?.rules.map((r) => r.domain)), [draft]);
@@ -157,9 +160,22 @@ export function EnvironmentsTab({ active }: { active: boolean }) {
     <main class="pane" hidden={!active}>
       {sessionActive && <p class="notice warn">Há uma sessão em andamento: o que você mudar vale a partir da próxima.</p>}
 
+      <section class="card timer-hero" aria-label="Como funciona o Timer">
+        <div class="hero-candle" aria-hidden="true"><Candle skin={skin} progress={0.8} /></div>
+        <div>
+          <h2 class="section-title">Timer: um foco a mais</h2>
+          <p class="section-sub">Quando precisar de um tempo protegido, acenda a vela. Enquanto ela queima, as regras do ambiente escolhido valem por cima da sua rotina.</p>
+          <ol class="steps-row">
+            <li>Monte aqui um <strong>ambiente</strong>: o que fica bloqueado, restrito ou liberado.</li>
+            <li>Clique no ícone do <strong>Pavio</strong> na barra do Chrome e escolha o ambiente e o tempo.</li>
+            <li>Acenda a <strong>vela</strong>. Parar antes da hora pede um pouco de calma.</li>
+          </ol>
+        </div>
+      </section>
+
       <section aria-label="Escolha o ambiente">
-        <h2 class="section-title">Ambientes do Timer</h2>
-        <p class="section-sub">Ao acender a vela no popup, você escolhe um ambiente: as regras dele valem por cima da sua rotina, pelo tempo do Timer, para um foco a mais. Escolha um para ver e editar.</p>
+        <h2 class="section-title">Seus ambientes</h2>
+        <p class="section-sub">Escolha um para ver e editar.</p>
         <ul class="env-grid">
           {envs.map((e) => {
             const c = ruleCounts(e);

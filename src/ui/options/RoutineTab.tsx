@@ -59,7 +59,10 @@ function slotLabel(slot: RoutineSlot): string {
   return labels.length <= 2 ? `Esconde: ${labels.join(', ')}` : `Esconde ${labels.length} partes`;
 }
 
-export function RoutineTab({ active }: { active: boolean }) {
+/** As três telas de bloqueio dividem o mesmo estado (e o mesmo `commit`): horários, bloqueio rápido e limite de tempo. */
+export type RoutineView = 'schedule' | 'quick' | 'limits';
+
+export function RoutineTab({ active, view }: { active: boolean; view: RoutineView }) {
   const [sites, setSites] = useState<RoutineSite[]>([]);
   const [enabled, setEnabled] = useState(true);
   const [day, setDay] = useState(new Date().getDay());
@@ -365,10 +368,11 @@ export function RoutineTab({ active }: { active: boolean }) {
 
   return (
     <main class="pane" hidden={!active}>
+      {view === 'schedule' && (
       <section class="card status">
         <div class="grow">
-          <h2 class="section-title">Sua rotina</h2>
-          <p class="section-sub">Bloqueie um app inteiro com um clique, ou escolha para cada site em quais dias e horas ele fica bloqueado ou com partes escondidas. Tudo trabalha sozinho, sem precisar acender a vela; o <strong>Timer</strong> do popup serve para um foco extra por cima.</p>
+          <h2 class="section-title">Horários</h2>
+          <p class="section-sub">Escolha, para cada site, em quais dias e horas ele fica bloqueado ou com partes escondidas. Funciona sozinho, sem acender a vela.</p>
           <p class={`status-line ${enabled && activeNow.length ? 'on' : ''}`} role="status">{status}</p>
         </div>
         <label class="master" title="Liga ou desliga as faixas de horário (o bloqueio rápido continua valendo)">
@@ -376,12 +380,14 @@ export function RoutineTab({ active }: { active: boolean }) {
           <strong>Horários {enabled ? 'ligados' : 'desligados'}</strong>
         </label>
       </section>
+      )}
 
+      {view === 'quick' && (
       <section class="card quick" aria-label="Bloqueio rápido">
         <div class="quick-head">
           <div class="grow">
-            <h3>Bloqueio rápido</h3>
-            <p class="hint">Bloqueia o app <strong>inteiro</strong>, o tempo todo, com um clique. Clique de novo para liberar.</p>
+            <h2 class="section-title">Bloqueio rápido</h2>
+            <p class="section-sub">Bloqueia o app <strong>inteiro</strong>, o tempo todo, com um clique. Clique de novo para liberar. Vale mesmo com os horários desligados.</p>
           </div>
           <div class="quick-actions">
             <button class="btn" onClick={() => setAllQuick(true)} disabled={quickBlocked.length === quickDomains.length}>Bloquear todos</button>
@@ -404,11 +410,13 @@ export function RoutineTab({ active }: { active: boolean }) {
           <button class="btn" type="submit">Bloquear</button>
         </form>
       </section>
+      )}
 
+      {view === 'limits' && (
       <section class="card limits" aria-label="Limite de tempo">
         <div class="grow">
-          <h3>Limite de tempo</h3>
-          <p class="hint">Quantos minutos por dia você aceita gastar em cada app. Conta só com a aba ativa e a janela em foco. Estourou, o app fica bloqueado até a meia-noite; dá para pedir <strong>mais 5 min</strong> na tela de bloqueio, com um pouco de calma.</p>
+          <h2 class="section-title">Limite de tempo</h2>
+          <p class="section-sub">Quantos minutos por dia você aceita gastar em cada app. Conta só com a aba ativa e a janela em foco. Estourou, o app fica bloqueado até a meia-noite; dá para pedir <strong>mais 5 min</strong> na tela de bloqueio, com um pouco de calma.</p>
         </div>
         <ul class="limit-list">
           {limitDomains.map((d) => {
@@ -439,14 +447,15 @@ export function RoutineTab({ active }: { active: boolean }) {
           <button class="btn" type="submit">Adicionar</button>
         </form>
       </section>
+      )}
 
-      {!enabled && (
+      {view === 'schedule' && !enabled && (
         <p class="notice warn onboarding">
           <span>Os <strong>horários estão desligados</strong>: as faixas abaixo não valem até você ligá-los. O bloqueio rápido continua funcionando.</span>
           <button class="btn btn-primary" onClick={() => commit(sites, true, 'Horários ligados.')}>Ligar os horários</button>
         </p>
       )}
-      {enabled && missing.length > 0 && (
+      {(enabled || view !== 'schedule') && missing.length > 0 && (
         <p class="notice warn onboarding">
           <span>O Chrome ainda não deu acesso a <strong>{missing.join(', ')}</strong>. Sem isso, o bloqueio desses sites não funciona.</span>
           <button class="btn btn-primary" onClick={grantAccess}>Conceder acesso</button>
@@ -454,6 +463,7 @@ export function RoutineTab({ active }: { active: boolean }) {
       )}
       {notice && !draft && <p class={`notice ${notice.kind}`} role="status">{notice.text}</p>}
 
+      {view === 'schedule' && (<>
       <section class="card">
         <div class="day-bar" role="tablist" aria-label="Dia da semana">
           {WEEK_ORDER.map((d) => (
@@ -475,7 +485,7 @@ export function RoutineTab({ active }: { active: boolean }) {
             <div>{[0, 3, 6, 9, 12, 15, 18, 21, 24].map((h) => <b key={h} style={{ left: `${(h / 24) * 100}%` }}>{h}</b>)}</div>
             <span />
           </div>
-          {sites.length === 0 && <p class="empty">A rotina está limpa. Use o bloqueio rápido acima, ou adicione um site abaixo e desenhe quando ele deve ficar bloqueado ou com partes escondidas.</p>}
+          {sites.length === 0 && <p class="empty">Nenhum horário ainda. Adicione um site abaixo e desenhe quando ele deve ficar bloqueado ou com partes escondidas.</p>}
           {sites.map((site) => {
             const service = serviceOf(site);
             const locked = !!site.blockAll && site.enabled;
@@ -584,6 +594,7 @@ export function RoutineTab({ active }: { active: boolean }) {
         O acesso aos sites serve só para bloquear ou limitar essas páginas; nada sai do seu computador.{' '}
         <button class="link" onClick={clearRoutine}>Limpar a rotina</button>
       </p>
+      </>)}
     </main>
   );
 }
