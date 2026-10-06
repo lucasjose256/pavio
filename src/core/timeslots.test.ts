@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatMinutes, occurrencesAround, parseTime, segmentsForDay, slotDurationMin, validateTimeSlot } from './timeslots';
+import { formatMinutes, moveSlot, occurrencesAround, parseTime, resizeSlot, segmentsForDay, slotDurationMin, snapMinute, validateTimeSlot } from './timeslots';
 import type { TimeSlot } from './timeslots';
 
 const t = (h: number, m = 0) => h * 60 + m;
@@ -53,9 +53,46 @@ describe('occurrencesAround', () => {
 describe('segmentsForDay (linha do tempo de 24 h)', () => {
   it('desenha o horário no dia e a continuação da noite no dia seguinte', () => {
     const night = slot({ id: 'n', days: [5], startMin: t(22), endMin: t(6) }); // sexta 22h → sábado 6h
-    expect(segmentsForDay([night], 5)).toEqual([{ slotId: 'n', startMin: t(22), endMin: 1440 }]);
-    expect(segmentsForDay([night], 6)).toEqual([{ slotId: 'n', startMin: 0, endMin: t(6) }]);
+    expect(segmentsForDay([night], 5)).toEqual([{ slotId: 'n', startMin: t(22), endMin: 1440, part: 'head' }]);
+    expect(segmentsForDay([night], 6)).toEqual([{ slotId: 'n', startMin: 0, endMin: t(6), part: 'tail' }]);
     expect(segmentsForDay([night], 1)).toEqual([]);
-    expect(segmentsForDay([slot({ id: 'd', days: [1], startMin: 0, endMin: 1440 })], 1)).toEqual([{ slotId: 'd', startMin: 0, endMin: 1440 }]);
+    expect(segmentsForDay([slot({ id: 'd', days: [1], startMin: 0, endMin: 1440 })], 1)).toEqual([{ slotId: 'd', startMin: 0, endMin: 1440, part: 'whole' }]);
+  });
+});
+
+describe('arrastar na linha do tempo', () => {
+  const work = { startMin: t(9), endMin: t(18) };
+  it('encaixa de 15 em 15 minutos', () => {
+    expect(snapMinute(t(9, 7))).toBe(t(9));
+    expect(snapMinute(t(9, 8))).toBe(t(9, 15));
+    expect(snapMinute(t(9, 53))).toBe(t(10));
+  });
+
+  it('arrastar a ponta de início/fim muda só aquela ponta', () => {
+    expect(resizeSlot(work, 'start', t(8, 40))).toEqual({ startMin: t(8, 45), endMin: t(18) });
+    expect(resizeSlot(work, 'end', t(19, 3))).toEqual({ startMin: t(9), endMin: t(19) });
+  });
+
+  it('não deixa as pontas se cruzarem (mínimo de 15 min) nem sair do dia', () => {
+    expect(resizeSlot(work, 'start', t(20))).toEqual({ startMin: t(17, 45), endMin: t(18) });
+    expect(resizeSlot(work, 'end', t(5))).toEqual({ startMin: t(9), endMin: t(9, 15) });
+    expect(resizeSlot(work, 'start', -300).startMin).toBe(0);
+    expect(resizeSlot(work, 'end', 5000).endMin).toBe(1440);
+  });
+
+  it('horário que vira a noite: início à noite e fim de manhã nunca se encontram', () => {
+    const night = { startMin: t(22), endMin: t(6) };
+    expect(resizeSlot(night, 'start', t(21))).toEqual({ startMin: t(21), endMin: t(6) });
+    expect(resizeSlot(night, 'start', t(3))).toEqual({ startMin: t(6, 15), endMin: t(6) }); // não passa do fim
+    expect(resizeSlot(night, 'end', t(8))).toEqual({ startMin: t(22), endMin: t(8) });
+    expect(resizeSlot(night, 'end', t(23))).toEqual({ startMin: t(22), endMin: t(21, 45) });
+  });
+
+  it('mover mantém a duração e fica dentro do dia', () => {
+    expect(moveSlot(work, 60)).toEqual({ startMin: t(10), endMin: t(19) });
+    expect(moveSlot(work, -9999)).toEqual({ startMin: 0, endMin: t(9) });
+    expect(moveSlot(work, 9999)).toEqual({ startMin: 1440 - t(9), endMin: 1440 });
+    expect(moveSlot({ startMin: 0, endMin: 1440 }, 120)).toEqual({ startMin: 0, endMin: 1440 }); // dia todo não anda
+    expect(moveSlot({ startMin: t(22), endMin: t(6) }, 60)).toBeNull(); // virar a noite: só pelas pontas
   });
 });

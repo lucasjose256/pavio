@@ -70,10 +70,48 @@ export function occurrencesAround<T extends TimeSlot>(slots: T[], now: number, b
   return out;
 }
 
+/** Passo do encaixe ao arrastar na linha do tempo (minutos). */
+export const SNAP_MIN = 15;
+
+export const snapMinute = (minute: number, step = SNAP_MIN): number => Math.round(minute / step) * step;
+
+const clamp = (n: number, min: number, max: number) => Math.min(Math.max(n, min), max);
+
+type Times = { startMin: number; endMin: number };
+
+/**
+ * Novo horário ao arrastar uma ponta até `minute` (com encaixe). Duração mínima = um passo.
+ * Horário que vira a noite (22:00 → 06:00): o início fica à noite e o fim de manhã, sem se cruzarem.
+ */
+export function resizeSlot(slot: Times, edge: 'start' | 'end', minute: number, step = SNAP_MIN): Times {
+  const m = snapMinute(minute, step);
+  if (!crossesMidnight(slot)) {
+    return edge === 'start'
+      ? { startMin: clamp(m, 0, slot.endMin - step), endMin: slot.endMin }
+      : { startMin: slot.startMin, endMin: clamp(m, slot.startMin + step, MINUTES_PER_DAY) };
+  }
+  return edge === 'start'
+    ? { startMin: clamp(m, slot.endMin + step, MINUTES_PER_DAY - step), endMin: slot.endMin }
+    : { startMin: slot.startMin, endMin: clamp(m, step, slot.startMin - step) };
+};
+
+/** Novo horário ao arrastar a faixa inteira `deltaMin` minutos (mantém a duração). Só para quem não vira a noite. */
+export function moveSlot(slot: Times, deltaMin: number, step = SNAP_MIN): Times | null {
+  if (crossesMidnight(slot)) return null;
+  const duration = slot.endMin - slot.startMin;
+  const start = clamp(snapMinute(slot.startMin + deltaMin, step), 0, MINUTES_PER_DAY - duration);
+  return { startMin: start, endMin: start + duration };
+}
+
 export interface DaySegment {
   slotId: string;
   startMin: number;
   endMin: number;
+  /**
+   * `whole`: o horário inteiro cabe no dia. `head`: começa neste dia e segue na madrugada seguinte.
+   * `tail`: continuação (depois da meia-noite) de um horário que começou na véspera.
+   */
+  part: 'whole' | 'head' | 'tail';
 }
 
 /**
@@ -85,8 +123,12 @@ export function segmentsForDay<T extends TimeSlot>(slots: T[], day: number): Day
   const prev = (day + 6) % 7;
   for (const s of slots) {
     if (slotDurationMin(s) === 0) continue;
-    if (s.days.includes(day)) out.push({ slotId: s.id, startMin: s.startMin, endMin: crossesMidnight(s) ? MINUTES_PER_DAY : s.endMin });
-    if (crossesMidnight(s) && s.days.includes(prev) && s.endMin > 0) out.push({ slotId: s.id, startMin: 0, endMin: s.endMin });
+    if (s.days.includes(day)) {
+      out.push(crossesMidnight(s)
+        ? { slotId: s.id, startMin: s.startMin, endMin: MINUTES_PER_DAY, part: 'head' }
+        : { slotId: s.id, startMin: s.startMin, endMin: s.endMin, part: 'whole' });
+    }
+    if (crossesMidnight(s) && s.days.includes(prev) && s.endMin > 0) out.push({ slotId: s.id, startMin: 0, endMin: s.endMin, part: 'tail' });
   }
   return out;
 }

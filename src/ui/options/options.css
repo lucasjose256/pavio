@@ -202,3 +202,17 @@ input[type="range"] { accent-color: var(--accent); }
 .footnote { margin-top: 4px; }
 @media (max-width: 780px) { .rt-axis, .rt-row { grid-template-columns: 96px minmax(0, 1fr) 76px; gap: 8px; } .rt-seg span { display: none; } }
 .rt + .add { margin-top: 20px; }
+
+/* ---- arrastar na linha do tempo ---- */
+.rt-track { touch-action: none; user-select: none; }
+.rt-seg { cursor: pointer; }
+.rt-seg.movable { cursor: grab; }
+.rt-seg.dragging { cursor: grabbing; z-index: 2; box-shadow: 0 8px 18px -6px rgba(80, 50, 20, .6); filter: brightness(1.05); }
+.rt-seg.ghost { background: color-mix(in srgb, var(--accent) 35%, transparent); border: 2px dashed var(--accent); color: var(--accent-text); box-shadow: none; pointer-events: none; display: flex; align-items: center; }
+.rt-handle { position: absolute; top: 0; bottom: 0; width: 12px; cursor: ew-resize; touch-action: none; }
+.rt-handle.start { left: 0; }
+.rt-handle.end { right: 0; }
+.rt-handle::after { content: ''; position: absolute; top: 25%; bottom: 25%; left: 4px; width: 3px; border-radius: 2px; background: currentColor; opacity: .55; }
+.rt-handle:hover::after { opacity: 1; }
+.rt-seg > span { padding: 0 6px; line-height: 32px; pointer-events: none; }
+.rt-hint { margin: 0 0 12px; }

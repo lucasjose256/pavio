@@ -6,7 +6,7 @@ import { randomId } from '../../core/ports';
 import { activeRules, loosensNow, nextBoundary, rulesAnyTime, validateSlot } from '../../core/routine';
 import { ROUTINE_SUGGESTIONS, SLOT_PRESETS, defaultRoutine } from '../../core/routine-defaults';
 import { defaultSpec, featuresOf } from '../../core/restrictions';
-import { MINUTES_PER_DAY, formatMinutes, parseTime, segmentsForDay, slotDurationMin } from '../../core/timeslots';
+import { MINUTES_PER_DAY, SNAP_MIN, formatMinutes, moveSlot, parseTime, resizeSlot, segmentsForDay, slotDurationMin, snapMinute } from '../../core/timeslots';
 import { ensureHostAccess } from '../../platform/chrome/permissions';
 import { featureLabel } from '../i18n/pt-BR';
 import { DAY_SHORT, WEEK_ORDER, formatRange, formatWhen } from '../shared/format';
@@ -25,6 +25,16 @@ interface Draft {
 }
 
 const WEEKDAYS = [1, 2, 3, 4, 5];
+const DRAG_THRESHOLD_PX = 4;
+
+/** Gesto em andamento na linha do tempo de um site. */
+type Drag =
+  | { kind: 'resize'; siteId: string; slotId: string; edge: 'start' | 'end'; startX: number; moved: boolean }
+  | { kind: 'move'; siteId: string; slotId: string; grabMin: number; startX: number; moved: boolean }
+  | { kind: 'create'; siteId: string; fromMin: number; startX: number; moved: boolean };
+
+/** Horário provisório mostrado enquanto se arrasta (`slotId` ausente = faixa nova sendo desenhada). */
+interface Ghost { siteId: string; slotId?: string; startMin: number; endMin: number }
 const slotErrorText = (code: string): string =>
   ({
     'days:empty': 'Escolha ao menos um dia.',
@@ -52,6 +62,13 @@ export function RoutineTab({ active }: { active: boolean }) {
   const [missing, setMissing] = useState<string[]>([]);
   const [newDomain, setNewDomain] = useState('');
   const [now, setNow] = useState(Date.now());
+  const [drag, setDrag] = useState<Drag>();
+  const [ghost, setGhost] = useState<Ghost>();
+  // O gesto também vive em referências: pointermove/up podem chegar antes de uma nova renderização.
+  const dragRef = useRef<Drag | undefined>(undefined);
+  const ghostRef = useRef<Ghost | undefined>(undefined);
+  const setGesture = (d: Drag | undefined) => { dragRef.current = d; setDrag(d); };
+  const setPreview = (g: Ghost | undefined) => { ghostRef.current = g; setGhost(g); };
   const editorRef = useRef<HTMLElement>(null);
 
   async function reload() {
@@ -94,14 +111,14 @@ export function RoutineTab({ active }: { active: boolean }) {
     return true;
   }
 
-  function openNew(site: RoutineSite, atMin?: number) {
+  function openNew(site: RoutineSite, atMin?: number, endAt?: number) {
     const last = site.slots[site.slots.length - 1];
     const start = atMin === undefined ? 9 * 60 : Math.min(atMin, MINUTES_PER_DAY - 30);
     const slot: RoutineSlot = {
       id: randomId(),
       days: atMin === undefined ? WEEKDAYS : [day],
       startMin: start,
-      endMin: Math.min(start + 120, MINUTES_PER_DAY),
+      endMin: endAt ?? Math.min(start + 120, MINUTES_PER_DAY),
       ...(last ? { mode: last.mode, restrictedKind: last.restrictedKind, features: last.features } : defaultSpec(site.domain, 'blocked')),
     };
     setDraft({ domain: site.domain, siteId: site.id, isNewSlot: true, slot });
@@ -113,11 +130,63 @@ export function RoutineTab({ active }: { active: boolean }) {
     setNotice(undefined);
   }
 
-  function onTrackClick(site: RoutineSite, e: MouseEvent) {
-    if (e.target !== e.currentTarget) return; // clique numa faixa abre a edição, não cria
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    const minute = Math.round(((e.clientX - rect.left) / rect.width) * MINUTES_PER_DAY / 30) * 30;
-    openNew(site, minute);
+  // ---- gestos na barra: arrastar pontas (início/fim), arrastar a faixa (mover), arrastar no vazio (criar) ----
+  const minuteAt = (e: PointerEvent, track: HTMLElement) => {
+    const rect = track.getBoundingClientRect();
+    return Math.min(Math.max(((e.clientX - rect.left) / rect.width) * MINUTES_PER_DAY, 0), MINUTES_PER_DAY);
+  };
+
+  /** Começa um gesto; a barra captura o ponteiro para acompanhar o arraste mesmo fora dela. */
+  function beginDrag(e: PointerEvent, next: Drag) {
+    e.stopPropagation();
+    e.preventDefault();
+    const track = (e.currentTarget as HTMLElement).closest('.rt-track') as HTMLElement;
+    track.setPointerCapture(e.pointerId);
+    setGesture(next);
+  }
+
+  function onTrackDown(site: RoutineSite, e: PointerEvent) {
+    if (e.target !== e.currentTarget || e.button !== 0) return;
+    beginDrag(e, { kind: 'create', siteId: site.id, fromMin: minuteAt(e, e.currentTarget as HTMLElement), startX: e.clientX, moved: false });
+  }
+
+  function onTrackMove(site: RoutineSite, e: PointerEvent) {
+    const current = dragRef.current;
+    if (!current || current.siteId !== site.id) return;
+    const m = minuteAt(e, e.currentTarget as HTMLElement);
+    if (!current.moved && Math.abs(e.clientX - current.startX) > DRAG_THRESHOLD_PX) setGesture({ ...current, moved: true });
+    if (!dragRef.current?.moved) return;
+    if (current.kind === 'create') {
+      const [a, b] = [snapMinute(Math.min(current.fromMin, m)), snapMinute(Math.max(current.fromMin, m))];
+      return setPreview({ siteId: site.id, startMin: a, endMin: Math.max(b, a + SNAP_MIN) });
+    }
+    const slot = site.slots.find((s) => s.id === current.slotId);
+    if (!slot) return;
+    const times = current.kind === 'resize' ? resizeSlot(slot, current.edge, m) : moveSlot(slot, m - current.grabMin);
+    if (times) setPreview({ siteId: site.id, slotId: slot.id, ...times });
+  }
+
+  async function onTrackUp(site: RoutineSite) {
+    const current = dragRef.current;
+    const preview = ghostRef.current;
+    setGesture(undefined);
+    setPreview(undefined);
+    if (!current || current.siteId !== site.id) return;
+    const slot = 'slotId' in current ? site.slots.find((s) => s.id === current.slotId) : undefined;
+
+    if (!current.moved) {
+      if (current.kind === 'move' && slot) edit(site, slot); // clique simples na faixa: abre o editor
+      if (current.kind === 'create') openNew(site, Math.round(current.fromMin / 30) * 30); // clique no vazio: faixa de 2 h
+      return;
+    }
+    if (!preview) return;
+    if (current.kind === 'create') return openNew(site, preview.startMin, preview.endMin);
+    if (!slot || (preview.startMin === slot.startMin && preview.endMin === slot.endMin)) return;
+    await commit(
+      sites.map((s) => s.id !== site.id ? s : { ...s, slots: s.slots.map((x) => x.id === slot.id ? { ...x, startMin: preview.startMin, endMin: preview.endMin } : x) }),
+      enabled,
+      `Horário ajustado: ${formatRange(preview)}.`,
+    );
   }
 
   function addSite(input: string) {
@@ -203,6 +272,7 @@ export function RoutineTab({ active }: { active: boolean }) {
           ))}
         </div>
 
+        <p class="hint rt-hint">Arraste as <strong>pontas</strong> de uma faixa para ajustar início e fim, arraste a <strong>faixa</strong> para movê-la, ou arraste num <strong>espaço vazio</strong> para criar uma. Clique numa faixa para ver todas as opções. (Encaixa de 15 em 15 min; vale para todos os dias da faixa.)</p>
         <div class="rt" aria-label={`Rotina de ${DAY_SHORT[day]}`}>
           <div class="rt-axis" aria-hidden="true">
             <span />
@@ -216,16 +286,40 @@ export function RoutineTab({ active }: { active: boolean }) {
                 <button class="rt-site" onClick={() => openNew(site)} title="Adicionar uma faixa neste site">{site.domain}</button>
                 {site.slots.length === 0 && <small>sem faixas</small>}
               </div>
-              <div class="rt-track" onClick={(e) => onTrackClick(site, e as unknown as MouseEvent)} title="Clique num espaço vazio para criar uma faixa">
-                {segmentsForDay(site.slots, day).map((seg) => {
+              <div class="rt-track" title="Arraste num espaço vazio para criar uma faixa; clique para uma de 2 h"
+                onPointerDown={(e) => onTrackDown(site, e)} onPointerMove={(e) => onTrackMove(site, e)}
+                onPointerUp={() => void onTrackUp(site)} onPointerCancel={() => { setGesture(undefined); setPreview(undefined); }}>
+                {segmentsForDay(site.slots.map((s) => ghost?.siteId === site.id && ghost.slotId === s.id ? { ...s, startMin: ghost.startMin, endMin: ghost.endMin } : s), day).map((seg) => {
                   const slot = site.slots.find((s) => s.id === seg.slotId)!;
+                  const dragging = drag?.siteId === site.id && 'slotId' in drag && drag.slotId === slot.id && drag.moved;
+                  const shown = ghost?.siteId === site.id && ghost.slotId === slot.id ? { ...slot, startMin: ghost.startMin, endMin: ghost.endMin } : slot;
+                  const canStart = seg.part !== 'tail';
+                  const canEnd = seg.part !== 'head';
+                  const canMove = seg.part === 'whole' && !(slot.startMin === 0 && slot.endMin === MINUTES_PER_DAY);
                   return (
-                    <button key={`${seg.slotId}-${seg.startMin}`} class={`rt-seg m-${slot.mode}`} style={{ left: `${(seg.startMin / MINUTES_PER_DAY) * 100}%`, width: `${((seg.endMin - seg.startMin) / MINUTES_PER_DAY) * 100}%` }}
-                      title={`${site.domain} · ${slotLabel(slot)} · ${formatRange(slot)}`} onClick={() => edit(site, slot)}>
-                      <span>{slotLabel(slot)}</span>
-                    </button>
+                    <div key={`${seg.slotId}-${seg.part}`} class={`rt-seg m-${slot.mode} ${canMove ? 'movable' : ''} ${dragging ? 'dragging' : ''}`}
+                      style={{ left: `${(seg.startMin / MINUTES_PER_DAY) * 100}%`, width: `${((seg.endMin - seg.startMin) / MINUTES_PER_DAY) * 100}%` }}
+                      title={`${site.domain} · ${slotLabel(slot)} · ${formatRange(shown)} (clique para editar; arraste para mover; arraste as pontas para ajustar)`}
+                      role="button" tabIndex={0} onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && edit(site, slot)}
+                      onPointerDown={(e) => canMove
+                        ? beginDrag(e, { kind: 'move', siteId: site.id, slotId: slot.id, grabMin: minuteAt(e, (e.currentTarget as HTMLElement).closest('.rt-track') as HTMLElement), startX: e.clientX, moved: false })
+                        : (e.stopPropagation(), edit(site, slot))}>
+                      {canStart && <i class="rt-handle start" aria-hidden="true" onPointerDown={(e) => beginDrag(e, { kind: 'resize', siteId: site.id, slotId: slot.id, edge: 'start', startX: e.clientX, moved: false })} />}
+                      <span>{dragging ? formatRange(shown) : slotLabel(slot)}</span>
+                      {canEnd && <i class="rt-handle end" aria-hidden="true" onPointerDown={(e) => beginDrag(e, { kind: 'resize', siteId: site.id, slotId: slot.id, edge: 'end', startX: e.clientX, moved: false })} />}
+                    </div>
                   );
                 })}
+                {ghost?.siteId === site.id && !ghost.slotId && (
+                  <div class="rt-seg ghost" style={{ left: `${(ghost.startMin / MINUTES_PER_DAY) * 100}%`, width: `${((ghost.endMin - ghost.startMin) / MINUTES_PER_DAY) * 100}%` }}>
+                    <span>{formatRange(ghost)}</span>
+                  </div>
+                )}
+                {draft?.isNewSlot && draft.siteId === site.id && segmentsForDay([draft.slot], day).map((seg) => (
+                  <div key={`draft-${seg.part}`} class="rt-seg ghost" style={{ left: `${(seg.startMin / MINUTES_PER_DAY) * 100}%`, width: `${((seg.endMin - seg.startMin) / MINUTES_PER_DAY) * 100}%` }}>
+                    <span>Nova faixa</span>
+                  </div>
+                ))}
                 {day === today && <i class="rt-now" style={{ left: `${(nowMin / MINUTES_PER_DAY) * 100}%` }} />}
               </div>
               <div class="rt-actions">
