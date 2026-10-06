@@ -216,3 +216,15 @@ input[type="range"] { accent-color: var(--accent); }
 .rt-handle:hover::after { opacity: 1; }
 .rt-seg > span { padding: 0 6px; line-height: 32px; pointer-events: none; }
 .rt-hint { margin: 0 0 12px; }
+
+/* ---- uma barra por recurso ---- */
+.rt-group { display: flex; flex-direction: column; gap: 6px; }
+.rt-name { display: flex; align-items: center; gap: 4px; min-width: 0; }
+.rt-expander { background: transparent; border: 0; padding: 0 4px; font-size: 13px; color: var(--muted); border-radius: 6px; line-height: 1; }
+.rt-expander:hover { color: var(--text); background: var(--surface-2); }
+.rt-row.lane .rt-label { padding-left: 22px; }
+.rt-feature { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rt-row.lane .rt-track { height: 30px; border-radius: 10px; }
+.rt-row.lane .rt-seg { top: 3px; bottom: 3px; border-radius: 7px; font-size: 11px; }
+.rt-row.lane .rt-seg > span { line-height: 24px; }
+.rt-expander-spacer { display: inline-block; width: 22px; flex: none; }

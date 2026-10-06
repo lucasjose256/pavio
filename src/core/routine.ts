@@ -1,5 +1,6 @@
 import type { Rule, RoutineSite, RoutineSlot, RestrictionSpec } from './models';
-import { combineSpecs, strictness, featuresOf } from './restrictions';
+import { FEATURE_DEFS, combineSpecs, featuresOf, serviceKindFor, strictness } from './restrictions';
+import type { ServiceKind } from './restrictions';
 import { normalizeDomain } from './matching';
 import { occurrencesAround, validateTimeSlot } from './timeslots';
 import type { Occurrence, TimeSlot } from './timeslots';
@@ -95,4 +96,50 @@ export function validateSite(site: RoutineSite): string[] {
 export function activeOccurrences(routine: RoutineSite[], enabled: boolean, now: number): Occurrence<FlatSlot & TimeSlot>[] {
   if (!enabled) return [];
   return occurrencesAround(flatten(routine), now, 1, 1).filter((o) => o.start <= now && now < o.end);
+}
+
+// ---------- horário por recurso (uma barra por recurso do serviço) ----------
+
+type Times = { startMin: number; endMin: number };
+
+/** Serviço com recursos para este site (youtube, instagram, x, linkedin) ou null. */
+export const serviceOf = (site: Pick<RoutineSite, 'domain'>): ServiceKind | null => serviceKindFor(site.domain);
+
+/** Faixas que escondem `feature` neste site (as "restritas" do serviço que incluem o recurso). */
+export function featureSlotsOf(site: RoutineSite, feature: string): RoutineSlot[] {
+  const service = serviceOf(site);
+  return site.slots.filter((s) => s.mode === 'restricted' && !!service && s.restrictedKind === service && featuresOf(s).has(feature));
+}
+
+/** Faixa nova que esconde só `feature`. */
+export function newFeatureSlot(site: Pick<RoutineSite, 'domain'>, feature: string, days: number[], times: Times, newId: () => string): RoutineSlot {
+  const service = serviceOf(site);
+  if (!service || !FEATURE_DEFS[service].some((f) => f.id === feature)) throw new Error(`Unknown feature ${feature} for ${site.domain}`);
+  return { id: newId(), days: [...days], ...times, mode: 'restricted', restrictedKind: service, features: [feature] };
+}
+
+/**
+ * Muda o horário SÓ do recurso `feature` na faixa `slotId`. Se a faixa escondia outros recursos também, o recurso
+ * é separado numa faixa própria (com os mesmos dias), e a original continua igual para os demais.
+ */
+export function retimeFeature(site: RoutineSite, slotId: string, feature: string, times: Times, newId: () => string): RoutineSite {
+  const slot = site.slots.find((s) => s.id === slotId);
+  if (!slot) return site;
+  const features = [...featuresOf(slot)];
+  if (features.length <= 1) return { ...site, slots: site.slots.map((s) => (s.id === slotId ? { ...s, ...times } : s)) };
+  const rest = features.filter((f) => f !== feature);
+  const detached = newFeatureSlot(site, feature, slot.days, times, newId);
+  return { ...site, slots: [...site.slots.map((s) => (s.id === slotId ? { ...s, features: rest } : s)), detached] };
+}
+
+/** Tira `feature` da faixa (apaga a faixa se não sobrar nenhum recurso). */
+export function dropFeature(site: RoutineSite, slotId: string, feature: string): RoutineSite {
+  return {
+    ...site,
+    slots: site.slots.flatMap((s) => {
+      if (s.id !== slotId) return [s];
+      const rest = [...featuresOf(s)].filter((f) => f !== feature);
+      return rest.length ? [{ ...s, features: rest }] : [];
+    }),
+  };
 }

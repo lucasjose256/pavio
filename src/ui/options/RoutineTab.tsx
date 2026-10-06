@@ -3,9 +3,9 @@ import { accessDomains } from '../../core/blocking';
 import { normalizeDomain } from '../../core/matching';
 import type { RoutineSite, RoutineSlot } from '../../core/models';
 import { randomId } from '../../core/ports';
-import { activeRules, loosensNow, nextBoundary, rulesAnyTime, validateSlot } from '../../core/routine';
+import { activeRules, featureSlotsOf, loosensNow, newFeatureSlot, nextBoundary, retimeFeature, rulesAnyTime, serviceOf, validateSlot } from '../../core/routine';
 import { ROUTINE_SUGGESTIONS, SLOT_PRESETS, defaultRoutine } from '../../core/routine-defaults';
-import { defaultSpec, featuresOf } from '../../core/restrictions';
+import { FEATURE_DEFS, defaultSpec, featuresOf } from '../../core/restrictions';
 import { MINUTES_PER_DAY, SNAP_MIN, formatMinutes, moveSlot, parseTime, resizeSlot, segmentsForDay, slotDurationMin, snapMinute } from '../../core/timeslots';
 import { ensureHostAccess } from '../../platform/chrome/permissions';
 import { featureLabel } from '../i18n/pt-BR';
@@ -29,12 +29,12 @@ const DRAG_THRESHOLD_PX = 4;
 
 /** Gesto em andamento na linha do tempo de um site. */
 type Drag =
-  | { kind: 'resize'; siteId: string; slotId: string; edge: 'start' | 'end'; startX: number; moved: boolean }
-  | { kind: 'move'; siteId: string; slotId: string; grabMin: number; startX: number; moved: boolean }
-  | { kind: 'create'; siteId: string; fromMin: number; startX: number; moved: boolean };
+  | { kind: 'resize'; siteId: string; feature?: string; slotId: string; edge: 'start' | 'end'; startX: number; moved: boolean }
+  | { kind: 'move'; siteId: string; feature?: string; slotId: string; grabMin: number; startX: number; moved: boolean }
+  | { kind: 'create'; siteId: string; feature?: string; fromMin: number; startX: number; moved: boolean };
 
 /** Horário provisório mostrado enquanto se arrasta (`slotId` ausente = faixa nova sendo desenhada). */
-interface Ghost { siteId: string; slotId?: string; startMin: number; endMin: number }
+interface Ghost { siteId: string; feature?: string; slotId?: string; startMin: number; endMin: number }
 const slotErrorText = (code: string): string =>
   ({
     'days:empty': 'Escolha ao menos um dia.',
@@ -62,6 +62,7 @@ export function RoutineTab({ active }: { active: boolean }) {
   const [missing, setMissing] = useState<string[]>([]);
   const [newDomain, setNewDomain] = useState('');
   const [now, setNow] = useState(Date.now());
+  const [expanded, setExpanded] = useState<Set<string>>(new Set()); // sites com uma barra por recurso
   const [drag, setDrag] = useState<Drag>();
   const [ghost, setGhost] = useState<Ghost>();
   // O gesto também vive em referências: pointermove/up podem chegar antes de uma nova renderização.
@@ -111,7 +112,7 @@ export function RoutineTab({ active }: { active: boolean }) {
     return true;
   }
 
-  function openNew(site: RoutineSite, atMin?: number, endAt?: number) {
+  function openNew(site: RoutineSite, atMin?: number, endAt?: number, feature?: string) {
     const last = site.slots[site.slots.length - 1];
     const start = atMin === undefined ? 9 * 60 : Math.min(atMin, MINUTES_PER_DAY - 30);
     const slot: RoutineSlot = {
@@ -121,7 +122,9 @@ export function RoutineTab({ active }: { active: boolean }) {
       endMin: endAt ?? Math.min(start + 120, MINUTES_PER_DAY),
       ...(last ? { mode: last.mode, restrictedKind: last.restrictedKind, features: last.features } : defaultSpec(site.domain, 'blocked')),
     };
-    setDraft({ domain: site.domain, siteId: site.id, isNewSlot: true, slot });
+    // Numa barra de recurso, a faixa nasce escondendo só aquele recurso.
+    const featureSlot = feature ? newFeatureSlot(site, feature, slot.days, { startMin: slot.startMin, endMin: slot.endMin }, randomId) : undefined;
+    setDraft({ domain: site.domain, siteId: site.id, isNewSlot: true, slot: featureSlot ?? slot });
     setNotice(undefined);
   }
 
@@ -145,48 +148,49 @@ export function RoutineTab({ active }: { active: boolean }) {
     setGesture(next);
   }
 
-  function onTrackDown(site: RoutineSite, e: PointerEvent) {
+  function onTrackDown(site: RoutineSite, e: PointerEvent, feature?: string) {
     if (e.target !== e.currentTarget || e.button !== 0) return;
-    beginDrag(e, { kind: 'create', siteId: site.id, fromMin: minuteAt(e, e.currentTarget as HTMLElement), startX: e.clientX, moved: false });
+    beginDrag(e, { kind: 'create', siteId: site.id, feature, fromMin: minuteAt(e, e.currentTarget as HTMLElement), startX: e.clientX, moved: false });
   }
 
-  function onTrackMove(site: RoutineSite, e: PointerEvent) {
+  function onTrackMove(site: RoutineSite, e: PointerEvent, feature?: string) {
     const current = dragRef.current;
-    if (!current || current.siteId !== site.id) return;
+    if (!current || current.siteId !== site.id || (current.feature ?? '') !== (feature ?? '')) return;
     const m = minuteAt(e, e.currentTarget as HTMLElement);
     if (!current.moved && Math.abs(e.clientX - current.startX) > DRAG_THRESHOLD_PX) setGesture({ ...current, moved: true });
     if (!dragRef.current?.moved) return;
     if (current.kind === 'create') {
       const [a, b] = [snapMinute(Math.min(current.fromMin, m)), snapMinute(Math.max(current.fromMin, m))];
-      return setPreview({ siteId: site.id, startMin: a, endMin: Math.max(b, a + SNAP_MIN) });
+      return setPreview({ siteId: site.id, feature, startMin: a, endMin: Math.max(b, a + SNAP_MIN) });
     }
     const slot = site.slots.find((s) => s.id === current.slotId);
     if (!slot) return;
     const times = current.kind === 'resize' ? resizeSlot(slot, current.edge, m) : moveSlot(slot, m - current.grabMin);
-    if (times) setPreview({ siteId: site.id, slotId: slot.id, ...times });
+    if (times) setPreview({ siteId: site.id, feature, slotId: slot.id, ...times });
   }
 
-  async function onTrackUp(site: RoutineSite) {
+  async function onTrackUp(site: RoutineSite, feature?: string) {
     const current = dragRef.current;
     const preview = ghostRef.current;
     setGesture(undefined);
     setPreview(undefined);
-    if (!current || current.siteId !== site.id) return;
+    if (!current || current.siteId !== site.id || (current.feature ?? '') !== (feature ?? '')) return;
     const slot = 'slotId' in current ? site.slots.find((s) => s.id === current.slotId) : undefined;
 
     if (!current.moved) {
       if (current.kind === 'move' && slot) edit(site, slot); // clique simples na faixa: abre o editor
-      if (current.kind === 'create') openNew(site, Math.round(current.fromMin / 30) * 30); // clique no vazio: faixa de 2 h
+      if (current.kind === 'create') openNew(site, Math.round(current.fromMin / 30) * 30, undefined, feature); // clique no vazio: faixa de 2 h
       return;
     }
     if (!preview) return;
-    if (current.kind === 'create') return openNew(site, preview.startMin, preview.endMin);
+    if (current.kind === 'create') return openNew(site, preview.startMin, preview.endMin, feature);
     if (!slot || (preview.startMin === slot.startMin && preview.endMin === slot.endMin)) return;
-    await commit(
-      sites.map((s) => s.id !== site.id ? s : { ...s, slots: s.slots.map((x) => x.id === slot.id ? { ...x, startMin: preview.startMin, endMin: preview.endMin } : x) }),
-      enabled,
-      `Horário ajustado: ${formatRange(preview)}.`,
-    );
+    const times = { startMin: preview.startMin, endMin: preview.endMin };
+    // Numa barra de recurso, só aquele recurso muda (se a faixa tinha outros, ele é separado numa faixa própria).
+    const nextSite: RoutineSite = current.feature
+      ? retimeFeature(site, slot.id, current.feature, times, randomId)
+      : { ...site, slots: site.slots.map((x) => x.id === slot.id ? { ...x, ...times } : x) };
+    await commit(sites.map((s) => s.id === site.id ? nextSite : s), enabled, `Horário ajustado: ${formatRange(preview)}.`);
   }
 
   function addSite(input: string) {
@@ -235,6 +239,54 @@ export function RoutineTab({ active }: { active: boolean }) {
         ? `Livre agora. Próxima proteção: ${formatWhen(boundary, now)}.`
         : 'Nenhuma faixa ativa. Crie uma abaixo.';
 
+  /**
+   * Barra de 24 h de um site (ou, com `feature`, de um recurso dele): faixas com alças, rascunho e linha do "agora".
+   * `slots` são as faixas desenhadas nesta barra.
+   */
+  function renderTrack(site: RoutineSite, slots: RoutineSlot[], feature?: string) {
+    const lane = feature ?? '';
+    const here = (g?: { siteId: string; feature?: string }) => !!g && g.siteId === site.id && (g.feature ?? '') === lane;
+    const ghostHere = here(ghost) ? ghost : undefined;
+    const draftHere = draft?.isNewSlot && draft.siteId === site.id && (!feature || featuresOf(draft.slot).has(feature)) ? draft : undefined;
+    const pct = (a: number, b: number) => ({ left: `${(a / MINUTES_PER_DAY) * 100}%`, width: `${((b - a) / MINUTES_PER_DAY) * 100}%` });
+
+    return (
+      <div class="rt-track" title="Arraste num espaço vazio para criar uma faixa; clique para uma de 2 h"
+        onPointerDown={(e) => onTrackDown(site, e, feature)} onPointerMove={(e) => onTrackMove(site, e, feature)}
+        onPointerUp={() => void onTrackUp(site, feature)} onPointerCancel={() => { setGesture(undefined); setPreview(undefined); }}>
+        {segmentsForDay(slots.map((sl) => ghostHere?.slotId === sl.id ? { ...sl, startMin: ghostHere.startMin, endMin: ghostHere.endMin } : sl), day).map((seg) => {
+          const slot = slots.find((sl) => sl.id === seg.slotId)!;
+          const dragging = here(drag) && !!drag && 'slotId' in drag && drag.slotId === slot.id && drag.moved;
+          const shown = ghostHere?.slotId === slot.id ? { ...slot, startMin: ghostHere.startMin, endMin: ghostHere.endMin } : slot;
+          const canStart = seg.part !== 'tail';
+          const canEnd = seg.part !== 'head';
+          const canMove = seg.part === 'whole' && !(slot.startMin === 0 && slot.endMin === MINUTES_PER_DAY);
+          const handle = (edge: 'start' | 'end') => (e: PointerEvent) =>
+            beginDrag(e, { kind: 'resize', siteId: site.id, feature, slotId: slot.id, edge, startX: e.clientX, moved: false });
+          return (
+            <div key={`${seg.slotId}-${seg.part}`} class={`rt-seg m-${slot.mode} ${canMove ? 'movable' : ''} ${dragging ? 'dragging' : ''}`} style={pct(seg.startMin, seg.endMin)}
+              title={`${site.domain} · ${slotLabel(slot)} · ${formatRange(shown)} (clique para editar; arraste para mover; arraste as pontas para ajustar)`}
+              role="button" tabIndex={0} onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && edit(site, slot)}
+              onPointerDown={(e) => canMove
+                ? beginDrag(e, { kind: 'move', siteId: site.id, feature, slotId: slot.id, grabMin: minuteAt(e, (e.currentTarget as HTMLElement).closest('.rt-track') as HTMLElement), startX: e.clientX, moved: false })
+                : (e.stopPropagation(), edit(site, slot))}>
+              {canStart && <i class="rt-handle start" aria-hidden="true" onPointerDown={handle('start')} />}
+              <span>{dragging ? formatRange(shown) : feature ? 'Escondido' : slotLabel(slot)}</span>
+              {canEnd && <i class="rt-handle end" aria-hidden="true" onPointerDown={handle('end')} />}
+            </div>
+          );
+        })}
+        {ghostHere && !ghostHere.slotId && (
+          <div class="rt-seg ghost" style={pct(ghostHere.startMin, ghostHere.endMin)}><span>{formatRange(ghostHere)}</span></div>
+        )}
+        {draftHere && segmentsForDay([draftHere.slot], day).map((seg) => (
+          <div key={`draft-${seg.part}`} class="rt-seg ghost" style={pct(seg.startMin, seg.endMin)}><span>Nova faixa</span></div>
+        ))}
+        {day === today && <i class="rt-now" style={{ left: `${(nowMin / MINUTES_PER_DAY) * 100}%` }} />}
+      </div>
+    );
+  }
+
   return (
     <main class="pane" hidden={!active}>
       <section class="card status">
@@ -272,7 +324,7 @@ export function RoutineTab({ active }: { active: boolean }) {
           ))}
         </div>
 
-        <p class="hint rt-hint">Arraste as <strong>pontas</strong> de uma faixa para ajustar início e fim, arraste a <strong>faixa</strong> para movê-la, ou arraste num <strong>espaço vazio</strong> para criar uma. Clique numa faixa para ver todas as opções. (Encaixa de 15 em 15 min; vale para todos os dias da faixa.)</p>
+        <p class="hint rt-hint">Arraste as <strong>pontas</strong> de uma faixa para ajustar início e fim, arraste a <strong>faixa</strong> para movê-la, ou arraste num <strong>espaço vazio</strong> para criar uma. Clique numa faixa para ver todas as opções. Use a seta <strong>▸</strong> ao lado de YouTube, Instagram, X ou LinkedIn para dar <strong>horários diferentes a cada recurso</strong> (por exemplo, recomendados o dia todo e o feed só em certas horas). Encaixa de 15 em 15 min.</p>
         <div class="rt" aria-label={`Rotina de ${DAY_SHORT[day]}`}>
           <div class="rt-axis" aria-hidden="true">
             <span />
@@ -280,57 +332,43 @@ export function RoutineTab({ active }: { active: boolean }) {
             <span />
           </div>
           {sites.length === 0 && <p class="empty">Nenhum site ainda. Adicione o primeiro abaixo.</p>}
-          {sites.map((site) => (
-            <div key={site.id} class={`rt-row ${site.enabled ? '' : 'off'}`}>
-              <div class="rt-label">
-                <button class="rt-site" onClick={() => openNew(site)} title="Adicionar uma faixa neste site">{site.domain}</button>
-                {site.slots.length === 0 && <small>sem faixas</small>}
-              </div>
-              <div class="rt-track" title="Arraste num espaço vazio para criar uma faixa; clique para uma de 2 h"
-                onPointerDown={(e) => onTrackDown(site, e)} onPointerMove={(e) => onTrackMove(site, e)}
-                onPointerUp={() => void onTrackUp(site)} onPointerCancel={() => { setGesture(undefined); setPreview(undefined); }}>
-                {segmentsForDay(site.slots.map((s) => ghost?.siteId === site.id && ghost.slotId === s.id ? { ...s, startMin: ghost.startMin, endMin: ghost.endMin } : s), day).map((seg) => {
-                  const slot = site.slots.find((s) => s.id === seg.slotId)!;
-                  const dragging = drag?.siteId === site.id && 'slotId' in drag && drag.slotId === slot.id && drag.moved;
-                  const shown = ghost?.siteId === site.id && ghost.slotId === slot.id ? { ...slot, startMin: ghost.startMin, endMin: ghost.endMin } : slot;
-                  const canStart = seg.part !== 'tail';
-                  const canEnd = seg.part !== 'head';
-                  const canMove = seg.part === 'whole' && !(slot.startMin === 0 && slot.endMin === MINUTES_PER_DAY);
-                  return (
-                    <div key={`${seg.slotId}-${seg.part}`} class={`rt-seg m-${slot.mode} ${canMove ? 'movable' : ''} ${dragging ? 'dragging' : ''}`}
-                      style={{ left: `${(seg.startMin / MINUTES_PER_DAY) * 100}%`, width: `${((seg.endMin - seg.startMin) / MINUTES_PER_DAY) * 100}%` }}
-                      title={`${site.domain} · ${slotLabel(slot)} · ${formatRange(shown)} (clique para editar; arraste para mover; arraste as pontas para ajustar)`}
-                      role="button" tabIndex={0} onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && edit(site, slot)}
-                      onPointerDown={(e) => canMove
-                        ? beginDrag(e, { kind: 'move', siteId: site.id, slotId: slot.id, grabMin: minuteAt(e, (e.currentTarget as HTMLElement).closest('.rt-track') as HTMLElement), startX: e.clientX, moved: false })
-                        : (e.stopPropagation(), edit(site, slot))}>
-                      {canStart && <i class="rt-handle start" aria-hidden="true" onPointerDown={(e) => beginDrag(e, { kind: 'resize', siteId: site.id, slotId: slot.id, edge: 'start', startX: e.clientX, moved: false })} />}
-                      <span>{dragging ? formatRange(shown) : slotLabel(slot)}</span>
-                      {canEnd && <i class="rt-handle end" aria-hidden="true" onPointerDown={(e) => beginDrag(e, { kind: 'resize', siteId: site.id, slotId: slot.id, edge: 'end', startX: e.clientX, moved: false })} />}
+          {sites.map((site) => {
+            const service = serviceOf(site);
+            const open = !!service && expanded.has(site.id);
+            return (
+              <div key={site.id} class="rt-group">
+                <div class={`rt-row ${site.enabled ? '' : 'off'}`}>
+                  <div class="rt-label">
+                    <div class="rt-name">
+                      {!service && <span class="rt-expander-spacer" aria-hidden="true" />}
+                      {service && (
+                        <button class="rt-expander" aria-expanded={open} aria-label={`${open ? 'Recolher' : 'Expandir'} os recursos de ${site.domain}`}
+                          title="Horário separado para cada recurso (feed, Shorts, recomendados…)"
+                          onClick={() => setExpanded((cur) => { const n = new Set(cur); if (!n.delete(site.id)) n.add(site.id); return n; })}>{open ? '▾' : '▸'}</button>
+                      )}
+                      <button class="rt-site" onClick={() => openNew(site)} title="Adicionar uma faixa neste site">{site.domain}</button>
                     </div>
-                  );
-                })}
-                {ghost?.siteId === site.id && !ghost.slotId && (
-                  <div class="rt-seg ghost" style={{ left: `${(ghost.startMin / MINUTES_PER_DAY) * 100}%`, width: `${((ghost.endMin - ghost.startMin) / MINUTES_PER_DAY) * 100}%` }}>
-                    <span>{formatRange(ghost)}</span>
+                    {site.slots.length === 0 && <small>sem faixas</small>}
                   </div>
-                )}
-                {draft?.isNewSlot && draft.siteId === site.id && segmentsForDay([draft.slot], day).map((seg) => (
-                  <div key={`draft-${seg.part}`} class="rt-seg ghost" style={{ left: `${(seg.startMin / MINUTES_PER_DAY) * 100}%`, width: `${((seg.endMin - seg.startMin) / MINUTES_PER_DAY) * 100}%` }}>
-                    <span>Nova faixa</span>
+                  {renderTrack(site, site.slots)}
+                  <div class="rt-actions">
+                    <label class="switch" title={site.enabled ? 'Desligar este site na rotina' : 'Ligar este site na rotina'}>
+                      <input type="checkbox" checked={site.enabled} onChange={() => toggleSite(site)} aria-label={`${site.domain} na rotina`} />
+                      <span />
+                    </label>
+                    <button class="btn btn-ghost x" aria-label={`Tirar ${site.domain} da rotina`} onClick={() => removeSite(site)}>✕</button>
+                  </div>
+                </div>
+                {open && service && FEATURE_DEFS[service].map((f) => (
+                  <div key={f.id} class={`rt-row lane ${site.enabled ? '' : 'off'}`}>
+                    <div class="rt-label"><span class="rt-feature">{featureLabel[service]?.[f.id] ?? f.id}</span></div>
+                    {renderTrack(site, featureSlotsOf(site, f.id), f.id)}
+                    <span />
                   </div>
                 ))}
-                {day === today && <i class="rt-now" style={{ left: `${(nowMin / MINUTES_PER_DAY) * 100}%` }} />}
               </div>
-              <div class="rt-actions">
-                <label class="switch" title={site.enabled ? 'Desligar este site na rotina' : 'Ligar este site na rotina'}>
-                  <input type="checkbox" checked={site.enabled} onChange={() => toggleSite(site)} aria-label={`${site.domain} na rotina`} />
-                  <span />
-                </label>
-                <button class="btn btn-ghost x" aria-label={`Tirar ${site.domain} da rotina`} onClick={() => removeSite(site)}>✕</button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         <form class="add" onSubmit={(e) => { e.preventDefault(); addSite(newDomain); }}>

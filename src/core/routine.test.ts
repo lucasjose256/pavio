@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { RoutineSite, RoutineSlot } from './models';
-import { activeRules, loosensNow, mergeRules, nextBoundary, rulesAnyTime, validateSite } from './routine';
+import { activeRules, dropFeature, featureSlotsOf, loosensNow, mergeRules, newFeatureSlot, nextBoundary, retimeFeature, rulesAnyTime, validateSite } from './routine';
 import { defaultRoutine } from './routine-defaults';
 
 const t = (h: number, m = 0) => h * 60 + m;
@@ -114,5 +114,57 @@ describe('validação e programação pronta', () => {
     expect(activeRules(routine, true, mon(20))).toEqual([]); // fim do expediente: livre
     expect(activeRules(routine, true, mon(23)).find((r) => r.domain === 'instagram.com')!.mode).toBe('blocked'); // noite
     expect(activeRules(routine, true, sat(11))).toEqual([]); // sábado de manhã: livre
+  });
+});
+
+describe('horário por recurso', () => {
+  let n = 0;
+  const id = () => `novo${++n}`;
+  const youtube = (): RoutineSite =>
+    site('youtube.com', [
+      slot('work', { mode: 'restricted', restrictedKind: 'youtube', features: ['home', 'shorts', 'related'] }),
+      slot('night', { mode: 'restricted', restrictedKind: 'youtube', features: ['home'], days: [0, 1, 2, 3, 4, 5, 6], startMin: t(22), endMin: t(6) }),
+      slot('blk', { mode: 'blocked', startMin: t(12), endMin: t(13) }),
+    ]);
+
+  it('featureSlotsOf: só as faixas restritas do serviço que escondem o recurso', () => {
+    expect(featureSlotsOf(youtube(), 'home').map((s) => s.id)).toEqual(['work', 'night']);
+    expect(featureSlotsOf(youtube(), 'related').map((s) => s.id)).toEqual(['work']);
+    expect(featureSlotsOf(youtube(), 'comments')).toEqual([]);
+    expect(featureSlotsOf(site('reddit.com', [slot('x', { mode: 'restricted', restrictedKind: 'intent' })]), 'home')).toEqual([]);
+  });
+
+  it('faixa de um recurso só: o horário muda no lugar', () => {
+    const next = retimeFeature(youtube(), 'night', 'home', { startMin: t(23), endMin: t(5) }, id);
+    expect(next.slots.find((s) => s.id === 'night')).toMatchObject({ startMin: t(23), endMin: t(5), features: ['home'] });
+    expect(next.slots).toHaveLength(3);
+  });
+
+  it('faixa com vários recursos: o recurso é separado numa faixa própria e os outros ficam como estavam', () => {
+    const next = retimeFeature(youtube(), 'work', 'home', { startMin: t(14), endMin: t(16) }, id);
+    expect(next.slots.find((s) => s.id === 'work')).toMatchObject({ features: ['shorts', 'related'], startMin: t(9), endMin: t(18) });
+    const detached = next.slots.find((s) => !['work', 'night', 'blk'].includes(s.id))!;
+    expect(detached).toMatchObject({ mode: 'restricted', restrictedKind: 'youtube', features: ['home'], startMin: t(14), endMin: t(16), days: WEEK });
+    // efeito real: às 10h o feed já não está escondido pela faixa de trabalho, mas os recomendados continuam
+    const at10 = activeRules([next], true, mon(10))[0]!;
+    expect(at10.features).toEqual(['shorts', 'related']);
+    expect(activeRules([next], true, mon(15))[0]!.features).toEqual(['home', 'shorts', 'related']);
+  });
+
+  it('cenário do usuário: recomendados o dia todo, feed só em certos horários', () => {
+    let y = site('youtube.com', []);
+    y = { ...y, slots: [newFeatureSlot(y, 'related', [0, 1, 2, 3, 4, 5, 6], { startMin: 0, endMin: 1440 }, id), newFeatureSlot(y, 'home', WEEK, { startMin: t(9), endMin: t(18) }, id)] };
+    expect(activeRules([y], true, mon(7))[0]!.features).toEqual(['related']);
+    expect(activeRules([y], true, mon(10))[0]!.features).toEqual(['home', 'related']);
+    expect(activeRules([y], true, sat(10))[0]!.features).toEqual(['related']);
+    expect(validateSite(y)).toEqual([]);
+  });
+
+  it('newFeatureSlot recusa recurso que o serviço não tem; dropFeature apaga a faixa que ficou sem recursos', () => {
+    expect(() => newFeatureSlot(site('youtube.com', []), 'reels', WEEK, { startMin: 0, endMin: 60 }, id)).toThrow();
+    expect(() => newFeatureSlot(site('reddit.com', []), 'home', WEEK, { startMin: 0, endMin: 60 }, id)).toThrow();
+    const afterDrop = dropFeature(youtube(), 'work', 'shorts');
+    expect(afterDrop.slots.find((s) => s.id === 'work')!.features).toEqual(['home', 'related']);
+    expect(dropFeature(youtube(), 'night', 'home').slots.map((s) => s.id)).toEqual(['work', 'blk']);
   });
 });
