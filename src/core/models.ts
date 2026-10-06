@@ -150,6 +150,11 @@ export interface RoutineSite {
    * (Desligar o site na rotina também o libera.)
    */
   blockAll?: boolean;
+  /**
+   * Limite de tempo: minutos por dia que o app pode ser usado (aba ativa e em foco). Estourou, fica bloqueado até a
+   * meia-noite. Ausente = sem limite. Vale mesmo com os horários desligados (controle direto, como o bloqueio rápido).
+   */
+  limitMin?: number;
 }
 
 /**
@@ -164,4 +169,6 @@ export interface Policy {
   nextChange?: number;
   routineActive: boolean;
   timerActive: boolean;
+  /** Apps bloqueados hoje por terem estourado o limite de tempo. */
+  limitReached?: string[];
 }

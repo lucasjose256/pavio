@@ -1,10 +1,11 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { createBuiltinEnvironment } from './environments';
+import { createBuiltinEnvironment, createBuiltinEnvironments } from './environments';
 import { IntentService } from './intent-service';
 import { MemoryStorage } from './memory-storage';
 import type { RoutineSite } from './models';
 import { PolicyService, ROUTINE_ALARM } from './policy-service';
-import { HistoryRepository, IntentRepository, PolicyRepository, RoutineRepository, SessionRepository, SettingsRepository } from './repositories';
+import { HistoryRepository, IntentRepository, PolicyRepository, RoutineRepository, SessionRepository, SettingsRepository, UsageRepository } from './repositories';
+import { addUsage, extendLimit } from './usage';
 import { SESSION_ALARM, SessionService } from './session-service';
 
 const mon = (h: number, m = 0) => new Date(2026, 9, 5, h, m).getTime();
@@ -21,6 +22,7 @@ let routines: RoutineRepository;
 let settings: SettingsRepository;
 let policies: PolicyRepository;
 let intents: IntentRepository;
+let usage: UsageRepository;
 let sessionService: SessionService;
 let service: PolicyService;
 
@@ -35,9 +37,10 @@ beforeEach(async () => {
   settings = new SettingsRepository(storage);
   policies = new PolicyRepository(storage);
   intents = new IntentRepository(storage);
+  usage = new UsageRepository(storage);
   sessionService = new SessionService({ sessions: new SessionRepository(storage), history: new HistoryRepository(storage), scheduler, notifier, clock, newId: () => 'sid' });
   const intentService = new IntentService({ intents, scheduler, notifier, clock });
-  service = new PolicyService({ routine: routines, settings, policies, sessionService, intentService, scheduler, clock });
+  service = new PolicyService({ routine: routines, settings, policies, usage, sessionService, intentService, scheduler, clock });
   await routines.save(routine);
 });
 
@@ -97,6 +100,49 @@ describe('PolicyService.sync', () => {
     now = mon(19);
     await service.sync();
     expect(await intents.list()).toEqual([]);
+  });
+});
+
+describe('limite de tempo na política', () => {
+  const limited: RoutineSite[] = [{ id: 'y', domain: 'youtube.com', enabled: true, slots: [], limitMin: 30 }];
+
+  it('estourou: o app fica bloqueado até a meia-noite, com o alarme na virada do dia', async () => {
+    await routines.save(limited);
+    await settings.update({ routineEnabled: false }); // o limite não depende do interruptor dos horários
+    now = mon(15);
+    await usage.set(addUsage({}, 'youtube.com', 30 * 60_000, now), now);
+    const p = await service.sync();
+    expect(p.rules).toEqual([{ id: 'limit:youtube.com', domain: 'youtube.com', mode: 'blocked' }]);
+    expect(p.limitReached).toEqual(['youtube.com']);
+    expect(alarms.get(ROUTINE_ALARM)).toBe(tue(0));
+    now = tue(0) + 1000; // virou o dia
+    const next = await service.sync();
+    expect(next.rules).toEqual([]);
+    expect(next.limitReached).toEqual([]);
+    expect(alarms.has(ROUTINE_ALARM)).toBe(false);
+  });
+
+  it('antes de estourar não bloqueia, e "mais 5 min" libera de novo', async () => {
+    await routines.save(limited);
+    now = mon(15);
+    await usage.set(addUsage({}, 'youtube.com', 29 * 60_000, now), now);
+    expect((await service.sync()).rules).toEqual([]);
+    await usage.set(addUsage(await usage.get(), 'youtube.com', 60_000, now), now);
+    expect((await service.sync()).limitReached).toEqual(['youtube.com']);
+    await usage.set(extendLimit(await usage.get(), 'youtube.com', 5, now), now);
+    expect((await service.sync()).rules).toEqual([]);
+  });
+
+  it('a pausa do Pomodoro (timer) não libera um app que estourou o limite', async () => {
+    await routines.save(limited);
+    now = mon(15);
+    await usage.set(addUsage({}, 'youtube.com', 31 * 60_000, now), now);
+    const env = createBuiltinEnvironments(0)[2]!; // Noite
+    await sessionService.start({ environment: env, minutes: 60, strictness: 'focus', pomodoro: { focusMin: 25, breakMin: 5, longBreakMin: 0, cyclesBeforeLong: 4 } });
+    now += 26 * 60_000; // pausa
+    const p = await service.sync();
+    expect(p.timerActive).toBe(false);
+    expect(p.rules.find((r) => r.domain === 'youtube.com')?.mode).toBe('blocked');
   });
 });
 

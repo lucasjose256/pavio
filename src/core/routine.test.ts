@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { RoutineSite, RoutineSlot } from './models';
 import { activeRules, dropFeature, featureSlotsOf, isBlockedAll, loosensNow, mergeRules, newFeatureSlot, nextBoundary, retimeFeature, rulesAnyTime, setBlockAll, validateSite } from './routine';
 import { defaultRoutine } from './routine-defaults';
+import { addUsage } from './usage';
 
 const t = (h: number, m = 0) => h * 60 + m;
 const mon = (h: number, m = 0) => new Date(2026, 9, 5, h, m).getTime(); // segunda
@@ -196,5 +197,25 @@ describe('horário por recurso', () => {
     const afterDrop = dropFeature(youtube(), 'work', 'shorts');
     expect(afterDrop.slots.find((s) => s.id === 'work')!.features).toEqual(['home', 'related']);
     expect(dropFeature(youtube(), 'night', 'home').slots.map((s) => s.id)).toEqual(['work', 'blk']);
+  });
+});
+
+describe('limite de tempo: validação e confirmação ao afrouxar', () => {
+  const limited = (limitMin?: number): RoutineSite[] => [{ id: 'y', domain: 'youtube.com', enabled: true, slots: [], ...(limitMin ? { limitMin } : {}) }];
+  const spent = addUsage({}, 'youtube.com', 31 * 60_000, mon(15));
+
+  it('valida limitMin (1 a 1440)', () => {
+    expect(validateSite(limited(30)[0]!)).toEqual([]);
+    expect(validateSite({ ...limited(30)[0]!, limitMin: 0 })).toContain('limit:invalid'); // "sem limite" é a ausência do campo, não zero
+    expect(validateSite({ ...limited(30)[0]!, limitMin: 2000 })).toContain('limit:invalid');
+    expect(validateSite({ ...limited(30)[0]!, limitMin: 1.5 })).toContain('limit:invalid');
+  });
+
+  it('tirar ou subir o limite de um app que estourou hoje é afrouxar; baixar ou mexer sem estar estourado, não', () => {
+    const before = { sites: limited(30), enabled: true };
+    expect(loosensNow(before, { sites: limited(), enabled: true }, mon(15), spent)).toBe(true); // tirou o limite
+    expect(loosensNow(before, { sites: limited(60), enabled: true }, mon(15), spent)).toBe(true); // subiu acima do uso
+    expect(loosensNow(before, { sites: limited(20), enabled: true }, mon(15), spent)).toBe(false); // baixou: continua estourado
+    expect(loosensNow(before, { sites: limited(), enabled: true }, mon(15), {})).toBe(false); // ainda não tinha estourado
   });
 });

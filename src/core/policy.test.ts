@@ -3,6 +3,7 @@ import { createBuiltinEnvironment } from './environments';
 import type { RoutineSite, Session } from './models';
 import { blockStillApplies, computePolicy } from './policy';
 import { pomodoroState } from './pomodoro';
+import { addUsage } from './usage';
 
 const min = (n: number) => n * 60_000;
 const mon = (h: number, m = 0) => new Date(2026, 9, 5, h, m).getTime();
@@ -126,5 +127,28 @@ describe('cenário: o timer bloqueia o YouTube e a rotina também mexe nele', ()
     const lenient = { ...timerBlocksYouTube(), environmentSnapshot: env };
     const routineBlocks: RoutineSite[] = [{ id: 'y', domain: 'youtube.com', enabled: true, slots: [{ id: 'b', days: [1, 2, 3, 4, 5], startMin: 9 * 60, endMin: 18 * 60, mode: 'blocked' }] }];
     expect(youtubeRule(computePolicy({ routine: routineBlocks, routineEnabled: true, session: lenient, now: mon(10, 10) }))!.mode).toBe('blocked');
+  });
+});
+
+describe('limite de tempo', () => {
+  const sites: RoutineSite[] = [{ id: 'y', domain: 'youtube.com', enabled: true, slots: [], limitMin: 30 }];
+  const spent = addUsage({}, 'youtube.com', 30 * 60_000, mon(15));
+
+  it('app que estourou entra como bloqueado, aparece em limitReached e a política muda à meia-noite', () => {
+    const p = computePolicy({ routine: sites, routineEnabled: true, session: undefined, now: mon(15), usage: spent });
+    expect(p.rules).toEqual([{ id: 'limit:youtube.com', domain: 'youtube.com', mode: 'blocked' }]);
+    expect(p.limitReached).toEqual(['youtube.com']);
+    expect(p.nextChange).toBe(new Date(2026, 9, 6).getTime());
+  });
+
+  it('sem uso, ou no dia seguinte, nada é bloqueado', () => {
+    expect(computePolicy({ routine: sites, routineEnabled: true, session: undefined, now: mon(15), usage: {} }).limitReached).toEqual([]);
+    expect(computePolicy({ routine: sites, routineEnabled: true, session: undefined, now: mon(15) + 86_400_000, usage: spent }).rules).toEqual([]);
+  });
+
+  it('vale com os horários desligados e soma com a rotina (a mais rigorosa vence)', () => {
+    expect(computePolicy({ routine: sites, routineEnabled: false, session: undefined, now: mon(15), usage: spent }).rules).toHaveLength(1);
+    const withSlot: RoutineSite[] = [{ ...sites[0]!, slots: [{ id: 's', days: [1], startMin: 0, endMin: 1440, mode: 'restricted', restrictedKind: 'youtube' }] }];
+    expect(computePolicy({ routine: withSlot, routineEnabled: true, session: undefined, now: mon(15), usage: spent }).rules[0]!.mode).toBe('blocked');
   });
 });

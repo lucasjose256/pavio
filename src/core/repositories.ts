@@ -3,6 +3,8 @@ import { DEFAULT_SETTINGS } from './models';
 import type { Environment, HistoryEntry, IntentGrant, Policy, RoutineSite, Session, Settings } from './models';
 import type { Clock, StoragePort } from './ports';
 import { validateSite } from './routine';
+import { pruneUsage } from './usage';
+import type { UsageData } from './usage';
 
 export const KEYS = {
   schemaVersion: 'schemaVersion',
@@ -13,6 +15,7 @@ export const KEYS = {
   intents: 'intents',
   routine: 'routine',
   policy: 'policy',
+  usage: 'usage',
 } as const;
 
 export const HISTORY_LIMIT = 1000;
@@ -165,5 +168,22 @@ export class PolicyRepository {
     if (JSON.stringify(await this.get()) === JSON.stringify(policy)) return false;
     await this.storage.set(KEYS.policy, policy);
     return true;
+  }
+}
+
+/** Tempo de uso por app e por dia (só para os apps com limite). Local, com poda dos dias antigos. */
+export class UsageRepository {
+  constructor(private storage: StoragePort) {}
+
+  async get(): Promise<UsageData> {
+    return (await this.storage.get<UsageData>(KEYS.usage)) ?? {};
+  }
+
+  async set(data: UsageData, now: number): Promise<void> {
+    await this.storage.set(KEYS.usage, pruneUsage(data, now));
+  }
+
+  async clear(): Promise<void> {
+    await this.storage.remove(KEYS.usage);
   }
 }

@@ -4,6 +4,8 @@ import type { ServiceKind } from './restrictions';
 import { normalizeDomain } from './matching';
 import { occurrencesAround, validateTimeSlot } from './timeslots';
 import type { Occurrence, TimeSlot } from './timeslots';
+import { isValidLimit, limitRules } from './usage';
+import type { UsageData } from './usage';
 
 /** Faixa com o site a que pertence (para achatar a rotina). */
 type FlatSlot = RoutineSlot & { siteId: string; domain: string };
@@ -85,9 +87,15 @@ export function mergeRules(...lists: Rule[][]): Rule[] {
  * Esta mudança afrouxa o que está protegendo AGORA? (Para pedir confirmação antes de salvar.)
  * Afrouxar = site que deixa de ser restrito, tratamento mais fraco, ou menos partes escondidas.
  */
-export function loosensNow(before: { sites: RoutineSite[]; enabled: boolean }, after: { sites: RoutineSite[]; enabled: boolean }, now: number): boolean {
-  const was = activeRules(before.sites, before.enabled, now);
-  const next = activeRules(after.sites, after.enabled, now);
+export function loosensNow(
+  before: { sites: RoutineSite[]; enabled: boolean },
+  after: { sites: RoutineSite[]; enabled: boolean },
+  now: number,
+  usage: UsageData = {},
+): boolean {
+  // Inclui os apps bloqueados hoje por limite estourado: tirar ou subir o limite também é afrouxar.
+  const was = mergeRules(activeRules(before.sites, before.enabled, now), limitRules(before.sites, usage, now));
+  const next = mergeRules(activeRules(after.sites, after.enabled, now), limitRules(after.sites, usage, now));
   return was.some((b) => {
     const a = next.find((r) => r.domain === b.domain);
     if (!a) return true;
@@ -109,6 +117,7 @@ export function validateSlot(slot: RoutineSlot): string[] {
 export function validateSite(site: RoutineSite): string[] {
   const errors: string[] = [];
   if (normalizeDomain(site.domain) !== site.domain) errors.push('site:invalid-domain');
+  if (site.limitMin !== undefined && !isValidLimit(site.limitMin)) errors.push('limit:invalid');
   for (const slot of site.slots) errors.push(...validateSlot(slot));
   return errors;
 }
