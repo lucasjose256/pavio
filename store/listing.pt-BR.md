@@ -68,7 +68,7 @@ OBSERVAÇÕES
 ```
 
 ## Legendas sugeridas para as capturas de tela
-1. `01-popup.jpg` — **Sua vela, seu foco.** Timer em forma de vela, com Pomodoro automático.
+1. `01-popup.jpg` — **Um foco a mais, quando você quiser.** O timer em forma de vela, com Pomodoro automático.
 2. `02-rotina.jpg` — **Sua rotina, hora a hora.** Uma linha do tempo por site, com o que fica restrito em cada horário.
 3. `03-rotina-editar.jpg` — **Escolha exatamente o que esconder.** Dias, horário e as partes de cada serviço.
 4. `04-historico.jpg` — **Horas devolvidas.** Seu histórico, só no seu navegador.

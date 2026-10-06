@@ -18,8 +18,6 @@ import { pomodoroError, youtubeUi } from '../i18n/pt-BR';
 import { ensureHostAccess } from '../../platform/chrome/permissions';
 import { createServices } from '../../platform/chrome/services';
 import { initTheme } from '../shared/theme';
-import { RoutineStatus } from '../shared/RoutineStatus';
-import { QuickBlock } from './QuickBlock';
 import { useNow } from '../shared/useNow';
 import { useStorageValue } from '../shared/useStorageValue';
 
@@ -68,8 +66,6 @@ function StartForm({ skin }: { skin: string }) {
 
   return (
     <>
-      <p class="greeting">Vamos acender uma vela?</p>
-      <RoutineStatus />
       <div class="popup-candle small"><Candle skin={skin} progress={1} lit={false} label="Vela apagada" /></div>
       <form class="form" onSubmit={(e) => { e.preventDefault(); void start(); }}>
         <label>
@@ -81,37 +77,39 @@ function StartForm({ skin }: { skin: string }) {
 
         <div>
           <span class="lbl">Duração</span>
-          <div class="chips">
+          <div class="seg" role="group" aria-label="Duração">
             {DURATION_PRESETS_MIN.map((m) => (
-              <button type="button" class="chip" aria-pressed={!custom && minutes === m}
-                onClick={() => { setCustom(false); setMinutes(m); }}>{m} min</button>
+              <button type="button" aria-pressed={!custom && minutes === m} onClick={() => { setCustom(false); setMinutes(m); }}>{m} min</button>
             ))}
-            <button type="button" class="chip" aria-pressed={custom} onClick={() => setCustom(true)}>Outro</button>
+            <button type="button" aria-pressed={custom} onClick={() => setCustom(true)}>Outro</button>
           </div>
           {custom && (
-            <input class="field full" type="number" min={MIN_DURATION_MIN} max={MAX_DURATION_MIN} value={minutes}
+            <input class="field full minutes" type="number" min={MIN_DURATION_MIN} max={MAX_DURATION_MIN} value={minutes}
               aria-label="Minutos" onInput={(e) => setMinutes(Number(e.currentTarget.value))} />
           )}
         </div>
 
-        {usesYouTube && (
-          <details class="yt">
-            <summary>{youtubeUi.summary}</summary>
-            <textarea class="field full" rows={4} placeholder={youtubeUi.placeholder} value={links}
-              onInput={(e) => setLinks(e.currentTarget.value)} spellcheck={false} />
-            <p class="hint">{youtubeUi.help}</p>
-          </details>
-        )}
-
-        <PomodoroFields value={pomodoro} onChange={setPomodoro} />
-
-        <div>
-          <span class="lbl">Modo</span>
-          <div class="chips">
-            <button type="button" class="chip" title="Desistir dá trabalho, de propósito" aria-pressed={strictness === 'focus'} onClick={() => setStrictness('focus')}>Foco</button>
-            <button type="button" class="chip" title="Você pode parar com uma confirmação" aria-pressed={strictness === 'light'} onClick={() => setStrictness('light')}>Leve</button>
+        <details class="more">
+          <summary>Mais opções</summary>
+          <div class="more-body">
+            <div>
+              <span class="lbl">Ao parar antes da hora</span>
+              <div class="seg" role="group" aria-label="Modo">
+                <button type="button" title="Desistir dá trabalho, de propósito" aria-pressed={strictness === 'focus'} onClick={() => setStrictness('focus')}>Foco</button>
+                <button type="button" title="Você pode parar com uma confirmação" aria-pressed={strictness === 'light'} onClick={() => setStrictness('light')}>Leve</button>
+              </div>
+            </div>
+            <PomodoroFields value={pomodoro} onChange={setPomodoro} />
+            {usesYouTube && (
+              <label>
+                <span class="lbl">{youtubeUi.summary}</span>
+                <textarea class="field full" rows={3} placeholder={youtubeUi.placeholder} value={links}
+                  onInput={(e) => setLinks(e.currentTarget.value)} spellcheck={false} />
+                <span class="hint">{youtubeUi.help}</span>
+              </label>
+            )}
           </div>
-        </div>
+        </details>
 
         {error && <p class="error" role="alert">{error}</p>}
         <button class="btn btn-primary full" type="submit" disabled={!envs.length}>Acender vela</button>
@@ -131,8 +129,9 @@ function Running({ session, skin, now }: { session: Session; skin: string; now: 
   }
   return (
     <>
-      <p class="greeting">Sua vela está acesa</p>
       <div class="popup-candle"><Candle skin={skin} progress={candleProgress(session, now)} label="Vela acesa, sessão em andamento" /></div>
+      <p class="time">{formatRemaining(Math.min(remainingMs(session, now), session.plannedMs))}</p>
+      <p class="sub">{session.environmentSnapshot.name}</p>
       {phase && (
         <p class={`phase ${phase.phase}`} role="status">
           {phase.phase === 'break'
@@ -140,10 +139,6 @@ function Running({ session, skin, now }: { session: Session; skin: string; now: 
             : `Foco ${phase.cycle} · pausa em ${formatRemaining(phase.end - now)}`}
         </p>
       )}
-      <p class="time">{formatRemaining(Math.min(remainingMs(session, now), session.plannedMs))}</p>
-      <p class="sub">
-        {session.environmentSnapshot.name}
-      </p>
       <button class="btn btn-ghost" onClick={stop}>Preciso parar antes da hora</button>
     </>
   );
@@ -166,11 +161,10 @@ function Popup() {
   return (
     <main class="popup">
       {!loaded ? null : active ? <Running session={active} skin={skin} now={now} /> : <StartForm skin={skin} />}
-      <QuickBlock />
-      <div class="links">
-        <button class="btn btn-ghost" onClick={() => chrome.runtime.openOptionsPage()}>Ambientes e opções</button>
-        <button class="btn btn-ghost" onClick={() => chrome.tabs.create({ url: chrome.runtime.getURL('src/ui/options/index.html#historico') })}>Histórico</button>
-      </div>
+      <nav class="foot" aria-label="Atalhos">
+        <button onClick={() => chrome.runtime.openOptionsPage()}>Opções</button>
+        <button onClick={() => chrome.tabs.create({ url: chrome.runtime.getURL('src/ui/options/index.html#historico') })}>Histórico</button>
+      </nav>
     </main>
   );
 }

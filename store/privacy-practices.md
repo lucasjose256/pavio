@@ -72,5 +72,5 @@ Não é necessária conta nem login para testar o fluxo principal.
 3. Abra reddit.com em uma nova aba: a navegação é redirecionada para a página da vela (bloqueio). Clique de novo no botão do reddit.com e o site volta a abrir.
 4. Timer: clique no ícone do Pavio, escolha "Outro" e 2 (minutos), ambiente "Estudo", e "Acender vela" (o Chrome pede acesso aos sites do ambiente). "Preciso parar antes da hora" abre a tela de atrito (espera de 10 s + frase "eu quero desistir do meu foco agora").
 5. Modo restrito (sem login): criando uma faixa "Sempre" restrita ("Esconder partes") para Instagram, LinkedIn ou YouTube, abrir instagram.com/reels/, instagram.com/explore/ ou linkedin.com/video/ redireciona para a vela (a decisão é só pela URL). No YouTube, youtube.com/shorts/... redireciona e a home mostra um aviso no lugar do feed.
-6. Pomodoro: no timer, ligue "Pomodoro automático" com foco 1 min e pausa 1 min: na pausa os bloqueios do timer se desligam.
+6. Pomodoro: no popup, abra "Mais opções", ligue "Pomodoro automático" com foco 1 min e pausa 1 min e acenda a vela: na pausa os bloqueios do timer se desligam.
 ```
