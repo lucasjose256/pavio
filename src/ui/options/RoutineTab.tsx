@@ -3,7 +3,8 @@ import { accessDomains } from '../../core/blocking';
 import { normalizeDomain } from '../../core/matching';
 import type { RestrictionSpec, RoutineSite, RoutineSlot } from '../../core/models';
 import { randomId } from '../../core/ports';
-import { activeRules, featureSlotsOf, isBlockedAll, loosensNow, newFeatureSlot, nextBoundary, retimeFeature, rulesAnyTime, serviceOf, setBlockAll, validateSlot } from '../../core/routine';
+import { activeRules, featureSlotsOf, isBlockedAll, loosensNow, newFeatureSlot, nextBoundary, retimeFeature, rulesAnyTime, serviceOf, setBlockAll, setLimit, validateSlot } from '../../core/routine';
+import { isValidLimit, limitStatuses, MAX_LIMIT_MIN, type UsageData } from '../../core/usage';
 import { ROUTINE_SUGGESTIONS, SLOT_PRESETS, defaultRoutine } from '../../core/routine-defaults';
 import { FEATURE_DEFS, featuresOf } from '../../core/restrictions';
 import { MINUTES_PER_DAY, SNAP_MIN, formatMinutes, layoutLanes, moveSlot, parseTime, resizeSlot, segmentsForDay, slotDurationMin, snapMinute, suggestFreeTime } from '../../core/timeslots';
@@ -67,6 +68,10 @@ export function RoutineTab({ active }: { active: boolean }) {
   const [missing, setMissing] = useState<string[]>([]);
   const [newDomain, setNewDomain] = useState('');
   const [quickDomain, setQuickDomain] = useState('');
+  const [usage, setUsage] = useState<UsageData>({});
+  const [limitInputs, setLimitInputs] = useState<Record<string, string>>({});
+  const [limitDomain, setLimitDomain] = useState('');
+  const [extraLimit, setExtraLimit] = useState<string[]>([]); // sites adicionados ao cartão antes de ter limite
   const [now, setNow] = useState(Date.now());
   const [expanded, setExpanded] = useState<Set<string>>(new Set()); // sites com uma barra por recurso
   const [drag, setDrag] = useState<Drag>();
@@ -79,8 +84,9 @@ export function RoutineTab({ active }: { active: boolean }) {
   const editorRef = useRef<HTMLElement>(null);
 
   async function reload() {
-    const [list, settings] = await Promise.all([services.routine.list(), services.settings.get()]);
+    const [list, settings, used] = await Promise.all([services.routine.list(), services.settings.get(), services.usage.get()]);
     setSites(list);
+    setUsage(used);
     setEnabled(settings.routineEnabled);
     setMissing(await missingAccess(accessDomains({ rules: rulesAnyTime(effectiveSites(list, settings.routineEnabled)) })));
   }
@@ -106,7 +112,7 @@ export function RoutineTab({ active }: { active: boolean }) {
    * (precisa do clique do usuário, por isso vem antes de gravar).
    */
   async function commit(nextSites: RoutineSite[], nextEnabled = enabled, okText = 'Rotina salva.'): Promise<boolean> {
-    if (loosensNow({ sites, enabled }, { sites: nextSites, enabled: nextEnabled }, Date.now())
+    if (loosensNow({ sites, enabled }, { sites: nextSites, enabled: nextEnabled }, Date.now(), usage)
       && !confirm('Isso afrouxa uma regra que está protegendo agora. Tem certeza?')) return false;
     const needed = accessDomains({ rules: rulesAnyTime(effectiveSites(nextSites, nextEnabled)) });
     const granted = needed.length ? await ensureHostAccess(needed) : true;
@@ -254,6 +260,21 @@ export function RoutineTab({ active }: { active: boolean }) {
     return commit(setBlockAll(sites, domain, true, randomId), enabled, `${domain} bloqueado por inteiro.`);
   }
 
+  const limitDomains = [...new Set([...ROUTINE_SUGGESTIONS, ...sites.filter((s) => s.limitMin).map((s) => s.domain), ...extraLimit])];
+  const limitStatus = (d: string) => limitStatuses(sites, usage, now).find((s) => s.domain === d);
+  async function saveLimit(domain: string, raw: string) {
+    const n = Number(raw.trim());
+    if (!isValidLimit(n)) { setNotice({ kind: 'error', text: `O limite vai de 1 a ${MAX_LIMIT_MIN} minutos por dia.` }); return; }
+    if (await commit(setLimit(sites, domain, n, randomId), enabled, `Limite de ${domain}: ${n} min por dia.`)) setLimitInputs((m) => Object.fromEntries(Object.entries(m).filter(([k]) => k !== domain)));
+  }
+  const removeLimit = (domain: string) => commit(setLimit(sites, domain, undefined, randomId), enabled, `Limite de ${domain} removido.`);
+  async function addLimitSite(input: string) {
+    const domain = normalizeDomain(input);
+    if (!domain) { setNotice({ kind: 'error', text: 'Escreva um site, como twitch.tv.' }); return; }
+    setLimitDomain('');
+    setLimitInputs((m) => ({ ...m, [domain]: m[domain] ?? '30' }));
+    if (!limitDomains.includes(domain)) setExtraLimit((x) => [...new Set([...x, domain])]);
+  }
   const toggleSite = (site: RoutineSite) => commit(sites.map((s) => s.id === site.id ? { ...s, enabled: !s.enabled } : s), enabled, site.enabled ? 'Site desligado na rotina.' : 'Site ligado na rotina.');
   const removeSite = (site: RoutineSite) => confirm(`Tirar ${site.domain} da rotina?`) && commit(sites.filter((s) => s.id !== site.id), enabled, 'Site removido.');
   const clearRoutine = () => confirm('Limpar a rotina? Todos os sites, faixas e bloqueios rápidos serão removidos.') && commit(defaultRoutine(), enabled, 'Rotina limpa.');
@@ -381,6 +402,41 @@ export function RoutineTab({ active }: { active: boolean }) {
         <form class="add" onSubmit={(e) => { e.preventDefault(); void quickAdd(quickDomain); }}>
           <input class="field grow" placeholder="Bloquear outro site por inteiro (ex.: twitch.tv)" value={quickDomain} aria-label="Outro site para bloquear" onInput={(e) => setQuickDomain(e.currentTarget.value)} />
           <button class="btn" type="submit">Bloquear</button>
+        </form>
+      </section>
+
+      <section class="card limits" aria-label="Limite de tempo">
+        <div class="grow">
+          <h3>Limite de tempo</h3>
+          <p class="hint">Quantos minutos por dia você aceita gastar em cada app. Conta só com a aba ativa e a janela em foco. Estourou, o app fica bloqueado até a meia-noite; dá para pedir <strong>mais 5 min</strong> na tela de bloqueio, com um pouco de calma.</p>
+        </div>
+        <ul class="limit-list">
+          {limitDomains.map((d) => {
+            const st = limitStatus(d);
+            const raw = limitInputs[d] ?? (st ? String(st.limitMin) : '');
+            const pct = st ? Math.min(100, (st.usedMs / Math.max(1, st.limitMs)) * 100) : 0;
+            return (
+              <li key={d} class={`limit-row ${st?.reached ? 'reached' : ''}`}>
+                <span class="limit-name">{d}</span>
+                {st ? (
+                  <span class="limit-meter" title={`${Math.floor(st.usedMs / 60_000)} de ${st.limitMs / 60_000} min hoje`}>
+                    <span class="limit-bar"><i style={{ width: `${pct}%` }} /></span>
+                    <span class="limit-text">{st.reached ? 'Limite de hoje atingido' : `${Math.floor(st.usedMs / 60_000)} de ${st.limitMs / 60_000} min`}</span>
+                  </span>
+                ) : <span class="limit-text muted">Sem limite</span>}
+                <form class="limit-form" onSubmit={(e) => { e.preventDefault(); void saveLimit(d, raw); }}>
+                  <input class="field limit-input" type="number" inputMode="numeric" min={1} max={MAX_LIMIT_MIN} placeholder="min/dia" value={raw} aria-label={`Limite diário de ${d} em minutos`}
+                    onInput={(e) => setLimitInputs((m) => ({ ...m, [d]: e.currentTarget.value }))} />
+                  <button class="btn" type="submit" disabled={!raw || (!!st && raw === String(st.limitMin))}>{st ? 'Atualizar' : 'Definir'}</button>
+                  {st && <button class="btn btn-ghost" type="button" onClick={() => removeLimit(d)}>Remover</button>}
+                </form>
+              </li>
+            );
+          })}
+        </ul>
+        <form class="add" onSubmit={(e) => { e.preventDefault(); void addLimitSite(limitDomain); }}>
+          <input class="field grow" placeholder="Limitar outro site (ex.: twitch.tv)" value={limitDomain} aria-label="Outro site para limitar" onInput={(e) => setLimitDomain(e.currentTarget.value)} />
+          <button class="btn" type="submit">Adicionar</button>
         </form>
       </section>
 

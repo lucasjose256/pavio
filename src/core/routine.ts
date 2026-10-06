@@ -60,6 +60,23 @@ export const isBlockedAll = (routine: RoutineSite[], domain: string): boolean =>
   routine.some((s) => s.domain === domain && s.enabled && !!s.blockAll);
 
 /**
+ * Define (ou, com `undefined`, remove) o limite de tempo diário de um app. Site novo entra na rotina sem faixas;
+ * definir um limite religa o site; remover o limite de um site que ficou vazio (sem faixas nem bloqueio rápido) o tira da lista.
+ */
+export function setLimit(routine: RoutineSite[], domain: string, limitMin: number | undefined, newId: () => string): RoutineSite[] {
+  if (limitMin === undefined) {
+    return routine.flatMap((s) => {
+      if (s.domain !== domain) return [s];
+      const rest: RoutineSite = { ...s };
+      delete rest.limitMin;
+      return rest.slots.length === 0 && !rest.blockAll ? [] : [rest];
+    });
+  }
+  if (!routine.some((s) => s.domain === domain)) return [...routine, { id: newId(), domain, enabled: true, slots: [], limitMin }];
+  return routine.map((s) => (s.domain === domain ? { ...s, limitMin, enabled: true } : s));
+}
+
+/**
  * Liga/desliga o bloqueio rápido de um app. Se o site ainda não está na rotina, entra (sem faixas).
  * Ligar um site que estava desligado na rotina o religa.
  */

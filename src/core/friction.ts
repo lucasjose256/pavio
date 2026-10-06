@@ -2,6 +2,8 @@ import type { Strictness } from './models';
 
 export const GIVE_UP_PHRASE = 'eu quero desistir do meu foco agora';
 export const FOCUS_WAIT_SECONDS = 10;
+/** Frase para pedir mais tempo num app que estourou o limite (o número acompanha `EXTEND_MIN` = 5). */
+export const EXTEND_PHRASE = 'eu quero mais cinco minutos';
 
 /**
  * Fricção = lista de passos que TODOS precisam estar cumpridos para encerrar a sessão.
@@ -20,6 +22,11 @@ export function frictionFor(strictness: Strictness): FrictionStep[] {
     { type: 'wait', seconds: FOCUS_WAIT_SECONDS },
     { type: 'typePhrase', phrase: GIVE_UP_PHRASE },
   ];
+}
+
+/** Pedir "mais um pouco" num app que estourou o limite do dia: sempre a fricção completa (espera + frase). */
+export function frictionForExtension(): FrictionStep[] {
+  return [{ type: 'wait', seconds: FOCUS_WAIT_SECONDS }, { type: 'typePhrase', phrase: EXTEND_PHRASE }];
 }
 
 export interface FrictionInput {

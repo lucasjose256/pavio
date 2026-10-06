@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { RoutineSite } from './models';
 import {
   EXTEND_MIN, addUsage, extendLimit, isValidLimit, limitReached, limitRules, limitStatuses, limitedSiteFor, limitMsFor,
-  nextMidnight, pruneUsage, remainingMsFor, trackableHost, usedMs,
+  nextMidnight, pruneUsage, remainingMsFor, trackableHost, usageByApp, usedMs,
 } from './usage';
 import type { UsageData } from './usage';
 
@@ -112,5 +112,24 @@ describe('trackableHost (o que conta como "em uso")', () => {
   it('ignora páginas internas, da extensão, sem endereço ou inválidas', () => {
     for (const url of [undefined, '', 'chrome://newtab', 'chrome-extension://abc/page.html', 'about:blank', 'file:///tmp/a.html', 'não é url'])
       expect(trackableHost({ ...ok, url }), String(url)).toBeNull();
+  });
+});
+
+describe('usageByApp (Histórico)', () => {
+  it('lista o uso dos últimos 7 dias por app, do mais usado ao menos, com hoje e o dia a dia', () => {
+    let data: UsageData = {};
+    data = addUsage(data, 'youtube.com', min(30), at(5));
+    data = addUsage(data, 'youtube.com', min(20), at(3));
+    data = addUsage(data, 'instagram.com', min(10), at(5));
+    data = addUsage(data, 'tiktok.com', min(99), at(20)); // fora da janela (de 29/set a 5/out)
+    const apps = usageByApp(data, at(5));
+    expect(apps.map((a) => a.domain)).toEqual(['youtube.com', 'instagram.com']);
+    expect(apps[0]).toMatchObject({ todayMs: min(30), totalMs: min(50) });
+    expect(apps[0]!.perDay).toHaveLength(7);
+    expect(apps[0]!.perDay.at(-1)).toBe(min(30));
+    expect(apps[0]!.perDay[4]).toBe(min(20)); // dia 3 = 2 dias antes de hoje
+  });
+  it('sem uso, lista vazia', () => {
+    expect(usageByApp({}, at(5))).toEqual([]);
   });
 });

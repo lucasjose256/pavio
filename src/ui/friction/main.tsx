@@ -3,14 +3,15 @@ import { useMemo, useRef, useState } from 'preact/hooks';
 import '../theme.css';
 import './friction.css';
 import { Candle } from '../candle/Candle';
-import { evaluateFriction, frictionFor } from '../../core/friction';
+import { evaluateFriction, frictionFor, frictionForExtension } from '../../core/friction';
 import { candleProgress, formatRemaining, remainingMs } from '../../core/session';
 import type { Session, Settings } from '../../core/models';
 import { DEFAULT_SETTINGS } from '../../core/models';
 import { createServices } from '../../platform/chrome/services';
-import { friction as t } from '../i18n/pt-BR';
+import { friction as t, limitUi } from '../i18n/pt-BR';
 import { initTheme } from '../shared/theme';
 import { useNow } from '../shared/useNow';
+import { limitReached } from '../../core/usage';
 import { useStorageValue } from '../shared/useStorageValue';
 
 const services = createServices();
@@ -18,6 +19,64 @@ initTheme();
 
 function closeThisTab() {
   chrome.tabs.getCurrent().then((tab) => (tab?.id !== undefined ? chrome.tabs.remove(tab.id) : window.close()));
+}
+
+/** "Mais 5 min" num app que estourou o limite do dia: espera + frase, e só então o tempo extra é concedido. */
+function ExtendFriction({ domain }: { domain: string }) {
+  const { value: settings } = useStorageValue<Settings>('settings');
+  const now = useNow(250);
+  const openedAt = useRef(Date.now());
+  const [typed, setTyped] = useState('');
+  const [state, setState] = useState<'asking' | 'done' | 'none'>('asking');
+  const skin = (settings ?? DEFAULT_SETTINGS).candleSkin;
+  const steps = useMemo(() => frictionForExtension(), []);
+  const status = evaluateFriction(steps, { elapsedMs: now - openedAt.current, typed, confirmed: false, challengesPassed: [] });
+  const phraseStep = steps.find((s) => s.type === 'typePhrase');
+
+  async function grant() {
+    if (!status.done) return;
+    // Confere de novo na hora: o limite pode já ter sido ampliado/removido em outra aba.
+    const [routine, usage] = await Promise.all([services.routine.list(), services.usage.get()]);
+    const site = routine.find((s) => s.domain === domain);
+    if (!site || !limitReached(site, usage, Date.now())) { setState('none'); return; }
+    await services.usageService.extend(domain);
+    setState('done');
+    setTimeout(closeThisTab, 1500);
+  }
+
+  if (state !== 'asking') {
+    return (
+      <main class="friction">
+        <div class="friction-candle"><Candle skin={skin} progress={1} lit label="Vela acesa" /></div>
+        <h1>{state === 'done' ? limitUi.extendDoneTitle : limitUi.extendNoLimit}</h1>
+        {state === 'done' && <p class="msg">{limitUi.extendDoneMessage}</p>}
+        <button class="btn btn-primary" onClick={closeThisTab}>{t.close}</button>
+      </main>
+    );
+  }
+  const secondsLeft = Math.ceil(status.waitRemainingMs / 1000);
+  return (
+    <main class="friction">
+      <div class="friction-candle"><Candle skin={skin} progress={0.15} label="Vela quase no fim" /></div>
+      <h1>{limitUi.extendTitle}</h1>
+      <p class="msg">{limitUi.extendMessage(domain)}</p>
+      <form class="steps" onSubmit={(e) => { e.preventDefault(); void grant(); }}>
+        <p class="wait" aria-live="polite">{secondsLeft > 0 ? limitUi.extendWaitLeft(secondsLeft) : limitUi.extendWaitDone}</p>
+        {phraseStep?.type === 'typePhrase' && (
+          <label>
+            <span class="prompt">{limitUi.extendPrompt} <q>{phraseStep.phrase}</q></span>
+            <input class="field full" value={typed} placeholder={t.phrasePlaceholder} autocomplete="off" spellcheck={false}
+              onInput={(e) => setTyped(e.currentTarget.value)}
+              onPaste={(e) => e.preventDefault()} />
+          </label>
+        )}
+        <div class="buttons">
+          <button type="button" class="btn btn-primary" onClick={closeThisTab}>{limitUi.stay}</button>
+          <button type="submit" class="btn btn-ghost" disabled={!status.done}>{limitUi.extendConfirm}</button>
+        </div>
+      </form>
+    </main>
+  );
 }
 
 function Friction() {
@@ -89,4 +148,5 @@ function Friction() {
   );
 }
 
-render(<Friction />, document.getElementById('app')!);
+const extendDomain = new URLSearchParams(location.search).get('extend');
+render(extendDomain ? <ExtendFriction domain={extendDomain} /> : <Friction />, document.getElementById('app')!);

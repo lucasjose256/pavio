@@ -5,12 +5,13 @@ import './blocked.css';
 import { Candle } from '../candle/Candle';
 import type { Policy, Session, Settings } from '../../core/models';
 import { DEFAULT_SETTINGS } from '../../core/models';
+import { hostMatchesDomain } from '../../core/matching';
 import { blockStillApplies } from '../../core/policy';
 import { onBreak } from '../../core/pomodoro';
 import { candleProgress, formatRemaining, remainingMs } from '../../core/session';
 import { formatMinutes } from '../../core/timeslots';
 import { createServices } from '../../platform/chrome/services';
-import { blockedWhy, breakUi, quotes, releasedUi } from '../i18n/pt-BR';
+import { blockedWhy, breakUi, limitUi, quotes, releasedUi } from '../i18n/pt-BR';
 import { formatWhen } from '../shared/format';
 import { initTheme } from '../shared/theme';
 import { useNow } from '../shared/useNow';
@@ -18,6 +19,10 @@ import { useStorageValue } from '../shared/useStorageValue';
 
 const services = createServices();
 initTheme();
+
+function askMore(domain: string) {
+  void chrome.tabs.create({ url: chrome.runtime.getURL(`src/ui/friction/index.html?extend=${encodeURIComponent(domain)}`) });
+}
 
 function goBack() {
   if (history.length > 1) history.back();
@@ -43,6 +48,7 @@ function Blocked() {
   // O site ainda está bloqueado pela política (rotina ou Timer)? Se não, a página que ficou aberta libera sozinha.
   const stillBlocked = blockStillApplies(policy, site, !!why);
   const released = loaded && !stillBlocked;
+  const limitedDomain = site ? policy?.limitReached?.find((d) => hostMatchesDomain(site, d)) : undefined;
   const resting = timer && onBreak(timer) ? timer : undefined;
 
   return (
@@ -61,16 +67,25 @@ function Blocked() {
           </p>
         </>
       ) : (
+        limitedDomain ? (
+          <>
+            <p class="quote">{limitUi.title}</p>
+            <p class="site">{limitUi.message(limitedDomain)}</p>
+            {policy?.nextChange && <p class="time">{releasedUi.until(formatWhen(policy.nextChange, now))}</p>}
+          </>
+        ) : (
         <>
           <p class="quote">{quote}</p>
           {why ? <p class="site">{why}</p> : site && <p class="site">{site} está fora do seu foco agora. Tudo bem, ele espera.</p>}
           {timer && <p class="time">{formatRemaining(remainingMs(timer, now))} até a vela acabar</p>}
           {!timer && policy?.nextChange && <p class="time">{releasedUi.until(formatWhen(policy.nextChange, now))}</p>}
         </>
+        )
       )}
 
       <div class="actions">
         <button class="btn" onClick={goBack}>Voltar</button>
+        {!released && limitedDomain && <button class="btn btn-ghost" onClick={() => askMore(limitedDomain)}>{limitUi.more}</button>}
         {released && site && <a class="btn btn-primary" href={`https://${site}/`}>{breakUi.open(site)}</a>}
       </div>
     </main>

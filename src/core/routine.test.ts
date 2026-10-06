@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { RoutineSite, RoutineSlot } from './models';
-import { activeRules, dropFeature, featureSlotsOf, isBlockedAll, loosensNow, mergeRules, newFeatureSlot, nextBoundary, retimeFeature, rulesAnyTime, setBlockAll, validateSite } from './routine';
+import { activeRules, dropFeature, featureSlotsOf, isBlockedAll, loosensNow, mergeRules, newFeatureSlot, nextBoundary, retimeFeature, rulesAnyTime, setBlockAll, setLimit, validateSite } from './routine';
 import { defaultRoutine } from './routine-defaults';
 import { addUsage } from './usage';
 
@@ -228,5 +228,28 @@ describe('limite de tempo: validação e confirmação ao afrouxar', () => {
     expect(loosensNow(before, { sites: limited(60), enabled: true }, mon(15), spent)).toBe(true); // subiu acima do uso
     expect(loosensNow(before, { sites: limited(20), enabled: true }, mon(15), spent)).toBe(false); // baixou: continua estourado
     expect(loosensNow(before, { sites: limited(), enabled: true }, mon(15), {})).toBe(false); // ainda não tinha estourado
+  });
+});
+
+describe('setLimit', () => {
+  let n = 0;
+  const id = () => `l${++n}`;
+  it('site novo entra na rotina só com o limite; site existente ganha o limite e é religado', () => {
+    expect(setLimit([], 'youtube.com', 30, id)).toEqual([{ id: 'l1', domain: 'youtube.com', enabled: true, slots: [], limitMin: 30 }]);
+    const off: RoutineSite[] = [{ id: 'a', domain: 'x.com', enabled: false, slots: [slot('s')] }];
+    expect(setLimit(off, 'x.com', 45, id)[0]).toMatchObject({ enabled: true, limitMin: 45, slots: [slot('s')] });
+  });
+  it('remover o limite tira o site se ele ficou vazio; senão mantém faixas e bloqueio rápido', () => {
+    const only = setLimit([], 'youtube.com', 30, id);
+    expect(setLimit(only, 'youtube.com', undefined, id)).toEqual([]);
+    const withSlots: RoutineSite[] = [{ id: 'a', domain: 'x.com', enabled: true, slots: [slot('s')], limitMin: 20 }];
+    expect(setLimit(withSlots, 'x.com', undefined, id)).toEqual([{ id: 'a', domain: 'x.com', enabled: true, slots: [slot('s')] }]);
+    const quick = setBlockAll(setLimit([], 'x.com', 20, id), 'x.com', true, id);
+    expect(setLimit(quick, 'x.com', undefined, id)[0]).toMatchObject({ blockAll: true });
+    expect('limitMin' in setLimit(quick, 'x.com', undefined, id)[0]!).toBe(false);
+  });
+  it('não mexe nos outros sites', () => {
+    const base = setLimit(setLimit([], 'a.com', 10, id), 'b.com', 20, id);
+    expect(setLimit(base, 'a.com', undefined, id).map((s) => s.domain)).toEqual(['b.com']);
   });
 });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { GIVE_UP_PHRASE, evaluateFriction, frictionFor, normalizePhrase } from './friction';
+import { EXTEND_PHRASE, GIVE_UP_PHRASE, evaluateFriction, frictionFor, frictionForExtension, normalizePhrase } from './friction';
 
 const base = { elapsedMs: 0, typed: '', confirmed: false, challengesPassed: [] as string[] };
 
@@ -48,5 +48,15 @@ describe('desafios (reservado)', () => {
     const input = { ...base, confirmed: true };
     expect(evaluateFriction(steps, input).done).toBe(false);
     expect(evaluateFriction(steps, { ...input, challengesPassed: ['math'] }).done).toBe(true);
+  });
+});
+
+describe('fricção para "mais 5 min"', () => {
+  const steps = frictionForExtension();
+  it('é sempre completa: espera de 10 s e a frase própria (a de desistir não vale)', () => {
+    expect(steps).toEqual([{ type: 'wait', seconds: 10 }, { type: 'typePhrase', phrase: EXTEND_PHRASE }]);
+    expect(evaluateFriction(steps, { elapsedMs: 10_000, typed: EXTEND_PHRASE, confirmed: false, challengesPassed: [] }).done).toBe(true);
+    expect(evaluateFriction(steps, { elapsedMs: 10_000, typed: GIVE_UP_PHRASE, confirmed: false, challengesPassed: [] }).done).toBe(false);
+    expect(evaluateFriction(steps, { elapsedMs: 3_000, typed: EXTEND_PHRASE, confirmed: false, challengesPassed: [] }).done).toBe(false);
   });
 });

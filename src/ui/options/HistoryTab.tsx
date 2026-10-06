@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'preact/hooks';
 import { formatDuration, summarizeHistory } from '../../core/history';
 import type { HistoryEntry } from '../../core/models';
+import { extraMinutes, usageByApp, type UsageData } from '../../core/usage';
 import { Candle } from '../candle/Candle';
 import { services } from './shared';
 
@@ -11,11 +12,13 @@ const when = (ts: number) =>
 export function HistoryTab({ active }: { active: boolean }) {
   const [entries, setEntries] = useState<HistoryEntry[]>();
   const [skin, setSkin] = useState('classic');
+  const [usage, setUsage] = useState<UsageData>({});
 
   const load = () => void services.history.list().then(setEntries);
   useEffect(() => {
     if (!active) return;
     load();
+    void services.usage.get().then(setUsage);
     void services.settings.get().then((s) => setSkin(s.candleSkin));
   }, [active]);
 
@@ -32,9 +35,13 @@ export function HistoryTab({ active }: { active: boolean }) {
   async function clear() {
     if (!confirm('Apagar todo o histórico? Isso não pode ser desfeito.')) return;
     await services.history.clear();
+    await services.usage.clear();
+    setUsage({});
     load();
   }
 
+  const apps = useMemo(() => usageByApp(usage, Date.now()), [usage, active]);
+  const extraToday = (domain: string) => extraMinutes(usage, domain, Date.now());
   const max = Math.max(1, ...(summary?.last7Days.map((d) => d.focusedMs) ?? [1]));
 
   return (
@@ -92,12 +99,33 @@ export function HistoryTab({ active }: { active: boolean }) {
         </>
       )}
 
+      {apps.length > 0 && (
+        <section class="card">
+          <h3>Tempo por app (últimos 7 dias)</h3>
+          <ul class="app-usage">
+            {apps.map((a) => {
+              const top = apps[0]!.totalMs || 1;
+              const extra = extraToday(a.domain);
+              return (
+                <li key={a.domain}>
+                  <span class="app-name">{a.domain}</span>
+                  <span class="app-bar"><i style={{ width: `${Math.max(3, (a.totalMs / top) * 100)}%` }} /></span>
+                  <span class="app-time">{formatDuration(a.totalMs)}</span>
+                  <span class="app-today">hoje {formatDuration(a.todayMs)}{extra ? ` · +${extra} min pedidos` : ''}</span>
+                </li>
+              );
+            })}
+          </ul>
+          <p class="hint">Só os apps com limite de tempo são medidos, e só neste navegador.</p>
+        </section>
+      )}
+
       <section class="card data">
         <h3>Seus dados</h3>
         <p class="hint">Tudo fica só neste navegador. O Pavio não envia nada para lugar nenhum.</p>
         <div class="row">
           <button class="btn" onClick={exportJson} disabled={!entries?.length}>Exportar (JSON)</button>
-          <button class="btn btn-ghost btn-danger" onClick={clear} disabled={!entries?.length}>Apagar histórico</button>
+          <button class="btn btn-ghost btn-danger" onClick={clear} disabled={!entries?.length && apps.length === 0}>Apagar histórico</button>
         </div>
       </section>
     </main>

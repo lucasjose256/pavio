@@ -118,3 +118,26 @@ export function trackableHost(input: { idle: IdleState; windowFocused: boolean; 
     return null;
   }
 }
+
+export interface AppUsage {
+  domain: string;
+  todayMs: number;
+  /** Soma dos últimos `days` dias (incluindo hoje). */
+  totalMs: number;
+  /** ms por dia, do mais antigo para hoje. */
+  perDay: number[];
+}
+
+/** Uso de cada app nos últimos `days` dias, do que mais gastou ao que menos gastou (para o Histórico). */
+export function usageByApp(data: UsageData, now: number, days = 7): AppUsage[] {
+  const base = new Date(now);
+  const keys = Array.from({ length: days }, (_, i) => dayKey(new Date(base.getFullYear(), base.getMonth(), base.getDate() - (days - 1 - i)).getTime()));
+  const domains = new Set(keys.flatMap((k) => Object.keys(data[k]?.ms ?? {})));
+  return [...domains]
+    .map((domain) => {
+      const perDay = keys.map((k) => data[k]?.ms[domain] ?? 0);
+      return { domain, todayMs: perDay[perDay.length - 1] ?? 0, totalMs: perDay.reduce((a, b) => a + b, 0), perDay };
+    })
+    .filter((a) => a.totalMs > 0)
+    .sort((a, b) => b.totalMs - a.totalMs);
+}
