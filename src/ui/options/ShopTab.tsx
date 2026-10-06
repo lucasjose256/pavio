@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'preact/hooks';
 import { DEFAULT_SETTINGS, type Settings } from '../../core/models';
 import { STORE_LABEL, offersFor } from '../../core/shop';
-import { Candle } from '../candle/Candle';
+import { ShopImage } from '../shared/ShopImage';
 import { shopUi } from '../i18n/pt-BR';
 import { AFFILIATE_NOTE, ShopLink } from '../shared/ShopLink';
 import { services } from './shared';
@@ -32,7 +32,7 @@ export function ShopTab({ active }: { active: boolean }) {
       {settings.shopSuggestions && featured && (
         <>
           <section class="card offer-featured" aria-label="Combina com a sua vela">
-            <div class="offer-featured-candle" aria-hidden="true"><Candle skin={featured.skin} progress={0.85} /></div>
+            <ShopImage offer={featured} class="offer-featured-candle" />
             <div class="grow">
               {featured.skin === settings.candleSkin && <span class="kicker">Combina com a sua vela</span>}
               <h3>{featured.name}</h3>
@@ -45,7 +45,7 @@ export function ShopTab({ active }: { active: boolean }) {
             <ul class="offers">
               {rest.map((o) => (
                 <li key={o.id} class="offer">
-                  <div class="offer-candle" aria-hidden="true"><Candle skin={o.skin} progress={0.85} /></div>
+                  <ShopImage offer={o} class="offer-candle" />
                   <strong>{o.name}</strong>
                   <span class="hint">{o.note}</span>
                   <ShopLink offer={o} class="btn">{shopUi.see(STORE_LABEL[o.store])} ↗</ShopLink>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CANDLE_OFFERS, cleanOfferUrl, offerOfTheDay, offersFor, popupMoment } from './shop';
+import { CANDLE_OFFERS, cleanOfferUrl, isLocalImageName, offerOfTheDay, offersFor, popupMoment } from './shop';
 
 const copied = 'https://www.mercadolivre.com.br/vela-aromatica-lavanda-150g/p/MLB69706454?pdp_filters=item_id:MLB5147644197|item_id:MLB5147644197#is_advertising=true&searchVariation=MLB69706454&backend_model=search-backend&position=4&tracking_id=6fe4bb29&ad_click_id=OTMz';
 
@@ -59,5 +59,15 @@ describe('offerOfTheDay', () => {
     expect(offerOfTheDay('starry', new Date(2026, 9, 6, 23).getTime())).toEqual(morning);
     const ids = new Set([6, 7].map((d) => offerOfTheDay('starry', day(d))!.id));
     expect(ids.size).toBe(CANDLE_OFFERS.length);
+  });
+});
+
+describe('fotos dos produtos', () => {
+  it('só arquivos embutidos na extensão; endereço da internet vira ilustração', () => {
+    expect(isLocalImageName('premium-200g-a.jpg')).toBe(true);
+    expect(isLocalImageName('https://http2.mlstatic.com/x.jpg')).toBe(false);
+    expect(isLocalImageName('../x.png')).toBe(false);
+    const remote = [{ ...CANDLE_OFFERS[0]!, image: 'https://http2.mlstatic.com/x.jpg' }];
+    expect(offersFor(undefined, remote)[0]!.image).toBeUndefined();
   });
 });

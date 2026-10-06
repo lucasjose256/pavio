@@ -13,9 +13,17 @@ export interface CandleOffer {
   store: ShopStore;
   /** Link de afiliado (o gerado no portal de afiliados da loja). */
   url: string;
-  /** Skin do Pavio que combina (ilustração do cartão e sugestão para quem usa essa skin). */
+  /** Skin do Pavio que combina (sugestão para quem usa essa skin; ilustração quando não há foto). */
   skin: string;
+  /**
+   * Foto do produto, **embutida na extensão** (arquivo em `src/ui/assets/shop/`, ex.: "premium-200g-a.jpg").
+   * Nunca um endereço da internet: carregar de fora quebraria o "tudo local".
+   */
+  image?: string;
 }
+
+/** Nome de arquivo simples de imagem (sem pasta, sem http). */
+export const isLocalImageName = (name: string): boolean => /^[a-z0-9][a-z0-9_-]*\.(jpe?g|png|webp)$/i.test(name);
 
 export const STORE_LABEL: Record<ShopStore, string> = { mercadolivre: 'Mercado Livre' };
 
@@ -61,7 +69,10 @@ export function offersFor(skin: string | undefined, offers: CandleOffer[] = CAND
   return offers
     .flatMap((o) => {
       const url = cleanOfferUrl(o.url, o.store);
-      return url ? [{ ...o, url }] : [];
+      if (!url) return [];
+      // Foto inválida (endereço da internet, pasta…) é ignorada: o cartão usa a vela desenhada.
+      const image = o.image && isLocalImageName(o.image) ? o.image : undefined;
+      return [{ ...o, url, image }];
     })
     .sort((a, b) => Number(b.skin === skin) - Number(a.skin === skin));
 }

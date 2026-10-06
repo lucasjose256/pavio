@@ -376,3 +376,8 @@ input[type="range"] { accent-color: var(--accent); }
 .hero-tip { margin: 12px 0 0; }
 .hero-tip a { color: var(--accent-text); font-weight: 600; text-decoration: none; }
 @media (max-width: 640px) { .offer-featured { grid-template-columns: 1fr; justify-items: center; text-align: center; } .offer-featured-candle { width: 90px; } }
+/* foto do produto (embutida): quadrada, cantos suaves */
+.shop-photo { display: block; object-fit: cover; aspect-ratio: 1; border-radius: 14px; background: var(--surface-2); }
+.offer-featured .shop-photo { width: 160px; }
+.offer .shop-photo { width: 140px; margin-bottom: 6px; }
+@media (min-width: 641px) { .offer-featured { grid-template-columns: auto 1fr; } }
