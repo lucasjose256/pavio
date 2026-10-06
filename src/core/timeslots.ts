@@ -132,3 +132,43 @@ export function segmentsForDay<T extends TimeSlot>(slots: T[], day: number): Day
   }
   return out;
 }
+
+/**
+ * Distribui itens que se cruzam em "pistas" empilhadas (como numa agenda): nenhum cobre outro.
+ * Devolve os itens na ordem original, cada um com a sua `lane`, e quantas pistas foram necessárias.
+ */
+export function layoutLanes<T extends { startMin: number; endMin: number }>(items: T[]): { items: (T & { lane: number })[]; lanes: number } {
+  const order = items.map((_, i) => i).sort((a, b) => items[a]!.startMin - items[b]!.startMin || items[b]!.endMin - items[a]!.endMin);
+  const laneEnds: number[] = [];
+  const lane = new Array<number>(items.length).fill(0);
+  for (const i of order) {
+    const item = items[i]!;
+    let k = laneEnds.findIndex((end) => end <= item.startMin);
+    if (k === -1) k = laneEnds.push(0) - 1;
+    laneEnds[k] = item.endMin;
+    lane[i] = k;
+  }
+  return { items: items.map((it, i) => ({ ...it, lane: lane[i]! })), lanes: Math.max(1, laneEnds.length) };
+}
+
+/**
+ * Primeiro horário livre de até `maxLen` minutos (e ao menos `minLen`) para sugerir ao criar uma faixa:
+ * procura a partir de `from` (9h) e, se não achar, antes dele. Null se o dia estiver cheio.
+ */
+export function suggestFreeTime(occupied: { startMin: number; endMin: number }[], from = 9 * 60, minLen = 60, maxLen = 120): { startMin: number; endMin: number } | null {
+  const busy = [...occupied].sort((a, b) => a.startMin - b.startMin);
+  const free: { startMin: number; endMin: number }[] = [];
+  let cursor = 0;
+  for (const b of busy) {
+    if (b.startMin > cursor) free.push({ startMin: cursor, endMin: b.startMin });
+    cursor = Math.max(cursor, b.endMin);
+  }
+  if (cursor < MINUTES_PER_DAY) free.push({ startMin: cursor, endMin: MINUTES_PER_DAY });
+  const fit = (range: { startMin: number; endMin: number }, atLeast: number) => {
+    const start = Math.max(range.startMin, atLeast);
+    return range.endMin - start >= minLen ? { startMin: start, endMin: start + Math.min(maxLen, range.endMin - start) } : null;
+  };
+  for (const r of free) { const f = fit(r, from); if (f) return f; }
+  for (const r of free) { const f = fit(r, 0); if (f) return f; }
+  return null;
+}

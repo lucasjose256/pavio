@@ -6,10 +6,10 @@ import { randomId } from '../../core/ports';
 import { activeRules, featureSlotsOf, loosensNow, newFeatureSlot, nextBoundary, retimeFeature, rulesAnyTime, serviceOf, validateSlot } from '../../core/routine';
 import { ROUTINE_SUGGESTIONS, SLOT_PRESETS, defaultRoutine } from '../../core/routine-defaults';
 import { FEATURE_DEFS, defaultSpec, featuresOf } from '../../core/restrictions';
-import { MINUTES_PER_DAY, SNAP_MIN, formatMinutes, moveSlot, parseTime, resizeSlot, segmentsForDay, slotDurationMin, snapMinute } from '../../core/timeslots';
+import { MINUTES_PER_DAY, SNAP_MIN, formatMinutes, layoutLanes, moveSlot, parseTime, resizeSlot, segmentsForDay, slotDurationMin, snapMinute, suggestFreeTime } from '../../core/timeslots';
 import { ensureHostAccess } from '../../platform/chrome/permissions';
 import { featureLabel } from '../i18n/pt-BR';
-import { DAY_SHORT, WEEK_ORDER, formatRange, formatWhen } from '../shared/format';
+import { DAY_SHORT, WEEK_ORDER, formatDays, formatRange, formatWhen } from '../shared/format';
 import { RestrictionPicker } from './RestrictionPicker';
 import { missingAccess } from './access';
 import { services } from './shared';
@@ -114,12 +114,14 @@ export function RoutineTab({ active }: { active: boolean }) {
 
   function openNew(site: RoutineSite, atMin?: number, endAt?: number, feature?: string) {
     const last = site.slots[site.slots.length - 1];
-    const start = atMin === undefined ? 9 * 60 : Math.min(atMin, MINUTES_PER_DAY - 30);
+    // Sem gesto (botão "+"): sugere o primeiro horário livre do dia mostrado, para a faixa nova não nascer por cima de outra.
+    const free = atMin === undefined ? suggestFreeTime(segmentsForDay(feature ? featureSlotsOf(site, feature) : site.slots, day)) : null;
+    const start = atMin !== undefined ? Math.min(atMin, MINUTES_PER_DAY - 30) : free?.startMin ?? 9 * 60;
     const slot: RoutineSlot = {
       id: randomId(),
-      days: atMin === undefined ? WEEKDAYS : [day],
+      days: [day],
       startMin: start,
-      endMin: endAt ?? Math.min(start + 120, MINUTES_PER_DAY),
+      endMin: endAt ?? free?.endMin ?? Math.min(start + 120, MINUTES_PER_DAY),
       ...(last ? { mode: last.mode, restrictedKind: last.restrictedKind, features: last.features } : defaultSpec(site.domain, 'blocked')),
     };
     // Numa barra de recurso, a faixa nasce escondendo só aquele recurso.
@@ -206,14 +208,23 @@ export function RoutineTab({ active }: { active: boolean }) {
 
   const patch = (p: Partial<RoutineSlot>) => draft && setDraft({ ...draft, slot: { ...draft.slot, ...p } });
 
-  async function saveDraft() {
+  async function saveDraft(andAddAnother = false) {
     if (!draft) return;
     const errors = validateSlot(draft.slot);
     if (errors.length) return setNotice({ kind: 'error', text: errors.map(slotErrorText).join(' ') });
     const next = draft.siteId
       ? sites.map((s) => s.id !== draft.siteId ? s : { ...s, slots: draft.isNewSlot ? [...s.slots, draft.slot] : s.slots.map((x) => x.id === draft.slot.id ? draft.slot : x) })
       : [...sites, { id: randomId(), domain: draft.domain, enabled: true, slots: [draft.slot] }];
-    if (await commit(next, enabled, 'Faixa salva.')) setDraft(undefined);
+    if (!(await commit(next, enabled, 'Faixa salva.'))) return;
+    setDraft(undefined);
+    const saved = next.find((x) => x.domain === draft.domain);
+    if (andAddAnother && saved) openNew(saved); // abre já a próxima, num horário livre
+  }
+
+  /** Copia a faixa em edição como um rascunho novo (para a mesma coisa em outros dias ou horários). */
+  function duplicateDraft() {
+    if (draft) setDraft({ ...draft, isNewSlot: true, slot: { ...structuredClone(draft.slot), id: randomId() } });
+    setNotice(undefined);
   }
 
   async function deleteSlot() {
@@ -230,6 +241,7 @@ export function RoutineTab({ active }: { active: boolean }) {
     await reload();
   };
 
+  const draftSite = draft?.siteId ? sites.find((x) => x.id === draft.siteId) : undefined;
   const allDay = !!draft && draft.slot.startMin === 0 && draft.slot.endMin === MINUTES_PER_DAY;
   const status = !enabled
     ? 'Rotina desligada: nada é bloqueado por horário.'
@@ -250,11 +262,17 @@ export function RoutineTab({ active }: { active: boolean }) {
     const draftHere = draft?.isNewSlot && draft.siteId === site.id && (!feature || featuresOf(draft.slot).has(feature)) ? draft : undefined;
     const pct = (a: number, b: number) => ({ left: `${(a / MINUTES_PER_DAY) * 100}%`, width: `${((b - a) / MINUTES_PER_DAY) * 100}%` });
 
+    // Faixas que se cruzam ficam em pistas empilhadas: nenhuma cobre a outra.
+    const placed = layoutLanes(segmentsForDay(slots.map((sl) => ghostHere?.slotId === sl.id ? { ...sl, startMin: ghostHere.startMin, endMin: ghostHere.endMin } : sl), day));
+    const unit = feature ? 24 : 32; // altura da faixa quando há uma só pista
+    const laneH = placed.lanes === 1 ? unit : Math.max(14, Math.floor((unit * 1.7) / placed.lanes));
+    const trackH = placed.lanes === 1 ? unit + 8 : placed.lanes * (laneH + 3) + 5;
+
     return (
-      <div class="rt-track" title="Arraste num espaço vazio para criar uma faixa; clique para uma de 2 h"
+      <div class="rt-track" style={{ height: `${trackH}px` }} title="Arraste num espaço vazio para criar uma faixa; clique para uma de 2 h"
         onPointerDown={(e) => onTrackDown(site, e, feature)} onPointerMove={(e) => onTrackMove(site, e, feature)}
         onPointerUp={() => void onTrackUp(site, feature)} onPointerCancel={() => { setGesture(undefined); setPreview(undefined); }}>
-        {segmentsForDay(slots.map((sl) => ghostHere?.slotId === sl.id ? { ...sl, startMin: ghostHere.startMin, endMin: ghostHere.endMin } : sl), day).map((seg) => {
+        {placed.items.map((seg) => {
           const slot = slots.find((sl) => sl.id === seg.slotId)!;
           const dragging = here(drag) && !!drag && 'slotId' in drag && drag.slotId === slot.id && drag.moved;
           const shown = ghostHere?.slotId === slot.id ? { ...slot, startMin: ghostHere.startMin, endMin: ghostHere.endMin } : slot;
@@ -264,7 +282,8 @@ export function RoutineTab({ active }: { active: boolean }) {
           const handle = (edge: 'start' | 'end') => (e: PointerEvent) =>
             beginDrag(e, { kind: 'resize', siteId: site.id, feature, slotId: slot.id, edge, startX: e.clientX, moved: false });
           return (
-            <div key={`${seg.slotId}-${seg.part}`} class={`rt-seg m-${slot.mode} ${canMove ? 'movable' : ''} ${dragging ? 'dragging' : ''}`} style={pct(seg.startMin, seg.endMin)}
+            <div key={`${seg.slotId}-${seg.part}`} class={`rt-seg m-${slot.mode} ${canMove ? 'movable' : ''} ${dragging ? 'dragging' : ''} ${seg.lane % 2 ? 'alt' : ''}`}
+              style={{ ...pct(seg.startMin, seg.endMin), top: `${4 + seg.lane * (laneH + 3)}px`, height: `${laneH}px`, bottom: 'auto' }}
               title={`${site.domain} · ${slotLabel(slot)} · ${formatRange(shown)} (clique para editar; arraste para mover; arraste as pontas para ajustar)`}
               role="button" tabIndex={0} onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && edit(site, slot)}
               onPointerDown={(e) => canMove
@@ -324,7 +343,12 @@ export function RoutineTab({ active }: { active: boolean }) {
           ))}
         </div>
 
-        <p class="hint rt-hint">Arraste as <strong>pontas</strong> de uma faixa para ajustar início e fim, arraste a <strong>faixa</strong> para movê-la, ou arraste num <strong>espaço vazio</strong> para criar uma. Clique numa faixa para ver todas as opções. Use a seta <strong>▸</strong> ao lado de YouTube, Instagram, X ou LinkedIn para dar <strong>horários diferentes a cada recurso</strong> (por exemplo, recomendados o dia todo e o feed só em certas horas). Encaixa de 15 em 15 min.</p>
+        <p class="hint rt-hint">Arraste as <strong>pontas</strong> de uma faixa para ajustar início e fim, arraste a <strong>faixa</strong> para movê-la, ou arraste num <strong>espaço vazio</strong> para criar uma. Clique numa faixa para ver todas as opções. Use a seta <strong>▸</strong> ao lado de YouTube, Instagram, X ou LinkedIn para dar <strong>horários diferentes a cada recurso</strong> (por exemplo, recomendados o dia todo e o feed só em certas horas). Encaixa de 15 em 15 min. Faixas que se cruzam ficam empilhadas, e vale sempre a mais rigorosa.</p>
+        <ul class="rt-legend" aria-label="Legenda de cores">
+          <li><i class="dot m-blocked" /> Bloqueado</li>
+          <li><i class="dot m-restricted" /> Restrito (esconde partes ou pergunta a intenção)</li>
+          <li><i class="swatch-ghost" /> Rascunho (ainda não salvo)</li>
+        </ul>
         <div class="rt" aria-label={`Rotina de ${DAY_SHORT[day]}`}>
           <div class="rt-axis" aria-hidden="true">
             <span />
@@ -352,6 +376,7 @@ export function RoutineTab({ active }: { active: boolean }) {
                   </div>
                   {renderTrack(site, site.slots)}
                   <div class="rt-actions">
+                    <button class="rt-plus" aria-label={`Adicionar uma faixa em ${site.domain}`} title="Adicionar outra faixa neste site" onClick={() => openNew(site)}>+</button>
                     <label class="switch" title={site.enabled ? 'Desligar este site na rotina' : 'Ligar este site na rotina'}>
                       <input type="checkbox" checked={site.enabled} onChange={() => toggleSite(site)} aria-label={`${site.domain} na rotina`} />
                       <span />
@@ -386,6 +411,17 @@ export function RoutineTab({ active }: { active: boolean }) {
       {draft && (
         <section class="card" ref={editorRef} aria-label="Editar faixa">
           <h3>{draft.isNewSlot ? 'Nova faixa em' : 'Editar faixa em'} <span class="accent">{draft.domain}</span></h3>
+          {draftSite && (
+            <div class="site-slots" role="group" aria-label={`Faixas de ${draft.domain}`}>
+              <span class="lbl">Faixas deste site</span>
+              {draftSite.slots.map((sl) => (
+                <button key={sl.id} type="button" class={`slot-chip m-${sl.mode}`} aria-pressed={!draft.isNewSlot && draft.slot.id === sl.id} onClick={() => edit(draftSite, sl)}>
+                  <i class="dot" /> {formatDays(sl.days)} · {formatRange(sl)} · {slotLabel(sl)}
+                </button>
+              ))}
+              <button type="button" class="slot-chip add" aria-pressed={draft.isNewSlot} onClick={() => openNew(draftSite)}>+ Nova faixa</button>
+            </div>
+          )}
 
           <span class="lbl gap">Dias</span>
           <div class="day-row" role="group" aria-label="Dias da semana">
@@ -413,7 +449,9 @@ export function RoutineTab({ active }: { active: boolean }) {
 
           {notice && <p class={`notice ${notice.kind}`} role="alert">{notice.text}</p>}
           <div class="actions-row">
-            <button class="btn btn-primary" onClick={saveDraft}>Salvar faixa</button>
+            <button class="btn btn-primary" onClick={() => saveDraft()}>Salvar faixa</button>
+            <button class="btn" onClick={() => saveDraft(true)} title="Salva esta e já abre outra faixa neste site">Salvar e adicionar outra</button>
+            {!draft.isNewSlot && <button class="btn btn-ghost" onClick={duplicateDraft} title="Cria uma cópia desta faixa para ajustar">Duplicar</button>}
             <button class="btn btn-ghost" onClick={() => { setDraft(undefined); setNotice(undefined); }}>Cancelar</button>
             <span class="grow" />
             {!draft.isNewSlot && <button class="btn btn-ghost btn-danger" onClick={deleteSlot}>Apagar faixa</button>}

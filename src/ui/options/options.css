@@ -176,7 +176,7 @@ input[type="range"] { accent-color: var(--accent); }
 .daytab.on { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
 .today-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: currentColor; margin-left: 6px; vertical-align: middle; opacity: .7; }
 .rt { display: flex; flex-direction: column; gap: 8px; }
-.rt-axis, .rt-row { display: grid; grid-template-columns: 150px minmax(0, 1fr) 92px; gap: 12px; align-items: center; }
+.rt-axis, .rt-row { display: grid; grid-template-columns: 150px minmax(0, 1fr) 126px; gap: 12px; align-items: center; }
 .rt-axis > div { position: relative; height: 14px; }
 .rt-axis b { position: absolute; transform: translateX(-50%); font-size: 11px; color: var(--muted); font-weight: 500; }
 .rt-label { display: flex; flex-direction: column; min-width: 0; }
@@ -200,7 +200,7 @@ input[type="range"] { accent-color: var(--accent); }
 .accent { color: var(--accent-text); }
 .check.inline { margin-top: 0; }
 .footnote { margin-top: 4px; }
-@media (max-width: 780px) { .rt-axis, .rt-row { grid-template-columns: 96px minmax(0, 1fr) 76px; gap: 8px; } .rt-seg span { display: none; } }
+@media (max-width: 780px) { .rt-axis, .rt-row { grid-template-columns: 96px minmax(0, 1fr) 104px; gap: 8px; } .rt-seg span { display: none; } }
 .rt + .add { margin-top: 20px; }
 
 /* ---- arrastar na linha do tempo ---- */
@@ -214,7 +214,8 @@ input[type="range"] { accent-color: var(--accent); }
 .rt-handle.end { right: 0; }
 .rt-handle::after { content: ''; position: absolute; top: 25%; bottom: 25%; left: 4px; width: 3px; border-radius: 2px; background: currentColor; opacity: .55; }
 .rt-handle:hover::after { opacity: 1; }
-.rt-seg > span { padding: 0 6px; line-height: 32px; pointer-events: none; }
+.rt-seg { display: flex; align-items: center; }
+.rt-seg > span { padding: 0 6px; pointer-events: none; }
 .rt-hint { margin: 0 0 12px; }
 
 /* ---- uma barra por recurso ---- */
@@ -226,5 +227,26 @@ input[type="range"] { accent-color: var(--accent); }
 .rt-feature { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rt-row.lane .rt-track { height: 30px; border-radius: 10px; }
 .rt-row.lane .rt-seg { top: 3px; bottom: 3px; border-radius: 7px; font-size: 11px; }
-.rt-row.lane .rt-seg > span { line-height: 24px; }
+
 .rt-expander-spacer { display: inline-block; width: 22px; flex: none; }
+
+/* ---- faixas sobrepostas: pistas empilhadas, sem uma cobrir a outra ---- */
+.rt-track { min-height: 40px; transition: height .15s; }
+.rt-seg.alt { filter: brightness(.9) saturate(1.1); }
+.rt-seg { box-shadow: 0 0 0 1px color-mix(in srgb, var(--surface) 70%, transparent), 0 2px 6px -2px rgba(80, 50, 20, .45); }
+.rt-seg.ghost { align-items: center; z-index: 3; top: 4px !important; bottom: 4px !important; height: auto !important; }
+
+/* ---- adicionar várias faixas ---- */
+.rt-plus { width: 28px; height: 28px; flex: none; display: inline-grid; place-items: center; border-radius: 50%; border: 1px dashed var(--muted); background: transparent; color: var(--muted); font-size: 18px; line-height: 1; padding: 0; }
+.rt-plus:hover { color: var(--accent-text); border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.site-slots { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 4px 0 6px; }
+.site-slots .lbl { margin: 0 4px 0 0; }
+.slot-chip { display: inline-flex; align-items: center; gap: 6px; background: var(--bg); border: 1px solid var(--border); border-radius: 999px; padding: 4px 12px; font-size: 12px; color: var(--text); transition: all .15s; }
+.slot-chip:hover { border-color: var(--muted); }
+.slot-chip[aria-pressed="true"] { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--bg)); font-weight: 600; }
+.slot-chip.add { border-style: dashed; color: var(--muted); }
+.slot-chip.add[aria-pressed="true"] { color: var(--accent-text); }
+
+.rt-legend { list-style: none; margin: 0 0 14px; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 12px; color: var(--muted); }
+.rt-legend li { display: flex; align-items: center; gap: 6px; }
+.swatch-ghost { width: 14px; height: 10px; border: 2px dashed var(--accent); border-radius: 4px; background: color-mix(in srgb, var(--accent) 25%, transparent); }
