@@ -381,3 +381,15 @@ input[type="range"] { accent-color: var(--accent); }
 .offer-featured .shop-photo { width: 160px; }
 .offer .shop-photo { width: 140px; margin-bottom: 6px; }
 @media (min-width: 641px) { .offer-featured { grid-template-columns: auto 1fr; } }
+
+/* ---- apoie o Pavio ---- */
+.donate-hero { display: grid; grid-template-columns: 90px 1fr; gap: 24px; align-items: center;
+  background: radial-gradient(ellipse 40% 100% at 8% 50%, var(--glow), transparent 70%), var(--surface); }
+.donate-candle { width: 84px; }
+.donate-hero .section-sub { max-width: 62ch; margin-bottom: 0; }
+.amounts { display: flex; gap: 8px; flex-wrap: wrap; margin: 6px 0 14px; }
+.amounts .btn[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: transparent; font-weight: 650; }
+.donate-actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.donate-meta { margin: 14px 0 0; }
+.donate-meta code { font-family: ui-monospace, Menlo, monospace; font-size: 12px; background: var(--bg); border-radius: 6px; padding: 1px 6px; word-break: break-all; }
+@media (max-width: 640px) { .donate-hero { grid-template-columns: 1fr; justify-items: center; text-align: center; } }

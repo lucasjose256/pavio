@@ -81,5 +81,8 @@ Não é necessária conta nem login para testar o fluxo principal.
 7. Limite de tempo: na aba Rotina, no cartão "Limite de tempo", digite 1 (minuto por dia) em um site, clique em "Definir" e permita o acesso. Deixe esse site aberto e em foco por ~2 minutos (a contagem é por minuto): ele passa a mostrar "Você chegou ao limite de hoje". Em "Precisa dele agora?", escolha 5 min e confirme: o site abre por 5 minutos e depois volta a ser bloqueado (o mesmo vale para qualquer site bloqueado pela rotina; em Opções › Para liberar dá para exigir uma frase). O uso por app aparece na aba Histórico; o limite volta a zero na meia-noite.
 ```
 
+## Doações (declarar no painel)
+Aba opcional "Apoie o Pavio" (só aparece quando o desenvolvedor configura): mostra uma chave Pix (com "copia e cola") e links https de apoio. Não há pagamento dentro da extensão, nem recursos pagos ou bloqueados por não doar, nem pedidos de doação fora dessa aba. Nenhum dado é coletado.
+
 ## Links de afiliado (declarar no painel)
 O Pavio mostra sugestões opcionais de velas aromáticas com **links de afiliado do Mercado Livre**, sempre identificados ("link de afiliado") e desligáveis (Opções › Velas de verdade; a linha do popup tem "Esconder"). Só abrem a loja com um clique do usuário, numa aba nova, com `rel="sponsored noreferrer"`. A extensão **não** insere códigos de afiliado em links ou buscas do usuário, não altera páginas de lojas e não rastreia cliques. Isso está declarado na descrição da loja e na política de privacidade (exigência da política "Affiliate Ads" da Chrome Web Store).

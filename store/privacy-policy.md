@@ -22,6 +22,9 @@ Esses dados ficam em `chrome.storage.local`, que **não é sincronizado** com a 
 - Não envia nenhum dado para servidores, terceiros ou para o desenvolvedor.
 - Não usa cookies, identificadores nem análise de uso.
 
+## Apoio voluntário
+A aba "Apoie o Pavio" mostra uma chave Pix e/ou links de apoio. O Pavio **não** processa pagamentos, não pede dados e não registra quem doa nem quanto: você copia o código e paga no app do seu banco ou no site de apoio, onde valem as regras e a política de privacidade deles. Doar é opcional e nenhum recurso depende disso.
+
 ## Links de afiliado
 As sugestões de velas aromáticas (em Opções › Velas de verdade, na página do Timer e numa linha discreta do popup) são **links de afiliado** do Mercado Livre, identificados como tal. Se você comprar por eles, o desenvolvedor pode receber uma comissão, sem custo extra para você. O Pavio **não** registra cliques nem envia nada: o link só abre a loja numa aba nova quando você clica, sem informar de onde veio. A partir daí vale a política de privacidade da loja. Você pode esconder a linha do popup com um clique ou desligar todas as sugestões em Opções › Velas de verdade.
 - Não vende nem compartilha dados.

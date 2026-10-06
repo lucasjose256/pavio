@@ -184,3 +184,23 @@ export const shopUi = {
   timerHint: 'Dica: muita gente acende uma vela de verdade junto com a do Pavio.',
   timerLink: 'Ver velas',
 };
+
+/** Apoio voluntário. Tom: gratidão, sem culpa nem pressão; nada fica trancado por não doar. */
+export const donateUi = {
+  title: 'Apoie o Pavio',
+  lead: 'Feito com calma, por uma pessoa só.',
+  intro: 'O Pavio é gratuito, sem anúncios e sem coletar nada seu, e vai continuar assim. Se ele te ajudou a focar e você quiser contribuir, qualquer valor ajuda a manter e melhorar a extensão. Se não puder, tudo bem: nada aqui depende disso.',
+  pixTitle: 'Pix',
+  pixHint: 'Escolha um valor, copie o código e cole em "Pix copia e cola" no app do seu banco.',
+  amount: (n: number) => `R$ ${n}`,
+  anyAmount: 'Outro valor',
+  copy: 'Copiar código Pix',
+  copied: 'Copiado! Agora é só colar no app do banco.',
+  copyKey: 'Copiar só a chave',
+  copyFailed: 'Não consegui copiar sozinho. Selecione e copie o código abaixo:',
+  keyLabel: 'Chave Pix',
+  recipient: (name: string) => `Recebedor: ${name}`,
+  otherTitle: 'Outras formas',
+  thanks: 'Obrigado por fazer parte disso. 🕯️',
+  privacy: 'O Pavio não registra quem doa nem quanto: o pagamento acontece fora da extensão, no seu banco ou no site de apoio.',
+};

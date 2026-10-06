@@ -9,7 +9,9 @@ import { Icon } from './icons';
 import { AppearanceTab } from './AppearanceTab';
 import { EnvironmentsTab } from './EnvironmentsTab';
 import { FrictionTab } from './FrictionTab';
+import { DonateTab } from './DonateTab';
 import { HistoryTab } from './HistoryTab';
+import { hasDonation } from '../../core/donate';
 import { ShopTab } from './ShopTab';
 import { RoutineTab, type RoutineView } from './RoutineTab';
 
@@ -23,6 +25,7 @@ const NAV = [
   ] },
   { group: 'Você', items: [
     { id: 'velas', label: 'Velas de verdade', icon: 'flame', note: 'para o ritual' },
+    { id: 'apoie', label: 'Apoie o Pavio', icon: 'heart', note: 'se quiser contribuir' },
     { id: 'historico', label: 'Histórico', icon: 'chart', note: 'horas devolvidas' },
     { id: 'aparencia', label: 'Vela e tema', icon: 'palette', note: 'estilo e cores' },
   ] },
@@ -31,7 +34,10 @@ type TabId = 'ambientes' | (typeof NAV)[number]['items'][number]['id'];
 const IDS: TabId[] = ['ambientes', ...NAV.flatMap((g) => g.items.map((i) => i.id))];
 const ROUTINE_VIEWS: Partial<Record<TabId, RoutineView>> = { rotina: 'schedule', bloqueio: 'quick', limite: 'limits' };
 
-const fromHash = (): TabId => IDS.find((id) => `#${id}` === location.hash) ?? 'rotina';
+const donate = hasDonation();
+/** A aba de apoio só existe quando há chave Pix ou link configurado (`core/donate.ts`). */
+const visible = (id: string) => id !== 'apoie' || donate;
+const fromHash = (): TabId => IDS.find((id) => visible(id) && `#${id}` === location.hash) ?? 'rotina';
 
 export function App() {
   const [tab, setTab] = useState<TabId>(fromHash());
@@ -73,7 +79,7 @@ export function App() {
           {NAV.map((g) => (
             <div key={g.group} class="nav-group">
               <span class="nav-title">{g.group}</span>
-              {g.items.map((i) => (
+              {g.items.filter((i) => visible(i.id)).map((i) => (
                 <a key={i.id} href={`#${i.id}`} class={`nav-item ${tab === i.id ? 'on' : ''}`} aria-current={tab === i.id ? 'page' : undefined}>
                   <span class="nav-icon" aria-hidden="true"><Icon name={i.icon} /></span>
                   <span class="nav-label">{i.label}<small>{i.note}</small></span>
@@ -90,6 +96,7 @@ export function App() {
         <EnvironmentsTab active={tab === 'ambientes'} />
         <FrictionTab active={tab === 'liberar'} />
         <ShopTab active={tab === 'velas'} />
+        {donate && <DonateTab active={tab === 'apoie'} />}
         <HistoryTab active={tab === 'historico'} />
         <AppearanceTab active={tab === 'aparencia'} />
       </div>

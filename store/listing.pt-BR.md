@@ -55,6 +55,7 @@ Veja quanto tempo de foco você acumulou, sua sequência de dias, as tentativas 
 PRIVACIDADE EM PRIMEIRO LUGAR
 
 • Sem contas, sem servidores, sem análise de uso.
+• Gratuito e sem recursos pagos. Se quiser contribuir, há uma aba opcional "Apoie o Pavio" (Pix), sem nenhuma pressão.
 • Contém links de afiliado: as sugestões de velas aromáticas (Opções › Velas de verdade e uma linha discreta no popup) levam ao Mercado Livre, e o Pavio pode receber uma comissão se você comprar, sem custo extra. Dá para desligá-las com um clique.
 • Tudo fica no seu navegador, nunca é enviado para lugar nenhum.
 • As permissões de acesso aos sites são opcionais e pedidas site a site, só quando você adiciona o site a um ambiente.
