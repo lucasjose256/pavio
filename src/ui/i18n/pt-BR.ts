@@ -68,23 +68,20 @@ export const releasedUi = {
   title: 'Liberado agora',
   message: (site: string | null) => `${site ?? 'O site'} não está mais bloqueado. Pode abrir.`,
   until: (when: string) => `Volta a liberar ${when}`,
+  backAt: (time: string) => `O bloqueio volta às ${time}`,
 };
 
 export const limitUi = {
   title: 'Você chegou ao limite de hoje',
   message: (site: string | null) => `${site ?? 'O app'} usou o tempo que você combinou consigo. Amanhã ele volta, e você também.`,
-  more: 'Mais 5 min',
-  // Tela de fricção do "mais 5 min"
-  extendTitle: 'Mais cinco minutos?',
-  extendMessage: (site: string) => `Você combinou um limite para ${site}. Se ainda quiser, respire e peça mais um pouco.`,
-  extendWaitLeft: (s: number) => `Você poderá pedir em ${s}s`,
-  extendWaitDone: 'Se ainda quiser, escreva a frase abaixo.',
-  extendPrompt: 'Para pedir mais 5 min, digite exatamente:',
-  extendConfirm: 'Mais 5 min',
-  extendDoneTitle: 'Pronto: mais 5 minutos.',
-  extendDoneMessage: 'Use com calma. Quando acabarem, o limite volta a valer.',
-  extendNoLimit: 'Esse app não está com o limite estourado agora.',
-  stay: 'Prefiro ficar sem',
+};
+
+export const releaseUi = {
+  ask: 'Precisa dele agora?',
+  option: (min: number) => `${min} min`,
+  confirmQuestion: (site: string, min: number) => `Liberar ${site} por ${min} min? Depois o bloqueio volta sozinho.`,
+  action: (min: number) => `Liberar por ${min} min`,
+  forever: 'Desligar de vez nas opções',
 };
 
 export const breakUi = {

@@ -152,3 +152,30 @@ describe('limite de tempo', () => {
     expect(computePolicy({ routine: withSlot, routineEnabled: true, session: undefined, now: mon(15), usage: spent }).rules[0]!.mode).toBe('blocked');
   });
 });
+
+describe('liberação temporária na política', () => {
+  const releases = [{ domain: 'instagram.com', until: mon(10, 15) }];
+  it('tira a regra da rotina até vencer, e a virada da política inclui o fim da liberação', () => {
+    const p = computePolicy({ routine, routineEnabled: true, session: undefined, now: mon(10), releases });
+    expect(p.rules).toEqual([]);
+    expect(p.nextChange).toBe(mon(10, 15));
+    expect(p.released).toEqual(releases);
+    const later = computePolicy({ routine, routineEnabled: true, session: undefined, now: mon(10, 15), releases });
+    expect(later.rules.map((r) => r.domain)).toEqual(['instagram.com']);
+  });
+  it('também solta o limite de tempo estourado', () => {
+    const limited: RoutineSite[] = [{ id: 'y', domain: 'youtube.com', enabled: true, slots: [], limitMin: 10 }];
+    const usage = addUsage({}, 'youtube.com', min(12), mon(10));
+    const free = computePolicy({ routine: limited, routineEnabled: true, session: undefined, now: mon(10), usage, releases: [{ domain: 'youtube.com', until: mon(11) }] });
+    expect(free.rules).toEqual([]);
+    expect(free.limitReached).toEqual([]);
+  });
+  it('não solta o que o Timer restringe; "releasable" diz o que a liberação resolve', () => {
+    const p = computePolicy({ routine, routineEnabled: true, session: session(), now: mon(10, 30), releases: [{ domain: 'instagram.com', until: mon(11) }] });
+    expect(p.rules.find((r) => r.domain === 'instagram.com')?.mode).toBe('blocked'); // o ambiente Estudo bloqueia
+    const before = computePolicy({ routine, routineEnabled: true, session: session(), now: mon(10, 30) });
+    expect(before.releasable).toEqual([]);
+    const routineOnly = computePolicy({ routine, routineEnabled: true, session: undefined, now: mon(10) });
+    expect(routineOnly.releasable).toEqual(['instagram.com']);
+  });
+});

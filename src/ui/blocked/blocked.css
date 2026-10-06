@@ -10,3 +10,8 @@ body { min-height: 100vh; }
 .time { margin: 0 0 14px; color: var(--accent-text); font-variant-numeric: tabular-nums; font-weight: 600; }
 .actions { display: flex; gap: 10px; }
 .actions a { text-decoration: none; }
+.release { margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--border); width: min(440px, 100%); display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.release-ask { margin: 0; color: var(--muted); }
+.release-options { display: flex; gap: 8px; }
+.release .link { background: none; border: 0; color: var(--muted); font-size: 13px; text-decoration: underline; padding: 2px; }
+.release .link:hover { color: var(--text); }

@@ -4,7 +4,7 @@ import { IntentService } from './intent-service';
 import { MemoryStorage } from './memory-storage';
 import type { RoutineSite } from './models';
 import { PolicyService, ROUTINE_ALARM } from './policy-service';
-import { HistoryRepository, IntentRepository, PolicyRepository, RoutineRepository, SessionRepository, SettingsRepository, UsageRepository } from './repositories';
+import { HistoryRepository, IntentRepository, PolicyRepository, RoutineRepository, SessionRepository, SettingsRepository, UsageRepository, ReleaseRepository } from './repositories';
 import { addUsage, extendLimit } from './usage';
 import { SESSION_ALARM, SessionService } from './session-service';
 
@@ -40,7 +40,7 @@ beforeEach(async () => {
   usage = new UsageRepository(storage);
   sessionService = new SessionService({ sessions: new SessionRepository(storage), history: new HistoryRepository(storage), scheduler, notifier, clock, newId: () => 'sid' });
   const intentService = new IntentService({ intents, scheduler, notifier, clock });
-  service = new PolicyService({ routine: routines, settings, policies, usage, sessionService, intentService, scheduler, clock });
+  service = new PolicyService({ routine: routines, settings, policies, usage, releases: new ReleaseRepository(storage), sessionService, intentService, scheduler, clock });
   await routines.save(routine);
 });
 
@@ -147,6 +147,19 @@ describe('limite de tempo na política', () => {
 });
 
 describe('RoutineRepository', () => {
+  it('liberação por um tempo: tira a regra, agenda o alarme no fim e limpa a vencida', async () => {
+    await settings.update({ routineEnabled: true });
+    now = mon(10);
+    const releases = new ReleaseRepository(storage);
+    await releases.save([{ domain: 'instagram.com', until: mon(10, 15) }, { domain: 'old.com', until: mon(9) }]);
+    const p = await service.sync();
+    expect(p.rules.map((r) => r.domain)).toEqual(['reddit.com']);
+    expect(alarms.get(ROUTINE_ALARM)).toBe(mon(10, 15));
+    expect(await releases.list()).toEqual([{ domain: 'instagram.com', until: mon(10, 15) }]);
+    now = mon(10, 15);
+    expect((await service.sync()).rules.map((r) => r.domain).sort()).toEqual(['instagram.com', 'reddit.com']);
+    expect(await releases.list()).toEqual([]);
+  });
   it('recusa rotina inválida e guarda a válida', async () => {
     await expect(routines.save([{ ...routine[0]!, slots: [{ ...routine[0]!.slots[0]!, days: [] }] }])).rejects.toThrow();
     await routines.save([routine[0]!]);

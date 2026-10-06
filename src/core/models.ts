@@ -77,9 +77,20 @@ export interface Settings {
   theme: ThemeName;
   /** Faixas de horário da rotina ligadas? (Vem ligado; a rotina nasce vazia. O bloqueio rápido não depende disto.) */
   routineEnabled: boolean;
+  /**
+   * Fricção para liberar algo que protege agora (liberar por um tempo, afrouxar a rotina) e o modo da vela que já vem
+   * escolhido no popup. `light` = só confirmar (padrão); `focus` = "Firme": digitar a frase. Sem espera em nenhum caso.
+   */
+  friction: Strictness;
 }
 
-export const DEFAULT_SETTINGS: Settings = { candleSkin: 'classic', theme: 'cream', routineEnabled: true };
+export const DEFAULT_SETTINGS: Settings = { candleSkin: 'classic', theme: 'cream', routineEnabled: true, friction: 'light' };
+
+/** App (ou recurso) da rotina liberado temporariamente: até `until` (epoch ms) as regras da rotina e do limite saem. */
+export interface Release {
+  domain: string;
+  until: number;
+}
 
 /** Regras de rede desejadas agora. `allow` = exceções (subdomínios de um domínio bloqueado/com intenção). */
 export interface BlockPlan {
@@ -171,4 +182,8 @@ export interface Policy {
   timerActive: boolean;
   /** Apps bloqueados hoje por terem estourado o limite de tempo. */
   limitReached?: string[];
+  /** Domínios restritos só pela rotina/limite (não pelo Timer): liberar por um tempo resolve. */
+  releasable?: string[];
+  /** Liberações temporárias valendo agora. */
+  released?: Release[];
 }

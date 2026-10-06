@@ -1,6 +1,6 @@
 import { randomId, systemClock } from '../../core/ports';
 import {
-  EnvironmentRepository, HistoryRepository, IntentRepository, PolicyRepository, RoutineRepository, SessionRepository, SettingsRepository,
+  EnvironmentRepository, HistoryRepository, IntentRepository, PolicyRepository, ReleaseRepository, RoutineRepository, SessionRepository, SettingsRepository,
   UsageRepository,
 } from '../../core/repositories';
 import { IntentService } from '../../core/intent-service';
@@ -23,6 +23,7 @@ export function createServices() {
   const settings = new SettingsRepository(storage);
   const policies = new PolicyRepository(storage);
   const usage = new UsageRepository(storage);
+  const releases = new ReleaseRepository(storage);
   const scheduler = new ChromeScheduler();
   const notifier = new ChromeNotifier();
 
@@ -39,10 +40,11 @@ export function createServices() {
     intents,
     policies,
     usage,
+    releases,
     blocker: new ChromeBlocker(),
     sessionService,
     intentService,
     usageService: new UsageService({ usage, routine, clock: systemClock }),
-    policyService: new PolicyService({ routine, settings, policies, usage, sessionService, intentService, scheduler, clock: systemClock }),
+    policyService: new PolicyService({ routine, settings, policies, usage, releases, sessionService, intentService, scheduler, clock: systemClock }),
   };
 }

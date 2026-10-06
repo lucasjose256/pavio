@@ -1,9 +1,11 @@
 import { render } from 'preact';
-import { useEffect, useMemo } from 'preact/hooks';
+import { useEffect, useMemo, useState } from 'preact/hooks';
 import '../theme.css';
 import './blocked.css';
 import { Candle } from '../candle/Candle';
-import type { Policy, Session, Settings } from '../../core/models';
+import type { Policy, Session, Settings, Strictness } from '../../core/models';
+import { frictionForRelease } from '../../core/friction';
+import { RELEASE_OPTIONS_MIN, addRelease } from '../../core/release';
 import { DEFAULT_SETTINGS } from '../../core/models';
 import { hostMatchesDomain } from '../../core/matching';
 import { blockStillApplies } from '../../core/policy';
@@ -11,7 +13,8 @@ import { onBreak } from '../../core/pomodoro';
 import { candleProgress, formatRemaining, remainingMs } from '../../core/session';
 import { formatMinutes } from '../../core/timeslots';
 import { createServices } from '../../platform/chrome/services';
-import { blockedWhy, breakUi, limitUi, quotes, releasedUi } from '../i18n/pt-BR';
+import { blockedWhy, breakUi, limitUi, quotes, releaseUi, releasedUi } from '../i18n/pt-BR';
+import { FrictionGate } from '../shared/FrictionGate';
 import { formatWhen } from '../shared/format';
 import { initTheme } from '../shared/theme';
 import { useNow } from '../shared/useNow';
@@ -20,8 +23,32 @@ import { useStorageValue } from '../shared/useStorageValue';
 const services = createServices();
 initTheme();
 
-function askMore(domain: string) {
-  void chrome.tabs.create({ url: chrome.runtime.getURL(`src/ui/friction/index.html?extend=${encodeURIComponent(domain)}`) });
+/** "Precisa dele agora?": liberar por 5/15/30 min, com a fricção escolhida nas opções (Leve ou Firme). */
+function ReleasePanel({ domain, level, limited }: { domain: string; level: Strictness; limited: boolean }) {
+  const [minutes, setMinutes] = useState<number>();
+  async function release(min: number) {
+    await services.releases.save(addRelease(await services.releases.list(), domain, min, Date.now()));
+    setMinutes(undefined); // o background recalcula a política e esta página se libera sozinha
+  }
+  const section = limited ? 'limite' : 'rotina';
+  return (
+    <section class="release" aria-label="Liberar por um tempo">
+      {minutes === undefined ? (
+        <>
+          <p class="release-ask">{releaseUi.ask}</p>
+          <div class="release-options">
+            {RELEASE_OPTIONS_MIN.map((m) => <button key={m} class="btn" onClick={() => setMinutes(m)}>{releaseUi.option(m)}</button>)}
+          </div>
+          <button class="link" onClick={() => void chrome.tabs.create({ url: chrome.runtime.getURL(`src/ui/options/index.html#${section}`) })}>{releaseUi.forever}</button>
+        </>
+      ) : (
+        <>
+          <p class="release-ask">{releaseUi.confirmQuestion(domain, minutes)}</p>
+          <FrictionGate steps={frictionForRelease(level)} action={releaseUi.action(minutes)} onDone={() => release(minutes)} onCancel={() => setMinutes(undefined)} />
+        </>
+      )}
+    </section>
+  );
 }
 
 function goBack() {
@@ -50,6 +77,8 @@ function Blocked() {
   const released = loaded && !stillBlocked;
   const limitedDomain = site ? policy?.limitReached?.find((d) => hostMatchesDomain(site, d)) : undefined;
   const resting = timer && onBreak(timer) ? timer : undefined;
+  const releasable = site ? policy?.releasable?.find((d) => hostMatchesDomain(site, d)) : undefined;
+  const releasedUntil = site ? policy?.released?.find((r) => hostMatchesDomain(site, r.domain))?.until : undefined;
 
   return (
     <main class="blocked">
@@ -65,6 +94,7 @@ function Blocked() {
               ? breakUi.message(site, clock(resting.pomodoro.phaseEndsAt))
               : releasedUi.message(site)}
           </p>
+          {releasedUntil && <p class="time">{releasedUi.backAt(clock(releasedUntil))}</p>}
         </>
       ) : (
         limitedDomain ? (
@@ -85,9 +115,9 @@ function Blocked() {
 
       <div class="actions">
         <button class="btn" onClick={goBack}>Voltar</button>
-        {!released && limitedDomain && <button class="btn btn-ghost" onClick={() => askMore(limitedDomain)}>{limitUi.more}</button>}
         {released && site && <a class="btn btn-primary" href={`https://${site}/`}>{breakUi.open(site)}</a>}
       </div>
+      {!released && loaded && releasable && <ReleasePanel domain={releasable} level={(settings ?? DEFAULT_SETTINGS).friction} limited={!!limitedDomain} />}
     </main>
   );
 }

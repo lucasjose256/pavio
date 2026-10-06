@@ -1,6 +1,6 @@
 import { createBuiltinEnvironment, validateEnvironment } from './environments';
 import { DEFAULT_SETTINGS } from './models';
-import type { Environment, HistoryEntry, IntentGrant, Policy, RoutineSite, Session, Settings } from './models';
+import type { Environment, HistoryEntry, IntentGrant, Policy, Release, RoutineSite, Session, Settings } from './models';
 import type { Clock, StoragePort } from './ports';
 import { validateSite } from './routine';
 import { pruneUsage } from './usage';
@@ -16,6 +16,7 @@ export const KEYS = {
   routine: 'routine',
   policy: 'policy',
   usage: 'usage',
+  releases: 'releases',
 } as const;
 
 export const HISTORY_LIMIT = 1000;
@@ -62,6 +63,18 @@ export class EnvironmentRepository {
   async restoreBuiltin(id: string): Promise<Environment | undefined> {
     const fresh = createBuiltinEnvironment(id, this.clock.now());
     return fresh ? this.save(fresh) : undefined;
+  }
+}
+
+/** Liberações temporárias ("preciso disso agora"). A UI grava; o background recalcula a política. */
+export class ReleaseRepository {
+  constructor(private storage: StoragePort) {}
+
+  async list(): Promise<Release[]> {
+    return (await this.storage.get<Release[]>(KEYS.releases)) ?? [];
+  }
+  save(list: Release[]): Promise<void> {
+    return this.storage.set(KEYS.releases, list);
   }
 }
 

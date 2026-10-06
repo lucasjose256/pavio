@@ -1,9 +1,8 @@
 import type { Strictness } from './models';
 
 export const GIVE_UP_PHRASE = 'eu quero desistir do meu foco agora';
-export const FOCUS_WAIT_SECONDS = 10;
-/** Frase para pedir mais tempo num app que estourou o limite (o número acompanha `EXTEND_MIN` = 5). */
-export const EXTEND_PHRASE = 'eu quero mais cinco minutos';
+/** Frase do modo Firme para liberar um app ou afrouxar a rotina que protege agora. */
+export const RELEASE_PHRASE = 'eu preciso disso agora';
 
 /**
  * Fricção = lista de passos que TODOS precisam estar cumpridos para encerrar a sessão.
@@ -16,17 +15,17 @@ export type FrictionStep =
   | { type: 'typePhrase'; phrase: string }
   | { type: 'challenge'; challengeId: string };
 
+/**
+ * Apagar a vela antes da hora. Sem espera (decisão do dono): Leve = confirmar; Foco/Firme = digitar a frase.
+ * O passo `wait` continua disponível para quem quiser no futuro.
+ */
 export function frictionFor(strictness: Strictness): FrictionStep[] {
-  if (strictness === 'light') return [{ type: 'confirm' }];
-  return [
-    { type: 'wait', seconds: FOCUS_WAIT_SECONDS },
-    { type: 'typePhrase', phrase: GIVE_UP_PHRASE },
-  ];
+  return strictness === 'light' ? [{ type: 'confirm' }] : [{ type: 'typePhrase', phrase: GIVE_UP_PHRASE }];
 }
 
-/** Pedir "mais um pouco" num app que estourou o limite do dia: sempre a fricção completa (espera + frase). */
-export function frictionForExtension(): FrictionStep[] {
-  return [{ type: 'wait', seconds: FOCUS_WAIT_SECONDS }, { type: 'typePhrase', phrase: EXTEND_PHRASE }];
+/** Liberar algo que protege agora (por um tempo, ou afrouxando a rotina): mesma regra, com a frase própria. */
+export function frictionForRelease(level: Strictness): FrictionStep[] {
+  return level === 'light' ? [{ type: 'confirm' }] : [{ type: 'typePhrase', phrase: RELEASE_PHRASE }];
 }
 
 export interface FrictionInput {

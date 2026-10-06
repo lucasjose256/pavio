@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'preact/hooks';
 import { formatDuration, summarizeHistory } from '../../core/history';
 import type { HistoryEntry } from '../../core/models';
-import { extraMinutes, usageByApp, type UsageData } from '../../core/usage';
+import { usageByApp, type UsageData } from '../../core/usage';
 import { Candle } from '../candle/Candle';
 import { services } from './shared';
 
@@ -41,7 +41,6 @@ export function HistoryTab({ active }: { active: boolean }) {
   }
 
   const apps = useMemo(() => usageByApp(usage, Date.now()), [usage, active]);
-  const extraToday = (domain: string) => extraMinutes(usage, domain, Date.now());
   const max = Math.max(1, ...(summary?.last7Days.map((d) => d.focusedMs) ?? [1]));
 
   return (
@@ -105,13 +104,12 @@ export function HistoryTab({ active }: { active: boolean }) {
           <ul class="app-usage">
             {apps.map((a) => {
               const top = apps[0]!.totalMs || 1;
-              const extra = extraToday(a.domain);
               return (
                 <li key={a.domain}>
                   <span class="app-name">{a.domain}</span>
                   <span class="app-bar"><i style={{ width: `${Math.max(3, (a.totalMs / top) * 100)}%` }} /></span>
                   <span class="app-time">{formatDuration(a.totalMs)}</span>
-                  <span class="app-today">hoje {formatDuration(a.todayMs)}{extra ? ` · +${extra} min pedidos` : ''}</span>
+                  <span class="app-today">hoje {formatDuration(a.todayMs)}</span>
                 </li>
               );
             })}

@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { accessDomains } from '../../core/blocking';
 import { normalizeDomain } from '../../core/matching';
-import type { RestrictionSpec, RoutineSite, RoutineSlot } from '../../core/models';
+import type { RestrictionSpec, RoutineSite, RoutineSlot, Strictness } from '../../core/models';
+import { frictionForRelease } from '../../core/friction';
+import { FrictionGate } from '../shared/FrictionGate';
 import { randomId } from '../../core/ports';
 import { activeRules, featureSlotsOf, isBlockedAll, loosensNow, newFeatureSlot, nextBoundary, retimeFeature, rulesAnyTime, serviceOf, setBlockAll, setLimit, validateSlot } from '../../core/routine';
 import { isValidLimit, limitStatuses, MAX_LIMIT_MIN, type UsageData } from '../../core/usage';
@@ -72,6 +74,9 @@ export function RoutineTab({ active, view }: { active: boolean; view: RoutineVie
   const [newDomain, setNewDomain] = useState('');
   const [quickDomain, setQuickDomain] = useState('');
   const [usage, setUsage] = useState<UsageData>({});
+  const [friction, setFriction] = useState<Strictness>('light');
+  // Fricção de afrouxar (Leve: confirmar; Firme: frase), como uma pergunta que a função `commit` espera.
+  const [gate, setGate] = useState<(ok: boolean) => void>();
   const [limitInputs, setLimitInputs] = useState<Record<string, string>>({});
   const [limitDomain, setLimitDomain] = useState('');
   const [extraLimit, setExtraLimit] = useState<string[]>([]); // sites adicionados ao cartão antes de ter limite
@@ -90,6 +95,7 @@ export function RoutineTab({ active, view }: { active: boolean; view: RoutineVie
     const [list, settings, used] = await Promise.all([services.routine.list(), services.settings.get(), services.usage.get()]);
     setSites(list);
     setUsage(used);
+    setFriction(settings.friction);
     setEnabled(settings.routineEnabled);
     setMissing(await missingAccess(accessDomains({ rules: rulesAnyTime(effectiveSites(list, settings.routineEnabled)) })));
   }
@@ -116,7 +122,7 @@ export function RoutineTab({ active, view }: { active: boolean; view: RoutineVie
    */
   async function commit(nextSites: RoutineSite[], nextEnabled = enabled, okText = 'Rotina salva.'): Promise<boolean> {
     if (loosensNow({ sites, enabled }, { sites: nextSites, enabled: nextEnabled }, Date.now(), usage)
-      && !confirm('Isso afrouxa uma regra que está protegendo agora. Tem certeza?')) return false;
+      && !(await new Promise<boolean>((resolve) => setGate(() => resolve)))) return false;
     const needed = accessDomains({ rules: rulesAnyTime(effectiveSites(nextSites, nextEnabled)) });
     const granted = needed.length ? await ensureHostAccess(needed) : true;
     await services.routine.save(nextSites);
@@ -368,6 +374,17 @@ export function RoutineTab({ active, view }: { active: boolean; view: RoutineVie
 
   return (
     <main class="pane" hidden={!active}>
+      {gate && (
+        <div class="modal" role="dialog" aria-modal="true" aria-label="Afrouxar uma regra ativa">
+          <div class="modal-card">
+            <h3>Isso afrouxa uma regra que está protegendo agora</h3>
+            <p class="hint">{friction === 'light' ? 'Tem certeza? Se precisar só por um tempo, use "Precisa dele agora?" na tela de bloqueio.' : 'Você escolheu a fricção Firme. Se precisar só por um tempo, use "Precisa dele agora?" na tela de bloqueio.'}</p>
+            <FrictionGate steps={frictionForRelease(friction)} action="Afrouxar mesmo assim" cancelLabel="Manter como está"
+              onDone={() => { gate(true); setGate(undefined); }} onCancel={() => { gate(false); setGate(undefined); }} />
+          </div>
+        </div>
+      )}
+
       {view === 'schedule' && (
       <section class="card status">
         <div class="grow">
@@ -416,7 +433,7 @@ export function RoutineTab({ active, view }: { active: boolean; view: RoutineVie
       <section class="card limits" aria-label="Limite de tempo">
         <div class="grow">
           <h2 class="section-title">Limite de tempo</h2>
-          <p class="section-sub">Quantos minutos por dia você aceita gastar em cada app. Conta só com a aba ativa e a janela em foco. Estourou, o app fica bloqueado até a meia-noite; dá para pedir <strong>mais 5 min</strong> na tela de bloqueio, com um pouco de calma.</p>
+          <p class="section-sub">Quantos minutos por dia você aceita gastar em cada app. Conta só com a aba ativa e a janela em foco. Estourou, o app fica bloqueado até a meia-noite; se precisar, a tela de bloqueio deixa <strong>liberar por um tempo</strong>.</p>
         </div>
         <ul class="limit-list">
           {limitDomains.map((d) => {

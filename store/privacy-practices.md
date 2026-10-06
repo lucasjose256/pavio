@@ -11,7 +11,7 @@ Ajudar o usuário a manter o foco: ele monta ambientes e horários com regras po
 
 ### `storage`
 ```
-Guarda, no próprio navegador, a rotina e os ambientes do usuário (regras por site e horário), a sessão em andamento, as configurações, o histórico local de sessões e o tempo de uso (minutos por dia) dos apps em que o usuário definiu um limite. Nenhum desses dados sai do dispositivo.
+Guarda, no próprio navegador, a rotina e os ambientes do usuário (regras por site e horário), a sessão em andamento, as liberações temporárias ("liberar por 15 min"), as configurações, o histórico local de sessões e o tempo de uso (minutos por dia) dos apps em que o usuário definiu um limite. Nenhum desses dados sai do dispositivo.
 ```
 
 ### `alarms`
@@ -75,8 +75,8 @@ Não é necessária conta nem login para testar o fluxo principal.
 1. Instale a extensão: as Opções abrem sozinhas na aba "Rotina", que começa LIMPA (nada bloqueado).
 2. No painel "Bloqueio rápido" clique em "reddit.com" (ou digite um site e clique em "Bloquear") e permita o acesso quando o Chrome pedir. Para um horário: em "Adicionar site à rotina" digite um site, escolha os dias e o horário, marque "Bloqueado" e salve a faixa.
 3. Abra reddit.com em uma nova aba: a navegação é redirecionada para a página da vela (bloqueio). Clique de novo no botão do reddit.com e o site volta a abrir.
-4. Timer: clique no ícone do Pavio, escolha "Outro" e 2 (minutos), ambiente "Estudo", e "Acender vela" (o Chrome pede acesso aos sites do ambiente). "Preciso parar antes da hora" abre a tela de atrito (espera de 10 s + frase "eu quero desistir do meu foco agora").
+4. Timer: clique no ícone do Pavio, escolha "Outro" e 2 (minutos), ambiente "Estudo", e "Acender vela" (o Chrome pede acesso aos sites do ambiente). "Preciso parar antes da hora" abre a tela de atrito (no modo Leve, padrão, uma confirmação; no modo Foco, a frase "eu quero desistir do meu foco agora").
 5. Modo restrito (sem login): criando uma faixa "Sempre" restrita ("Esconder partes") para Instagram, LinkedIn ou YouTube, abrir instagram.com/reels/, instagram.com/explore/ ou linkedin.com/video/ redireciona para a vela (a decisão é só pela URL). No YouTube, youtube.com/shorts/... redireciona e a home mostra um aviso no lugar do feed.
 6. Pomodoro: no popup, abra "Mais opções", ligue "Pomodoro automático" com foco 1 min e pausa 1 min e acenda a vela: na pausa os bloqueios do timer se desligam.
-7. Limite de tempo: na aba Rotina, no cartão "Limite de tempo", digite 1 (minuto por dia) em um site, clique em "Definir" e permita o acesso. Deixe esse site aberto e em foco por ~2 minutos (a contagem é por minuto): ele passa a mostrar "Você chegou ao limite de hoje". O botão "Mais 5 min" abre uma tela de espera de 10 s + frase "eu quero mais cinco minutos" e, ao concluir, libera o site por mais 5 minutos. O uso por app aparece na aba Histórico; o limite volta a zero na meia-noite.
+7. Limite de tempo: na aba Rotina, no cartão "Limite de tempo", digite 1 (minuto por dia) em um site, clique em "Definir" e permita o acesso. Deixe esse site aberto e em foco por ~2 minutos (a contagem é por minuto): ele passa a mostrar "Você chegou ao limite de hoje". Em "Precisa dele agora?", escolha 5 min e confirme: o site abre por 5 minutos e depois volta a ser bloqueado (o mesmo vale para qualquer site bloqueado pela rotina; em Opções › Para liberar dá para exigir uma frase). O uso por app aparece na aba Histórico; o limite volta a zero na meia-noite.
 ```

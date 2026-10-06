@@ -66,7 +66,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'local') return;
   const flag = (v: unknown) => (v as Partial<Settings> | undefined)?.routineEnabled;
   const routineToggled = !!changes.settings && flag(changes.settings.oldValue) !== flag(changes.settings.newValue);
-  if (changes.activeSession || changes.routine || changes.usage || routineToggled) void syncAll();
+  if (changes.activeSession || changes.routine || changes.usage || changes.releases || routineToggled) void syncAll();
   else if (changes.intents) void enqueue(syncBlocking);
 });
 

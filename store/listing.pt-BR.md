@@ -38,7 +38,7 @@ COMO FUNCIONA
 
 • Modo intenção. Em sites restritos, o Pavio pergunta "o que você vai fazer aqui?" e por quanto tempo. Passou do tempo, você recebe um aviso gentil: "ainda está na tarefa?".
 
-• Atrito para desistir. Parar a vela antes da hora de propósito dá um pouco de trabalho: uma mensagem, uma espera de 10 segundos e uma frase para digitar (ou, se preferir, o modo leve, só com confirmação). Mexer na rotina enquanto ela está protegendo você também pede confirmação.
+• Atrito na medida certa. Precisa de um app bloqueado? Libere por 5, 15 ou 30 minutos e o bloqueio volta sozinho. No modo Leve (padrão) basta confirmar; no Firme é preciso digitar uma frase. Vale também para apagar a vela antes da hora e para afrouxar a rotina enquanto ela protege você.
 
 ESCONDER PARTES, NÃO O SITE INTEIRO
 

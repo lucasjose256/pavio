@@ -8,6 +8,7 @@ import { useStorageValue } from '../shared/useStorageValue';
 import { Icon } from './icons';
 import { AppearanceTab } from './AppearanceTab';
 import { EnvironmentsTab } from './EnvironmentsTab';
+import { FrictionTab } from './FrictionTab';
 import { HistoryTab } from './HistoryTab';
 import { RoutineTab, type RoutineView } from './RoutineTab';
 
@@ -17,6 +18,7 @@ const NAV = [
     { id: 'rotina', label: 'Horários', icon: 'clock', note: 'por dia e hora' },
     { id: 'bloqueio', label: 'Bloqueio rápido', icon: 'ban', note: 'o app inteiro, já' },
     { id: 'limite', label: 'Limite de tempo', icon: 'hourglass', note: 'minutos por dia' },
+    { id: 'liberar', label: 'Para liberar', icon: 'key', note: 'leve ou firme' },
   ] },
   { group: 'Você', items: [
     { id: 'historico', label: 'Histórico', icon: 'chart', note: 'horas devolvidas' },
@@ -84,6 +86,7 @@ export function App() {
         {/* Todas ficam montadas: trocar de seção não perde alterações não salvas. */}
         <RoutineTab active={!!routineView} view={routineView ?? 'schedule'} />
         <EnvironmentsTab active={tab === 'ambientes'} />
+        <FrictionTab active={tab === 'liberar'} />
         <HistoryTab active={tab === 'historico'} />
         <AppearanceTab active={tab === 'aparencia'} />
       </div>

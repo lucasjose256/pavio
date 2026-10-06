@@ -31,11 +31,13 @@ function StartForm({ skin }: { skin: string }) {
   const [envId, setEnvId] = useState('');
   const [minutes, setMinutes] = useState(25);
   const [custom, setCustom] = useState(false);
-  const [strictness, setStrictness] = useState<Strictness>('focus');
+  const [strictness, setStrictness] = useState<Strictness>('light');
   const [error, setError] = useState('');
   const [links, setLinks] = useState('');
   const [pomodoro, setPomodoro] = useState<PomodoroConfig>();
 
+  // O modo da vela já vem como a fricção escolhida nas opções (padrão: Leve); dá para trocar em "Mais opções".
+  useEffect(() => { void services.settings.get().then((st) => setStrictness(st.friction)); }, []);
   useEffect(() => {
     void services.environments.list().then((list) => {
       setEnvs(list);
@@ -97,8 +99,8 @@ function StartForm({ skin }: { skin: string }) {
             <div>
               <span class="lbl">Ao parar antes da hora</span>
               <div class="seg" role="group" aria-label="Modo">
-                <button type="button" title="Desistir dá trabalho, de propósito" aria-pressed={strictness === 'focus'} onClick={() => setStrictness('focus')}>Foco</button>
                 <button type="button" title="Você pode parar com uma confirmação" aria-pressed={strictness === 'light'} onClick={() => setStrictness('light')}>Leve</button>
+                <button type="button" title="Para apagar antes da hora, digite uma frase" aria-pressed={strictness === 'focus'} onClick={() => setStrictness('focus')}>Foco</button>
               </div>
             </div>
             <PomodoroFields value={pomodoro} onChange={setPomodoro} />
