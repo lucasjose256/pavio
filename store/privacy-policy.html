@@ -35,6 +35,7 @@
 <li><strong>Ambientes</strong> do timer (regras por site) e configurações (tema, estilo da vela, se a rotina está ligada).</li>
 <li><strong>Timer em andamento:</strong> quando começou, quando termina, o ambiente e o estado do Pomodoro.</li>
 <li><strong>Histórico de sessões:</strong> data, duração, ambiente, se foi concluída e quantas vezes você tentou abrir um site bloqueado.</li>
+<li><strong>Tempo de uso dos apps com limite:</strong> só os minutos usados por dia de cada app em que você definiu um limite (guardados por 90 dias). <strong>Não</strong> guardamos endereços visitados nem uma lista de páginas.</li>
 <li><strong>Modo intenção:</strong> o texto que você digita ("o que você vai fazer aqui") e o tempo escolhido, apenas durante a sessão.</li>
 </ul>
 <h2>O que o Pavio <strong>não</strong> faz</h2>
@@ -42,17 +43,19 @@
 <li>Não envia nenhum dado para servidores, terceiros ou para o desenvolvedor.</li>
 <li>Não usa cookies, identificadores, análise de uso ou publicidade.</li>
 <li>Não vende nem compartilha dados.</li>
-<li>Não lê nem guarda o conteúdo das páginas que você visita (mensagens, publicações, perfis, e-mails, formulários, senhas).</li>
+<li>Não lê nem guarda o conteúdo das páginas que você visita (mensagens, publicações, perfis, e-mails, formulários, senhas) nem o seu histórico de navegação.</li>
 </ul>
 <h2>Como o Pavio atua nas páginas</h2>
 <ul>
 <li><strong>Bloqueio de sites:</strong> nos dias e horários da sua rotina, ou enquanto uma vela (timer) está acesa, o Pavio usa a API <code>declarativeNetRequest</code> do Chrome para redirecionar os sites que você escolheu bloquear para uma página do próprio Pavio. Isso não exige ler o conteúdo das páginas.</li>
+<li><strong>Limite de tempo:</strong> se você definir um limite para um app, a cada minuto o Pavio vê qual é a aba ativa (e se o computador está em uso) e, se for aquele app, soma um minuto ao tempo do dia. Só os minutos são guardados; o endereço da aba não é registrado nem enviado.</li>
 <li><strong>Abas já abertas:</strong> quando um bloqueio começa a valer, o Pavio consulta o endereço das abas abertas nos sites que você bloqueou, só para levá-las à página da vela.</li>
 <li><strong>YouTube, Instagram, LinkedIn e X:</strong> nos horários em que sua rotina (ou o timer) trata o serviço como "restrito", um script local esconde as partes que você marcou (por exemplo, feed, Shorts, Reels, comentários) e redireciona páginas específicas com base no <strong>endereço (URL)</strong>. No YouTube, se você usa uma lista de vídeos/canais permitidos, o script compara o link do canal do vídeo aberto com a sua lista. No X, o script lê os rótulos das abas ("Para você", "Seguindo") para identificar qual esconder. Tudo acontece no seu navegador; nada é lido para outro fim nem transmitido.</li>
 </ul>
 <h2>Permissões e por que são necessárias</h2>
 <table><thead><tr><th>Permissão</th><th>Para que serve</th></tr></thead><tbody>
-<tr><td>Armazenamento (<code>storage</code>)</td><td>Guardar localmente seus ambientes, horários, sessão e histórico.</td></tr>
+<tr><td>Armazenamento (<code>storage</code>)</td><td>Guardar localmente sua rotina, seus ambientes, sessão, histórico e o tempo de uso dos apps com limite.</td></tr>
+<tr><td>Estado de uso do computador (<code>idle</code>)</td><td>Não contar o tempo de um app com limite quando o computador está parado ou bloqueado. Não mostra aviso de instalação.</td></tr>
 <tr><td>Alarmes (<code>alarms</code>)</td><td>Disparar o fim da vela, o início e o fim das faixas da rotina, as trocas do Pomodoro e o aviso do modo intenção no momento certo.</td></tr>
 <tr><td>Notificações (<code>notifications</code>)</td><td>Avisar "a vela acabou", "hora da pausa" e "ainda está na tarefa?".</td></tr>
 <tr><td>Bloqueio de rede declarativo (<code>declarativeNetRequest</code>)</td><td>Redirecionar os sites bloqueados para a página da vela nos horários da sua rotina ou durante o timer.</td></tr>

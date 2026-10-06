@@ -200,6 +200,17 @@ describe('horário por recurso', () => {
   });
 });
 
+describe('limite de tempo e permissões de acesso', () => {
+  it('rulesAnyTime inclui os apps com limite (ao estourar viram bloqueados e o Pavio precisa do acesso)', () => {
+    const routine: RoutineSite[] = [
+      { id: 'a', domain: 'youtube.com', enabled: true, slots: [], limitMin: 30 },
+      { id: 'b', domain: 'x.com', enabled: true, slots: [] },
+      { id: 'c', domain: 'tiktok.com', enabled: false, slots: [], limitMin: 15 },
+    ];
+    expect(rulesAnyTime(routine).map((r) => `${r.domain}:${r.mode}`)).toEqual(['youtube.com:blocked']);
+  });
+});
+
 describe('limite de tempo: validação e confirmação ao afrouxar', () => {
   const limited = (limitMin?: number): RoutineSite[] => [{ id: 'y', domain: 'youtube.com', enabled: true, slots: [], ...(limitMin ? { limitMin } : {}) }];
   const spent = addUsage({}, 'youtube.com', 31 * 60_000, mon(15));

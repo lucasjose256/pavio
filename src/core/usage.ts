@@ -102,3 +102,19 @@ export function limitStatuses(routine: RoutineSite[], data: UsageData, now: numb
       return { domain: s.domain, limitMin: s.limitMin!, usedMs: used, limitMs, remainingMs: Math.max(0, limitMs - used), reached: s.enabled && used >= limitMs, extraMin: extraMinutes(data, s.domain, now) };
     });
 }
+
+export type IdleState = 'active' | 'idle' | 'locked';
+
+/**
+ * Que site estava em uso neste instante? Só conta com o computador em uso (não parado nem bloqueado), a janela em foco
+ * e uma aba http(s) ativa. Páginas internas do Chrome, da extensão ou sem endereço visível não contam.
+ */
+export function trackableHost(input: { idle: IdleState; windowFocused: boolean; url: string | undefined }): string | null {
+  if (input.idle !== 'active' || !input.windowFocused || !input.url) return null;
+  try {
+    const url = new URL(input.url);
+    return /^https?:$/.test(url.protocol) ? url.hostname.toLowerCase() : null;
+  } catch {
+    return null;
+  }
+}

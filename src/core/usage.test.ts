@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { RoutineSite } from './models';
 import {
   EXTEND_MIN, addUsage, extendLimit, isValidLimit, limitReached, limitRules, limitStatuses, limitedSiteFor, limitMsFor,
-  nextMidnight, pruneUsage, remainingMsFor, usedMs,
+  nextMidnight, pruneUsage, remainingMsFor, trackableHost, usedMs,
 } from './usage';
 import type { UsageData } from './usage';
 
@@ -97,5 +97,20 @@ describe('apps, regras e status', () => {
     const [yt] = limitStatuses(routine, data, at(5));
     expect(yt).toMatchObject({ domain: 'youtube.com', limitMin: 30, usedMs: min(18), limitMs: min(35), remainingMs: min(17), reached: false, extraMin: 5 });
     expect(limitStatuses(routine, data, at(5)).map((s) => s.domain)).toEqual(['youtube.com', 'instagram.com', 'music.youtube.com', 'tiktok.com']);
+  });
+});
+
+describe('trackableHost (o que conta como "em uso")', () => {
+  const ok = { idle: 'active' as const, windowFocused: true };
+  it('só com o computador em uso, janela em foco e aba http(s)', () => {
+    expect(trackableHost({ ...ok, url: 'https://www.YouTube.com/watch?v=1' })).toBe('www.youtube.com');
+    expect(trackableHost({ ...ok, url: 'http://localhost:3000/x' })).toBe('localhost');
+    expect(trackableHost({ ...ok, idle: 'idle', url: 'https://youtube.com' })).toBeNull();
+    expect(trackableHost({ ...ok, idle: 'locked', url: 'https://youtube.com' })).toBeNull();
+    expect(trackableHost({ ...ok, windowFocused: false, url: 'https://youtube.com' })).toBeNull();
+  });
+  it('ignora páginas internas, da extensão, sem endereço ou inválidas', () => {
+    for (const url of [undefined, '', 'chrome://newtab', 'chrome-extension://abc/page.html', 'about:blank', 'file:///tmp/a.html', 'não é url'])
+      expect(trackableHost({ ...ok, url }), String(url)).toBeNull();
   });
 });

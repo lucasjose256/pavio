@@ -15,23 +15,26 @@ Esses dados ficam em `chrome.storage.local`, que **não é sincronizado** com a 
 - **Ambientes** do timer (regras por site) e configurações (tema, estilo da vela, se a rotina está ligada).
 - **Timer em andamento:** quando começou, quando termina, o ambiente e o estado do Pomodoro.
 - **Histórico de sessões:** data, duração, ambiente, se foi concluída e quantas vezes você tentou abrir um site bloqueado.
+- **Tempo de uso dos apps com limite:** só os minutos usados por dia de cada app em que você definiu um limite (guardados por 90 dias). **Não** guardamos endereços visitados nem uma lista de páginas.
 - **Modo intenção:** o texto que você digita ("o que você vai fazer aqui") e o tempo escolhido, apenas durante a sessão.
 
 ## O que o Pavio **não** faz
 - Não envia nenhum dado para servidores, terceiros ou para o desenvolvedor.
 - Não usa cookies, identificadores, análise de uso ou publicidade.
 - Não vende nem compartilha dados.
-- Não lê nem guarda o conteúdo das páginas que você visita (mensagens, publicações, perfis, e-mails, formulários, senhas).
+- Não lê nem guarda o conteúdo das páginas que você visita (mensagens, publicações, perfis, e-mails, formulários, senhas) nem o seu histórico de navegação.
 
 ## Como o Pavio atua nas páginas
 - **Bloqueio de sites:** nos dias e horários da sua rotina, ou enquanto uma vela (timer) está acesa, o Pavio usa a API `declarativeNetRequest` do Chrome para redirecionar os sites que você escolheu bloquear para uma página do próprio Pavio. Isso não exige ler o conteúdo das páginas.
+- **Limite de tempo:** se você definir um limite para um app, a cada minuto o Pavio vê qual é a aba ativa (e se o computador está em uso) e, se for aquele app, soma um minuto ao tempo do dia. Só os minutos são guardados; o endereço da aba não é registrado nem enviado.
 - **Abas já abertas:** quando um bloqueio começa a valer, o Pavio consulta o endereço das abas abertas nos sites que você bloqueou, só para levá-las à página da vela.
 - **YouTube, Instagram, LinkedIn e X:** nos horários em que sua rotina (ou o timer) trata o serviço como "restrito", um script local esconde as partes que você marcou (por exemplo, feed, Shorts, Reels, comentários) e redireciona páginas específicas com base no **endereço (URL)**. No YouTube, se você usa uma lista de vídeos/canais permitidos, o script compara o link do canal do vídeo aberto com a sua lista. No X, o script lê os rótulos das abas ("Para você", "Seguindo") para identificar qual esconder. Tudo acontece no seu navegador; nada é lido para outro fim nem transmitido.
 
 ## Permissões e por que são necessárias
 | Permissão | Para que serve |
 |---|---|
-| Armazenamento (`storage`) | Guardar localmente seus ambientes, horários, sessão e histórico. |
+| Armazenamento (`storage`) | Guardar localmente sua rotina, seus ambientes, sessão, histórico e o tempo de uso dos apps com limite. |
+| Estado de uso do computador (`idle`) | Não contar o tempo de um app com limite quando o computador está parado ou bloqueado. Não mostra aviso de instalação. |
 | Alarmes (`alarms`) | Disparar o fim da vela, o início e o fim das faixas da rotina, as trocas do Pomodoro e o aviso do modo intenção no momento certo. |
 | Notificações (`notifications`) | Avisar "a vela acabou", "hora da pausa" e "ainda está na tarefa?". |
 | Bloqueio de rede declarativo (`declarativeNetRequest`) | Redirecionar os sites bloqueados para a página da vela nos horários da sua rotina ou durante o timer. |

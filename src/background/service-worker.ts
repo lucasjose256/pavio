@@ -7,8 +7,9 @@ import { ROUTINE_ALARM } from '../core/policy-service';
 import { POMODORO_ALARM, SESSION_ALARM } from '../core/session-service';
 import { INTENT_NOTIFICATION_PREFIX } from '../platform/chrome/notifications';
 import { createServices } from '../platform/chrome/services';
+import { USAGE_ALARM, observeHost, setTracking } from '../platform/chrome/usage-tracker';
 
-const { storage, policies, intents, blocker, policyService, intentService } = createServices();
+const { storage, routine, policies, intents, blocker, policyService, intentService, usageService } = createServices();
 
 // Serializa: várias mudanças seguidas não podem mexer em regras/sessões ao mesmo tempo.
 let queue: Promise<unknown> = Promise.resolve();
@@ -29,6 +30,8 @@ const syncAll = () =>
   enqueue(async () => {
     await policyService.sync();
     await syncBlocking();
+    // A medição de uso só roda se algum app tem limite.
+    await setTracking((await routine.list()).some((site) => site.enabled && !!site.limitMin));
   });
 
 async function boot() {
@@ -46,6 +49,8 @@ chrome.runtime.onStartup.addListener(() => void boot());
 chrome.alarms.onAlarm.addListener((alarm) => {
   // Fim da vela, troca de fase do Pomodoro e virada de faixa da rotina: tudo passa pelo mesmo sync idempotente.
   if (alarm.name === SESSION_ALARM || alarm.name === POMODORO_ALARM || alarm.name === ROUTINE_ALARM) return void syncAll();
+  // A cada minuto: soma o tempo do app em uso. Gravar o uso aciona o `syncAll` (via storage.onChanged), que bloqueia ao estourar.
+  if (alarm.name === USAGE_ALARM) return void enqueue(async () => void (await usageService.record(await observeHost())));
   const domain = domainFromIntentAlarm(alarm.name);
   if (domain) void intentService.timeUp(domain);
 });
@@ -73,7 +78,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
   state: async () => {
     const policy = await policies.get();
     const grants = await intents.list();
-    return { policy, intents: grants, plan: planFor(policy, grants), rules: await chrome.declarativeNetRequest.getDynamicRules() };
+    return { policy, intents: grants, plan: planFor(policy, grants), usage: await usageService.statuses(), rules: await chrome.declarativeNetRequest.getDynamicRules() };
   },
   sync: syncAll,
 };

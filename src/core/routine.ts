@@ -47,9 +47,12 @@ export function activeRules(routine: RoutineSite[], enabled: boolean, now: numbe
   return strictestPerDomain([...active.map((o) => ({ domain: o.slot.domain, spec: spec(o.slot) })), ...blockedAll(routine)]);
 }
 
-/** O tratamento mais rigoroso de cada site em QUALQUER faixa (para pedir as permissões de acesso certas). */
+/** O tratamento mais rigoroso de cada site em QUALQUER faixa, bloqueio rápido ou limite (para pedir as permissões de acesso certas). */
 export function rulesAnyTime(routine: RoutineSite[]): Rule[] {
-  return strictestPerDomain([...flatten(routine).map((s) => ({ domain: s.domain, spec: spec(s) })), ...blockedAll(routine)]);
+  // Apps com limite de tempo também entram: ao estourar viram bloqueados, e para isso (e para saber qual aba está em uso)
+  // o Pavio precisa do acesso ao site.
+  const limited = routine.filter((s) => s.enabled && !!s.limitMin).map((s) => ({ domain: s.domain, spec: BLOCKED }));
+  return strictestPerDomain([...flatten(routine).map((s) => ({ domain: s.domain, spec: spec(s) })), ...blockedAll(routine), ...limited]);
 }
 
 /** O app está com o bloqueio rápido ligado? */

@@ -11,7 +11,7 @@ Ajudar o usuário a manter o foco: ele monta ambientes e horários com regras po
 
 ### `storage`
 ```
-Guarda, no próprio navegador, a rotina e os ambientes do usuário (regras por site e horário), a sessão em andamento, as configurações e o histórico local de sessões. Nenhum desses dados sai do dispositivo.
+Guarda, no próprio navegador, a rotina e os ambientes do usuário (regras por site e horário), a sessão em andamento, as configurações, o histórico local de sessões e o tempo de uso (minutos por dia) dos apps em que o usuário definiu um limite. Nenhum desses dados sai do dispositivo.
 ```
 
 ### `alarms`
@@ -24,6 +24,11 @@ Precisa disparar eventos no horário certo mesmo com o service worker suspenso: 
 Mostra avisos locais ao usuário: "a vela acabou", "hora da pausa / de volta ao foco" e "ainda está na tarefa?". Não exibe anúncios nem conteúdo promocional.
 ```
 
+### `idle`
+```
+Usada só para o limite de tempo diário que o usuário define para um app: a cada minuto o Pavio soma o tempo do app em uso, e a permissão serve para NÃO contar quando o computador está parado ou bloqueado. Não lê nada além do estado "ativo/parado/bloqueado". Não gera aviso de instalação.
+```
+
 ### `declarativeNetRequest`
 ```
 Redireciona a navegação principal (main_frame) dos sites que o usuário escolheu bloquear para uma página do próprio Pavio (a vela). As regras são dinâmicas e valem apenas nos dias e horários que o próprio usuário definiu na sua rotina, ou enquanto uma vela (timer) está acesa; são removidas ao fim da faixa, do timer ou na pausa do Pomodoro. A API declarativa é usada justamente para que o Pavio não precise ler o conteúdo das páginas.
@@ -31,7 +36,7 @@ Redireciona a navegação principal (main_frame) dos sites que o usuário escolh
 
 ### Permissão de host opcional (`optional_host_permissions: <all_urls>`)
 ```
-O redirecionamento do declarativeNetRequest exige acesso ao site de destino, e o Pavio não sabe de antemão quais sites o usuário vai bloquear. Por isso a permissão é OPCIONAL: nunca é pedida na instalação. Quando o usuário adiciona um site a um ambiente (ou acende uma vela com ele), o Pavio pede acesso apenas àquele domínio (padrão *://*.dominio/*), a partir de um clique. Ela serve só para redirecionar essas páginas; o Pavio não lê, não armazena nem transmite o conteúdo delas.
+O redirecionamento do declarativeNetRequest exige acesso ao site de destino, e o Pavio não sabe de antemão quais sites o usuário vai bloquear ou limitar. O mesmo acesso permite saber, para os apps com limite de tempo, se a aba em uso é daquele app (o Pavio só olha o endereço da aba ativa para esse fim e não guarda o endereço, só os minutos). Por isso a permissão é OPCIONAL: nunca é pedida na instalação. Quando o usuário adiciona um site a um ambiente (ou acende uma vela com ele), o Pavio pede acesso apenas àquele domínio (padrão *://*.dominio/*), a partir de um clique. Ela serve só para redirecionar essas páginas; o Pavio não lê, não armazena nem transmite o conteúdo delas.
 ```
 
 ### Scripts de conteúdo — acesso a `youtube.com`, `instagram.com`, `linkedin.com`, `x.com` e `twitter.com`
@@ -51,7 +56,7 @@ Expõe apenas duas páginas do próprio Pavio ("vela" de bloqueio e "o que você
 Marque **nenhuma** das categorias de dados coletados. Justificativa:
 - O Pavio não coleta, não transmite, não vende e não compartilha dados do usuário. Não há servidor, conta, análise de uso nem terceiros.
 - Tudo fica em `chrome.storage.local` (não é sincronizado com a conta Google).
-- O texto que o usuário digita no modo intenção ("o que vai fazer aqui") e o histórico de sessões ficam só no dispositivo e podem ser apagados pelo usuário.
+- O texto que o usuário digita no modo intenção ("o que vai fazer aqui"), o histórico de sessões e o tempo de uso por app e por dia (só dos apps com limite, guardado por 90 dias) ficam só no dispositivo; o histórico pode ser apagado pelo usuário e tudo some ao desinstalar.
 
 > ⚠️ Atenção: a definição de "coletar" do Google se refere a dados transmitidos para fora do dispositivo. Se a revisão questionar o histórico local ou a leitura de URLs/DOM pelos scripts de conteúdo, a resposta é que são processados **somente localmente** e nunca transmitidos (ver política de privacidade).
 
