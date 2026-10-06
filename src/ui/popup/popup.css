@@ -1,12 +1,17 @@
-/* Popup minimalista: só o foco por tempo. Bordas levemente arredondadas (8 px), sem pílulas. */
-body { width: 300px; }
+/* Popup minimalista: só o foco por tempo. Bordas levemente arredondadas (8 px), sem pílulas.
+   A moldura da janela é do Chrome (não dá para arredondá-la): o conteúdo vira um cartão de cantos suaves sobre um fundo um tom abaixo. */
+body { width: 300px; padding: 5px; background: var(--surface-2); }
 .popup { --r: 8px; display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 16px 18px 10px;
-  background: radial-gradient(ellipse 80% 38% at 50% 16%, var(--glow), transparent 72%); }
+  border: 1px solid var(--border); border-radius: 14px;
+  background: radial-gradient(ellipse 80% 38% at 50% 16%, var(--glow), transparent 72%), var(--bg); }
 .popup .btn, .popup .field, .popup .seg { border-radius: var(--r); }
 .popup .btn { padding: 9px 14px; }
 .popup .btn-primary { box-shadow: none; }
 .popup-candle { width: 120px; }
 .popup-candle.small { width: 64px; }
+.popup-candle.compact { width: 84px; }
+.run-actions { display: flex; flex-direction: column; gap: 6px; width: 100%; margin-top: 4px; }
+.run-actions .btn { width: 100%; }
 
 .form { width: 100%; display: flex; flex-direction: column; gap: 14px; }
 .full { width: 100%; }

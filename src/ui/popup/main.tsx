@@ -4,14 +4,16 @@ import '../theme.css';
 import './popup.css';
 import { Candle } from '../candle/Candle';
 import {
-  DURATION_PRESETS_MIN, MAX_DURATION_MIN, MIN_DURATION_MIN, candleProgress, formatRemaining, isValidDuration, remainingMs,
+  DURATION_PRESETS_MIN, MAX_DURATION_MIN, MIN_DURATION_MIN, isValidDuration, remainingMs,
 } from '../../core/session';
 import type { Environment, Session, Settings, Strictness } from '../../core/models';
 import { DEFAULT_SETTINGS } from '../../core/models';
 import { accessDomains } from '../../core/blocking';
-import { pomodoroAt, validatePomodoro } from '../../core/pomodoro';
+import { validatePomodoro } from '../../core/pomodoro';
 import type { PomodoroConfig } from '../../core/models';
 import { PomodoroFields } from '../shared/PomodoroFields';
+import { RunningCandle, openFriction } from '../shared/RunningCandle';
+import { openFloatingCandle } from '../shared/floating';
 import { findRule } from '../../core/matching';
 import { parseYouTubeLinks } from '../../core/youtube';
 import { pomodoroError, youtubeUi } from '../i18n/pt-BR';
@@ -119,27 +121,22 @@ function StartForm({ skin }: { skin: string }) {
 }
 
 function Running({ session, skin, now }: { session: Session; skin: string; now: number }) {
-  // Fase atual calculada pelo relógio (a gravada na sessão é a que bloqueios e content scripts usam).
-  const phase = session.pomodoro && session.endsAt > now ? pomodoroAt(session.pomodoro, session.startedAt, session.endsAt, now) : undefined;
-
-  // O popup fecha ao perder o foco: a fricção acontece numa aba própria.
+  // O popup fecha ao perder o foco: a fricção acontece numa aba própria, e a vela pode ganhar uma janela que fica aberta.
   async function stop() {
-    await chrome.tabs.create({ url: chrome.runtime.getURL('src/ui/friction/index.html') });
+    await openFriction();
+    window.close();
+  }
+  async function keepOpen() {
+    await openFloatingCandle();
     window.close();
   }
   return (
     <>
-      <div class="popup-candle"><Candle skin={skin} progress={candleProgress(session, now)} label="Vela acesa, sessão em andamento" /></div>
-      <p class="time">{formatRemaining(Math.min(remainingMs(session, now), session.plannedMs))}</p>
-      <p class="sub">{session.environmentSnapshot.name}</p>
-      {phase && (
-        <p class={`phase ${phase.phase}`} role="status">
-          {phase.phase === 'break'
-            ? `Pausa${phase.long ? ' longa' : ''} · ${formatRemaining(phase.end - now)} · bloqueios liberados`
-            : `Foco ${phase.cycle} · pausa em ${formatRemaining(phase.end - now)}`}
-        </p>
-      )}
-      <button class="btn btn-ghost" onClick={stop}>Preciso parar antes da hora</button>
+      <RunningCandle session={session} skin={skin} now={now} />
+      <div class="run-actions">
+        <button class="btn btn-primary" onClick={keepOpen} title="Abre a vela numa janelinha que não fecha sozinha">Manter a vela aberta</button>
+        <button class="btn btn-ghost" onClick={stop}>Preciso parar antes da hora</button>
+      </div>
     </>
   );
 }
