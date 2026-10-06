@@ -21,7 +21,8 @@ export const STORE_LABEL: Record<ShopStore, string> = { mercadolivre: 'Mercado L
 
 /** Só links destas lojas são aceitos (um link errado não leva a pessoa a um site qualquer). */
 const STORE_HOSTS: Record<ShopStore, string[]> = {
-  mercadolivre: ['mercadolivre.com.br', 'mercadolivre.com', 'mercadolibre.com'],
+  // meli.la = links curtos do Programa de Afiliados.
+  mercadolivre: ['mercadolivre.com.br', 'mercadolivre.com', 'mercadolibre.com', 'meli.la'],
 };
 
 /**
@@ -47,14 +48,12 @@ export function cleanOfferUrl(raw: string, store: ShopStore): string | null {
 }
 
 /**
- * A vitrine. **Troque os `url` pelos seus links de afiliado** (Mercado Livre › Programa de Afiliados › gerador de links).
- * Por enquanto todos apontam para o produto de exemplo.
+ * A vitrine: links de afiliado do Mercado Livre (gerador de links do Programa de Afiliados, `meli.la/…`).
+ * Para acrescentar: nome, uma linha sobre a vela, o link e a skin do Pavio que combina com ela.
  */
-const EXAMPLE = 'https://www.mercadolivre.com.br/vela-aromatica-lavanda-150g-100-cera-coco-com-tampa-premium-vegana-pavio-algodao-aromaterapia-relaxante-presente-decoracao-livre-parafina/p/MLB69706454';
 export const CANDLE_OFFERS: CandleOffer[] = [
-  { id: 'lavender-jar', name: 'Vela de lavanda em pote', note: 'Cera de coco, 150 g, pavio de algodão', store: 'mercadolivre', url: EXAMPLE, skin: 'jar' },
-  { id: 'lavender', name: 'Vela aromática de lavanda', note: 'Aroma calmo para estudar à noite', store: 'mercadolivre', url: EXAMPLE, skin: 'lavender' },
-  { id: 'beeswax', name: 'Vela de cera de abelha', note: 'Queima limpa, cheiro suave de mel', store: 'mercadolivre', url: EXAMPLE, skin: 'honey' },
+  { id: 'premium-200g-a', name: 'Vela aromática decorativa premium', note: 'Perfumada, 200 g, para acender no começo do foco', store: 'mercadolivre', url: 'https://meli.la/2e9HdHQ', skin: 'jar' },
+  { id: 'premium-200g-b', name: 'Vela aromática perfumada 200 g', note: 'Fragrância premium, decorativa, para a mesa de estudo', store: 'mercadolivre', url: 'https://meli.la/1g7yzJ1', skin: 'classic' },
 ];
 
 /** Só ofertas com link válido; a que combina com a skin da pessoa vem primeiro. */

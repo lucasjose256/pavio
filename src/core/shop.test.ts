@@ -9,6 +9,7 @@ describe('cleanOfferUrl', () => {
   });
   it('mantém os parâmetros e links curtos do programa de afiliados', () => {
     expect(cleanOfferUrl('https://mercadolivre.com/sec/1AbCdEf', 'mercadolivre')).toBe('https://mercadolivre.com/sec/1AbCdEf');
+    expect(cleanOfferUrl('https://meli.la/2e9HdHQ', 'mercadolivre')).toBe('https://meli.la/2e9HdHQ');
     expect(cleanOfferUrl('https://www.mercadolivre.com.br/p/MLB1?matt_tool=123&matt_word=pavio', 'mercadolivre'))
       .toBe('https://www.mercadolivre.com.br/p/MLB1?matt_tool=123&matt_word=pavio');
   });
@@ -25,7 +26,7 @@ describe('vitrine', () => {
     expect(offersFor(undefined)).toHaveLength(CANDLE_OFFERS.length);
   });
   it('a vela da skin da pessoa vem primeiro; links inválidos somem', () => {
-    expect(offersFor('honey')[0]!.skin).toBe('honey');
+    expect(offersFor('classic')[0]!.skin).toBe('classic');
     const bad = [{ ...CANDLE_OFFERS[0]!, url: 'https://outra-loja.com/x' }];
     expect(offersFor('jar', bad)).toEqual([]);
   });
@@ -50,13 +51,13 @@ describe('popupMoment', () => {
 describe('offerOfTheDay', () => {
   const day = (d: number) => new Date(2026, 9, d, 12).getTime();
   it('a da skin da pessoa, todo dia', () => {
-    expect(offerOfTheDay('honey', day(6))!.skin).toBe('honey');
-    expect(offerOfTheDay('honey', day(7))!.skin).toBe('honey');
+    expect(offerOfTheDay('jar', day(6))!.skin).toBe('jar');
+    expect(offerOfTheDay('jar', day(7))!.skin).toBe('jar');
   });
   it('sem vela da skin: a mesma o dia todo e muda de um dia para o outro', () => {
-    const morning = offerOfTheDay('classic', new Date(2026, 9, 6, 8).getTime());
-    expect(offerOfTheDay('classic', new Date(2026, 9, 6, 23).getTime())).toEqual(morning);
-    const ids = new Set([6, 7, 8].map((d) => offerOfTheDay('classic', day(d))!.id));
-    expect(ids.size).toBe(3);
+    const morning = offerOfTheDay('starry', new Date(2026, 9, 6, 8).getTime());
+    expect(offerOfTheDay('starry', new Date(2026, 9, 6, 23).getTime())).toEqual(morning);
+    const ids = new Set([6, 7].map((d) => offerOfTheDay('starry', day(d))!.id));
+    expect(ids.size).toBe(CANDLE_OFFERS.length);
   });
 });
