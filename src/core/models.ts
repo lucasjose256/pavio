@@ -84,11 +84,11 @@ export interface Settings {
   friction: Strictness;
   /** Sugestões de velas de verdade (links de afiliado) nas opções e, raramente, no popup após uma vela concluída. */
   shopSuggestions: boolean;
-  /** Quando a sugestão do popup apareceu pela última vez (no máximo uma vez por semana). */
-  shopLastShownAt?: number;
+  /** Mostrar a linha de sugestão também no popup (o "esconder" do popup desliga só isto). */
+  shopInPopup: boolean;
 }
 
-export const DEFAULT_SETTINGS: Settings = { candleSkin: 'classic', theme: 'cream', routineEnabled: true, friction: 'light', shopSuggestions: true };
+export const DEFAULT_SETTINGS: Settings = { candleSkin: 'classic', theme: 'cream', routineEnabled: true, friction: 'light', shopSuggestions: true, shopInPopup: true };
 
 /** App (ou recurso) da rotina liberado temporariamente: até `until` (epoch ms) as regras da rotina e do limite saem. */
 export interface Release {

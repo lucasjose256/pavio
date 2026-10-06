@@ -67,16 +67,28 @@ export function offersFor(skin: string | undefined, offers: CandleOffer[] = CAND
     .sort((a, b) => Number(b.skin === skin) - Number(a.skin === skin));
 }
 
-export const SUGGEST_EVERY_MS = 7 * 24 * 60 * 60_000;
-export const SUGGEST_AFTER_COMPLETION_MS = 6 * 60 * 60_000;
+export const AFTER_COMPLETION_MS = 6 * 60 * 60_000;
+
+/** Em que momento o popup está: muda a frase, nunca a insistência (sempre uma linha discreta, fácil de esconder). */
+export type ShopMoment = 'before' | 'during' | 'after';
 
 /**
- * Sugerir uma vela de verdade no popup? Só se a pessoa não desligou, se concluiu uma vela nas últimas 6 h
- * (momento de comemorar, nunca no meio do foco) e no máximo uma vez por semana.
+ * Qual sugestão mostrar no popup (ou nenhuma). Antes de acender = convite ao ritual; com a vela acesa = uma linha
+ * calma; logo depois de concluir (até 6 h) = celebração. Desligada pelas opções ou pelo "esconder" do popup = nada.
  */
-export function suggestionDue(input: { enabled: boolean; lastCompletedAt?: number; lastShownAt?: number; now: number }): boolean {
-  const { enabled, lastCompletedAt, lastShownAt, now } = input;
-  if (!enabled || lastCompletedAt === undefined) return false;
-  if (now - lastCompletedAt > SUGGEST_AFTER_COMPLETION_MS || lastCompletedAt > now) return false;
-  return lastShownAt === undefined || now - lastShownAt >= SUGGEST_EVERY_MS;
+export function popupMoment(input: { enabled: boolean; inPopup: boolean; running: boolean; lastCompletedAt?: number; now: number }): ShopMoment | null {
+  const { enabled, inPopup, running, lastCompletedAt, now } = input;
+  if (!enabled || !inPopup) return null;
+  if (running) return 'during';
+  if (lastCompletedAt !== undefined && lastCompletedAt <= now && now - lastCompletedAt <= AFTER_COMPLETION_MS) return 'after';
+  return 'before';
+}
+
+/** Uma vela por dia: a da skin da pessoa, se houver; senão, gira pela vitrine (a mesma o dia todo, sem piscar). */
+export function offerOfTheDay(skin: string | undefined, now: number, offers: CandleOffer[] = CANDLE_OFFERS): CandleOffer | undefined {
+  const list = offersFor(skin, offers);
+  if (list[0]?.skin === skin) return list[0];
+  const d = new Date(now);
+  const day = Math.floor(new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime() / 86_400_000);
+  return list[day % Math.max(1, list.length)];
 }

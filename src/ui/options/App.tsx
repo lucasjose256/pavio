@@ -10,6 +10,7 @@ import { AppearanceTab } from './AppearanceTab';
 import { EnvironmentsTab } from './EnvironmentsTab';
 import { FrictionTab } from './FrictionTab';
 import { HistoryTab } from './HistoryTab';
+import { ShopTab } from './ShopTab';
 import { RoutineTab, type RoutineView } from './RoutineTab';
 
 /** Seções das opções. Os ids são os hashes da URL (`#rotina` continua sendo a de entrada). */
@@ -21,6 +22,7 @@ const NAV = [
     { id: 'liberar', label: 'Para liberar', icon: 'key', note: 'leve ou firme' },
   ] },
   { group: 'Você', items: [
+    { id: 'velas', label: 'Velas de verdade', icon: 'flame', note: 'para o ritual' },
     { id: 'historico', label: 'Histórico', icon: 'chart', note: 'horas devolvidas' },
     { id: 'aparencia', label: 'Vela e tema', icon: 'palette', note: 'estilo e cores' },
   ] },
@@ -87,6 +89,7 @@ export function App() {
         <RoutineTab active={!!routineView} view={routineView ?? 'schedule'} />
         <EnvironmentsTab active={tab === 'ambientes'} />
         <FrictionTab active={tab === 'liberar'} />
+        <ShopTab active={tab === 'velas'} />
         <HistoryTab active={tab === 'historico'} />
         <AppearanceTab active={tab === 'aparencia'} />
       </div>

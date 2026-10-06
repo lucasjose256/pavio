@@ -4,8 +4,6 @@ import type { Settings, ThemeName } from '../../core/models';
 import { Candle } from '../candle/Candle';
 import { SKINS } from '../candle/skins';
 import { applyTheme } from '../shared/theme';
-import { offersFor } from '../../core/shop';
-import { AFFILIATE_NOTE, ShopLink } from '../shared/ShopLink';
 import { services } from './shared';
 
 const THEMES: { id: ThemeName; name: string; note: string }[] = [
@@ -71,34 +69,6 @@ export function AppearanceTab({ active }: { active: boolean }) {
         </div>
       </section>
 
-      <section class="card shop" aria-label="Velas de verdade">
-        <div class="shop-head">
-          <div class="grow">
-            <h2 class="section-title">Velas de verdade</h2>
-            <p class="section-sub">Para acender ao lado do computador enquanto a vela do Pavio queima.</p>
-          </div>
-          <label class="master" title="Mostrar ou esconder as sugestões de velas">
-            <span class="switch"><input type="checkbox" checked={settings.shopSuggestions} aria-label="Mostrar sugestões de velas"
-              onChange={async () => setSettings(await services.settings.update({ shopSuggestions: !settings.shopSuggestions }))} /><span /></span>
-            <strong>{settings.shopSuggestions ? 'Mostrando' : 'Escondidas'}</strong>
-          </label>
-        </div>
-        {settings.shopSuggestions && (
-          <>
-            <ul class="offers">
-              {offersFor(settings.candleSkin).map((o) => (
-                <li key={o.id} class="offer">
-                  <div class="offer-candle" aria-hidden="true"><Candle skin={o.skin} progress={0.85} /></div>
-                  <strong>{o.name}</strong>
-                  <span class="hint">{o.note}</span>
-                  <ShopLink offer={o} class="btn" />
-                </li>
-              ))}
-            </ul>
-            <p class="hint"><span class="tag-ad">link de afiliado</span> {AFFILIATE_NOTE}</p>
-          </>
-        )}
-      </section>
     </main>
   );
 }

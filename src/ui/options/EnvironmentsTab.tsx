@@ -7,7 +7,7 @@ import type { Environment, RestrictedKind, Rule, RuleMode } from '../../core/mod
 import { randomId } from '../../core/ports';
 import { FEATURE_DEFS, defaultFeatures, featuresOf, serviceKindFor } from '../../core/restrictions';
 import { ensureHostAccess, hostPattern } from '../../platform/chrome/permissions';
-import { featureHelp, featureLabel, kindLabel, modeHelp, modeLabel, validationMessage } from '../i18n/pt-BR';
+import { featureHelp, featureLabel, kindLabel, modeHelp, modeLabel, shopUi, validationMessage } from '../i18n/pt-BR';
 import { Candle } from '../candle/Candle';
 import { services } from './shared';
 
@@ -34,6 +34,7 @@ export function EnvironmentsTab({ active }: { active: boolean }) {
   const [newDomain, setNewDomain] = useState('');
   const [newMode, setNewMode] = useState<RuleMode>('blocked');
   const [skin, setSkin] = useState('classic');
+  const [shopOn, setShopOn] = useState(false);
 
   async function reload(selectId?: string) {
     const list = await services.environments.list();
@@ -48,7 +49,7 @@ export function EnvironmentsTab({ active }: { active: boolean }) {
   useEffect(() => {
     void reload();
     void services.sessions.get().then((s) => setSessionActive(s?.status === 'active'));
-    void services.settings.get().then((st) => setSkin(st.candleSkin));
+    void services.settings.get().then((st) => { setSkin(st.candleSkin); setShopOn(st.shopSuggestions); });
   }, []);
 
   const domains = useMemo(() => new Set(draft?.rules.map((r) => r.domain)), [draft]);
@@ -170,6 +171,7 @@ export function EnvironmentsTab({ active }: { active: boolean }) {
             <li>Clique no ícone do <strong>Pavio</strong> na barra do Chrome e escolha o ambiente e o tempo.</li>
             <li>Acenda a <strong>vela</strong>. Parar antes da hora pede um pouco de calma.</li>
           </ol>
+          {shopOn && <p class="hint hero-tip">{shopUi.timerHint} <a href="#velas">{shopUi.timerLink} →</a></p>}
         </div>
       </section>
 

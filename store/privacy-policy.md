@@ -23,7 +23,7 @@ Esses dados ficam em `chrome.storage.local`, que **não é sincronizado** com a 
 - Não usa cookies, identificadores nem análise de uso.
 
 ## Links de afiliado
-As sugestões de velas aromáticas (em Opções › Vela e tema e, no máximo uma vez por semana, no popup logo depois de uma vela concluída) são **links de afiliado** do Mercado Livre, identificados como tal. Se você comprar por eles, o desenvolvedor pode receber uma comissão, sem custo extra para você. O Pavio **não** registra cliques nem envia nada: o link só abre a loja numa aba nova quando você clica, sem informar de onde veio. A partir daí vale a política de privacidade da loja. Você pode desligar as sugestões em Opções › Vela e tema.
+As sugestões de velas aromáticas (em Opções › Velas de verdade, na página do Timer e numa linha discreta do popup) são **links de afiliado** do Mercado Livre, identificados como tal. Se você comprar por eles, o desenvolvedor pode receber uma comissão, sem custo extra para você. O Pavio **não** registra cliques nem envia nada: o link só abre a loja numa aba nova quando você clica, sem informar de onde veio. A partir daí vale a política de privacidade da loja. Você pode esconder a linha do popup com um clique ou desligar todas as sugestões em Opções › Velas de verdade.
 - Não vende nem compartilha dados.
 - Não lê nem guarda o conteúdo das páginas que você visita (mensagens, publicações, perfis, e-mails, formulários, senhas) nem o seu histórico de navegação.
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CANDLE_OFFERS, cleanOfferUrl, offersFor, suggestionDue } from './shop';
+import { CANDLE_OFFERS, cleanOfferUrl, offerOfTheDay, offersFor, popupMoment } from './shop';
 
 const copied = 'https://www.mercadolivre.com.br/vela-aromatica-lavanda-150g/p/MLB69706454?pdp_filters=item_id:MLB5147644197|item_id:MLB5147644197#is_advertising=true&searchVariation=MLB69706454&backend_model=search-backend&position=4&tracking_id=6fe4bb29&ad_click_id=OTMz';
 
@@ -31,15 +31,32 @@ describe('vitrine', () => {
   });
 });
 
-describe('suggestionDue', () => {
+describe('popupMoment', () => {
   const now = new Date(2026, 9, 6, 20).getTime();
   const h = (n: number) => n * 3_600_000;
-  it('só logo depois de concluir uma vela, uma vez por semana, se não desligou', () => {
-    expect(suggestionDue({ enabled: true, lastCompletedAt: now - h(1), now })).toBe(true);
-    expect(suggestionDue({ enabled: false, lastCompletedAt: now - h(1), now })).toBe(false);
-    expect(suggestionDue({ enabled: true, now })).toBe(false);
-    expect(suggestionDue({ enabled: true, lastCompletedAt: now - h(7), now })).toBe(false);
-    expect(suggestionDue({ enabled: true, lastCompletedAt: now - h(1), lastShownAt: now - h(24), now })).toBe(false);
-    expect(suggestionDue({ enabled: true, lastCompletedAt: now - h(1), lastShownAt: now - h(24 * 7), now })).toBe(true);
+  const base = { enabled: true, inPopup: true, running: false, now };
+  it('antes, durante e logo depois da vela', () => {
+    expect(popupMoment(base)).toBe('before');
+    expect(popupMoment({ ...base, running: true, lastCompletedAt: now - h(1) })).toBe('during');
+    expect(popupMoment({ ...base, lastCompletedAt: now - h(1) })).toBe('after');
+    expect(popupMoment({ ...base, lastCompletedAt: now - h(7) })).toBe('before');
+  });
+  it('desligada nas opções ou escondida no popup: nada', () => {
+    expect(popupMoment({ ...base, enabled: false })).toBeNull();
+    expect(popupMoment({ ...base, inPopup: false, running: true })).toBeNull();
+  });
+});
+
+describe('offerOfTheDay', () => {
+  const day = (d: number) => new Date(2026, 9, d, 12).getTime();
+  it('a da skin da pessoa, todo dia', () => {
+    expect(offerOfTheDay('honey', day(6))!.skin).toBe('honey');
+    expect(offerOfTheDay('honey', day(7))!.skin).toBe('honey');
+  });
+  it('sem vela da skin: a mesma o dia todo e muda de um dia para o outro', () => {
+    const morning = offerOfTheDay('classic', new Date(2026, 9, 6, 8).getTime());
+    expect(offerOfTheDay('classic', new Date(2026, 9, 6, 23).getTime())).toEqual(morning);
+    const ids = new Set([6, 7, 8].map((d) => offerOfTheDay('classic', day(d))!.id));
+    expect(ids.size).toBe(3);
   });
 });
