@@ -26,18 +26,7 @@ export function FrictionTab({ active }: { active: boolean }) {
 
   return (
     <main class="pane" hidden={!active}>
-      <section class="card offer-toggle">
-        <div class="grow">
-          <h2 class="section-title">{releaseOfferUi.title}</h2>
-          <p class="section-sub">{offer ? releaseOfferUi.onNote : releaseOfferUi.offNote}</p>
-        </div>
-        <label class="master" title={releaseOfferUi.on}>
-          <span class="switch"><input type="checkbox" checked={offer} onChange={toggleOffer} aria-label={releaseOfferUi.on} /><span /></span>
-          <strong>{offer ? 'Oferecer' : 'Não oferecer'}</strong>
-        </label>
-      </section>
-
-      <section class="card" hidden={!offer}>
+      <section class="card">
         <h2 class="section-title">Para liberar</h2>
         <p class="section-sub">Quando um app está bloqueado e você precisa dele, a tela de bloqueio oferece <strong>liberar por {RELEASE_OPTIONS_MIN.join(', ')} min</strong>; depois o bloqueio volta sozinho. Escolha quanto isso deve custar.</p>
         <div class="themes">
@@ -53,6 +42,16 @@ export function FrictionTab({ active }: { active: boolean }) {
           <li>É também o modo que a vela já traz no popup: {level === 'focus' ? <>para apagá-la antes da hora, digita-se <q>{GIVE_UP_PHRASE}</q></> : 'para apagá-la antes da hora, basta confirmar'}. Dá para trocar em "Mais opções" ao acender.</li>
           <li>Endurecer regras ou mexer em horários que não estão valendo agora nunca pede nada.</li>
         </ul>
+      </section>
+      <section class="card offer-toggle">
+        <div class="grow">
+          <h2 class="section-title">{releaseOfferUi.title}</h2>
+          <p class="section-sub">{offer ? releaseOfferUi.onNote : releaseOfferUi.offNote}</p>
+        </div>
+        <label class="master" title={releaseOfferUi.on}>
+          <span class="switch"><input type="checkbox" checked={offer} onChange={toggleOffer} aria-label={releaseOfferUi.on} /><span /></span>
+          <strong>{offer ? 'Oferecer' : 'Não oferecer'}</strong>
+        </label>
       </section>
     </main>
   );
