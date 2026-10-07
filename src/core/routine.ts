@@ -1,4 +1,4 @@
-import type { Rule, RoutineSite, RoutineSlot, RestrictionSpec } from './models';
+import type { Release, Rule, RoutineSite, RoutineSlot, RestrictionSpec } from './models';
 import { FEATURE_DEFS, combineSpecs, featuresOf, serviceKindFor, strictness } from './restrictions';
 import type { ServiceKind } from './restrictions';
 import { normalizeDomain } from './matching';
@@ -10,8 +10,12 @@ import type { UsageData } from './usage';
 /** Faixa com o site a que pertence (para achatar a rotina). */
 type FlatSlot = RoutineSlot & { siteId: string; domain: string };
 
-const flatten = (routine: RoutineSite[]): FlatSlot[] =>
-  routine.filter((s) => s.enabled).flatMap((site) => site.slots.map((slot) => ({ ...slot, siteId: site.id, domain: site.domain })));
+/** `live` tira as faixas pausadas (`off`) e as de pausa temporária: para o que vale agora. Sem isso, todas (permissões, desenho). */
+const flatten = (routine: RoutineSite[], live?: { now: number; releases: Release[] }): FlatSlot[] =>
+  routine.filter((s) => s.enabled).flatMap((site) =>
+    site.slots
+      .filter((slot) => !live || (!slot.off && !live.releases.some((r) => r.slotId === slot.id && r.until > live.now)))
+      .map((slot) => ({ ...slot, siteId: site.id, domain: site.domain })));
 
 const toRule = (domain: string, spec: RestrictionSpec): Rule => ({
   id: `routine:${domain}`,
@@ -42,8 +46,8 @@ const blockedAll = (routine: RoutineSite[]) => routine.filter((s) => s.enabled &
  * Regras da rotina valendo em `now`: as faixas ativas (só com os horários ligados) somadas ao bloqueio rápido,
  * que vale sempre. Por site, a mais rigorosa vence.
  */
-export function activeRules(routine: RoutineSite[], enabled: boolean, now: number): Rule[] {
-  const active = enabled ? occurrencesAround(flatten(routine), now, 1, 1).filter((o) => o.start <= now && now < o.end) : [];
+export function activeRules(routine: RoutineSite[], enabled: boolean, now: number, releases: Release[] = []): Rule[] {
+  const active = enabled ? occurrencesAround(flatten(routine, { now, releases }), now, 1, 1).filter((o) => o.start <= now && now < o.end) : [];
   return strictestPerDomain([...active.map((o) => ({ domain: o.slot.domain, spec: spec(o.slot) })), ...blockedAll(routine)]);
 }
 
@@ -87,10 +91,38 @@ export function setBlockAll(routine: RoutineSite[], domain: string, on: boolean,
 }
 
 /** Próximo instante (início ou fim de alguma faixa) em que o que vale pode mudar. */
-export function nextBoundary(routine: RoutineSite[], enabled: boolean, now: number): number | undefined {
+export function nextBoundary(routine: RoutineSite[], enabled: boolean, now: number, releases: Release[] = []): number | undefined {
   if (!enabled) return undefined;
-  const times = occurrencesAround(flatten(routine), now, 1, 8).flatMap((o) => [o.start, o.end]).filter((t) => t > now);
+  const times = occurrencesAround(flatten(routine, { now, releases }), now, 1, 8).flatMap((o) => [o.start, o.end]).filter((t) => t > now);
   return times.length ? Math.min(...times) : undefined;
+}
+
+/** Pausa (`off`) ou retoma uma faixa até a pessoa religar. */
+export function setSlotOff(routine: RoutineSite[], siteId: string, slotId: string, off: boolean): RoutineSite[] {
+  return routine.map((s) => s.id !== siteId ? s : {
+    ...s,
+    slots: s.slots.map((sl) => {
+      if (sl.id !== slotId) return sl;
+      const next: RoutineSlot = { ...sl };
+      if (off) next.off = true;
+      else delete next.off;
+      return next;
+    }),
+  });
+}
+
+/**
+ * Pausar `target` (o app, ou uma faixa dele) tira alguma proteção que vale AGORA? Só então vale pedir fricção.
+ * App inteiro: qualquer regra da rotina ou limite estourado dele. Faixa: ela estar valendo neste instante.
+ */
+export function protectsNow(
+  routine: RoutineSite[], enabled: boolean, now: number, usage: UsageData, releases: Release[], target: { domain: string; slotId?: string },
+): boolean {
+  if (releases.some((r) => r.until > now && r.slotId === undefined && r.domain === target.domain)) return false; // já pausado
+  const mine = (rules: Rule[]) => rules.filter((r) => r.domain === target.domain);
+  if (target.slotId === undefined) return mine(mergeRules(activeRules(routine, enabled, now, releases), limitRules(routine, usage, now))).length > 0;
+  const paused = [...releases, { ...target, until: now + 60_000 }];
+  return JSON.stringify(mine(activeRules(routine, enabled, now, releases))) !== JSON.stringify(mine(activeRules(routine, enabled, now, paused)));
 }
 
 /** Soma de regras de fontes diferentes (rotina + Timer): por domínio, a mais rigorosa vence. */

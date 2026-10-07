@@ -28,7 +28,7 @@ export function computePolicy(input: {
   const timerEnforcing = !!timer && enforcing(timer);
   const timerRules = timerEnforcing ? timer.environmentSnapshot.rules : [];
 
-  const routineRules = activeRules(routine, routineEnabled, now);
+  const routineRules = activeRules(routine, routineEnabled, now, releases);
   const limited = limitRules(routine, usage, now);
   const notReleased = <T extends { domain: string }>(rules: T[]) => rules.filter((r) => !isReleased(r, releases, now));
   const rules = mergeRules(notReleased(routineRules), notReleased(limited), timerRules);
@@ -38,7 +38,7 @@ export function computePolicy(input: {
   const releasable = [...new Set(mergeRules(routineRules, limited).map((r) => r.domain))].filter((d) => !timerRestricts(d));
 
   const changes = [
-    nextBoundary(routine, routineEnabled, now),
+    nextBoundary(routine, routineEnabled, now, releases),
     timer?.endsAt,
     timer?.pomodoro?.phaseEndsAt,
     limited.length ? nextMidnight(now) : undefined, // o limite zera à meia-noite

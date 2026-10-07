@@ -90,10 +90,15 @@ export interface Settings {
 
 export const DEFAULT_SETTINGS: Settings = { candleSkin: 'classic', theme: 'cream', routineEnabled: true, friction: 'light', shopSuggestions: true, shopInPopup: true };
 
-/** App (ou recurso) da rotina liberado temporariamente: até `until` (epoch ms) as regras da rotina e do limite saem. */
+/**
+ * Pausa temporária: até `until` (epoch ms) as regras da rotina e do limite do app saem (ou só as de UMA faixa,
+ * com `slotId`). Vem de "Precisa dele agora?" (tela de bloqueio) e de "Pausar" (Rotina).
+ */
 export interface Release {
   domain: string;
   until: number;
+  /** Ausente = o app inteiro; presente = só esta faixa. */
+  slotId?: string;
 }
 
 /** Regras de rede desejadas agora. `allow` = exceções (subdomínios de um domínio bloqueado/com intenção). */
@@ -149,6 +154,8 @@ export interface RestrictionSpec {
  */
 export interface RoutineSlot extends RestrictionSpec {
   id: string;
+  /** Faixa pausada até a pessoa religar (não vale, mas continua desenhada e guardada). */
+  off?: boolean;
   days: number[];
   startMin: number;
   endMin: number;

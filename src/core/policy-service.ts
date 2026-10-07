@@ -43,7 +43,7 @@ export class PolicyService {
     await this.d.intentService.prune(intentDomains(policy.rules));
 
     // Próxima virada: fim/início de faixa, a meia-noite (quando o limite de hoje zera) ou o fim de uma liberação.
-    const candidates = [nextBoundary(routine, settings.routineEnabled, now), policy.limitReached?.length ? nextMidnight(now) : undefined, ...releases.map((r) => r.until)]
+    const candidates = [nextBoundary(routine, settings.routineEnabled, now, releases), policy.limitReached?.length ? nextMidnight(now) : undefined, ...releases.map((r) => r.until)]
       .filter((t): t is number => typeof t === 'number');
     const next = candidates.length ? Math.min(...candidates) : undefined;
     if (next) await this.d.scheduler.schedule(ROUTINE_ALARM, next);

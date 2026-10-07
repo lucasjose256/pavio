@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { RoutineSite, RoutineSlot } from './models';
-import { activeRules, dropFeature, featureSlotsOf, isBlockedAll, loosensNow, mergeRules, newFeatureSlot, nextBoundary, retimeFeature, rulesAnyTime, setBlockAll, setLimit, validateSite } from './routine';
+import { activeRules, dropFeature, featureSlotsOf, isBlockedAll, loosensNow, mergeRules, newFeatureSlot, nextBoundary, retimeFeature, rulesAnyTime, setBlockAll, setLimit, setSlotOff, protectsNow, validateSite } from './routine';
 import { defaultRoutine } from './routine-defaults';
 import { addUsage } from './usage';
 
@@ -251,5 +251,30 @@ describe('setLimit', () => {
   it('não mexe nos outros sites', () => {
     const base = setLimit(setLimit([], 'a.com', 10, id), 'b.com', 20, id);
     expect(setLimit(base, 'a.com', undefined, id).map((s) => s.domain)).toEqual(['b.com']);
+  });
+});
+
+describe('pausar faixa e protectsNow', () => {
+  const mon = (h: number, m = 0) => new Date(2026, 9, 5, h, m).getTime();
+  const site: RoutineSite[] = [{ id: 'i', domain: 'instagram.com', enabled: true, slots: [
+    { id: 'a', days: [1], startMin: 9 * 60, endMin: 18 * 60, mode: 'blocked' },
+    { id: 'b', days: [1], startMin: 20 * 60, endMin: 22 * 60, mode: 'blocked' },
+  ] }];
+  it('setSlotOff liga e desliga só a faixa pedida', () => {
+    const off = setSlotOff(site, 'i', 'a', true);
+    expect(off[0]!.slots[0]!.off).toBe(true);
+    expect('off' in off[0]!.slots[1]!).toBe(false);
+    expect('off' in setSlotOff(off, 'i', 'a', false)[0]!.slots[0]!).toBe(false);
+  });
+  it('faixa pausada some das regras e das viradas', () => {
+    expect(activeRules(setSlotOff(site, 'i', 'a', true), true, mon(10)).map((r) => r.domain)).toEqual([]);
+    expect(nextBoundary(setSlotOff(site, 'i', 'a', true), true, mon(10))).toBe(mon(20));
+  });
+  it('protectsNow: só pede fricção se pausar tira proteção que vale agora', () => {
+    expect(protectsNow(site, true, mon(10), {}, [], { domain: 'instagram.com' })).toBe(true);
+    expect(protectsNow(site, true, mon(10), {}, [], { domain: 'instagram.com', slotId: 'a' })).toBe(true);
+    expect(protectsNow(site, true, mon(10), {}, [], { domain: 'instagram.com', slotId: 'b' })).toBe(false); // ainda não é a hora
+    expect(protectsNow(site, true, mon(19), {}, [], { domain: 'instagram.com' })).toBe(false); // fora de faixa
+    expect(protectsNow(site, true, mon(10), {}, [{ domain: 'instagram.com', until: mon(11) }], { domain: 'instagram.com' })).toBe(false); // já pausado
   });
 });

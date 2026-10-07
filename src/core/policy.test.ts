@@ -179,3 +179,24 @@ describe('liberação temporária na política', () => {
     expect(routineOnly.releasable).toEqual(['instagram.com']);
   });
 });
+
+describe('faixa pausada e pausa temporária de uma faixa', () => {
+  it('slot.off não vale e não gera virada; a pausa temporária volta a valer no fim', () => {
+    const off: RoutineSite[] = [{ ...routine[0]!, slots: [{ ...routine[0]!.slots[0]!, off: true }] }];
+    const p = computePolicy({ routine: off, routineEnabled: true, session: undefined, now: mon(10) });
+    expect(p).toMatchObject({ rules: [], routineActive: false, nextChange: undefined });
+    const paused = [{ domain: 'instagram.com', slotId: 'a', until: mon(10, 30) }];
+    const during = computePolicy({ routine, routineEnabled: true, session: undefined, now: mon(10), releases: paused });
+    expect(during.rules).toEqual([]);
+    expect(during.nextChange).toBe(mon(10, 30));
+    expect(computePolicy({ routine, routineEnabled: true, session: undefined, now: mon(10, 30), releases: paused }).rules.map((r) => r.domain)).toEqual(['instagram.com']);
+  });
+  it('pausar só uma faixa não solta as outras do mesmo site', () => {
+    const two: RoutineSite[] = [{ id: 'i', domain: 'instagram.com', enabled: true, slots: [
+      { id: 'a', days: [1], startMin: 9 * 60, endMin: 18 * 60, mode: 'restricted', restrictedKind: 'instagram', features: ['feed'] },
+      { id: 'b', days: [1], startMin: 9 * 60, endMin: 18 * 60, mode: 'restricted', restrictedKind: 'instagram', features: ['reels'] },
+    ] }];
+    const p = computePolicy({ routine: two, routineEnabled: true, session: undefined, now: mon(10), releases: [{ domain: 'instagram.com', slotId: 'a', until: mon(11) }] });
+    expect(p.rules[0]!.features).toEqual(['reels']);
+  });
+});

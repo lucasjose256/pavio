@@ -1,17 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { accessDomains } from '../../core/blocking';
 import { normalizeDomain } from '../../core/matching';
-import type { RestrictionSpec, RoutineSite, RoutineSlot, Strictness } from '../../core/models';
+import type { Release, RestrictionSpec, RoutineSite, RoutineSlot, Strictness } from '../../core/models';
+import { addPause, pauseUntil, pausedUntil, removePause, type PauseTarget } from '../../core/release';
+import { PauseModal, type PauseAnswer } from './PauseModal';
 import { frictionForRelease } from '../../core/friction';
 import { FrictionGate } from '../shared/FrictionGate';
 import { randomId } from '../../core/ports';
-import { activeRules, featureSlotsOf, isBlockedAll, loosensNow, newFeatureSlot, nextBoundary, retimeFeature, rulesAnyTime, serviceOf, setBlockAll, setLimit, validateSlot } from '../../core/routine';
+import { activeRules, featureSlotsOf, isBlockedAll, loosensNow, newFeatureSlot, nextBoundary, retimeFeature, protectsNow, rulesAnyTime, serviceOf, setBlockAll, setLimit, setSlotOff, validateSlot } from '../../core/routine';
 import { isValidLimit, limitStatuses, MAX_LIMIT_MIN, type UsageData } from '../../core/usage';
 import { ROUTINE_SUGGESTIONS, SLOT_PRESETS, defaultRoutine } from '../../core/routine-defaults';
 import { FEATURE_DEFS, featuresOf } from '../../core/restrictions';
 import { MINUTES_PER_DAY, SNAP_MIN, formatMinutes, layoutLanes, moveSlot, parseTime, resizeSlot, segmentsForDay, slotDurationMin, snapMinute, suggestFreeTime } from '../../core/timeslots';
 import { ensureHostAccess } from '../../platform/chrome/permissions';
-import { featureLabel } from '../i18n/pt-BR';
+import { featureLabel, pauseUi } from '../i18n/pt-BR';
 import { DAY_SHORT, WEEK_ORDER, formatDays, formatRange, formatWhen } from '../shared/format';
 import { RestrictionPicker } from './RestrictionPicker';
 import { missingAccess } from './access';
@@ -42,6 +44,10 @@ type Drag =
 
 /** Horário provisório mostrado enquanto se arrasta (`slotId` ausente = faixa nova sendo desenhada). */
 interface Ghost { siteId: string; feature?: string; slotId?: string; startMin: number; endMin: number }
+/** Hora do dia (HH:MM) de um instante. */
+const clock = (ts: number) => formatMinutes(new Date(ts).getHours() * 60 + new Date(ts).getMinutes());
+/** "15:30", ou "o fim do dia" quando a pausa acaba à meia-noite. */
+const untilText = (ts: number) => (new Date(ts).getHours() === 0 && new Date(ts).getMinutes() === 0 ? pauseUi.endOfDay : clock(ts));
 const slotErrorText = (code: string): string =>
   ({
     'days:empty': 'Escolha ao menos um dia.',
@@ -75,6 +81,9 @@ export function RoutineTab({ active, view }: { active: boolean; view: RoutineVie
   const [quickDomain, setQuickDomain] = useState('');
   const [usage, setUsage] = useState<UsageData>({});
   const [friction, setFriction] = useState<Strictness>('light');
+  const [releases, setReleases] = useState<Release[]>([]);
+  /** Janela "Pausar": o app inteiro ou uma faixa dele. */
+  const [pausing, setPausing] = useState<{ site: RoutineSite; slot?: RoutineSlot }>();
   // Fricção de afrouxar (Leve: confirmar; Firme: frase), como uma pergunta que a função `commit` espera.
   const [gate, setGate] = useState<(ok: boolean) => void>();
   const [limitInputs, setLimitInputs] = useState<Record<string, string>>({});
@@ -92,8 +101,9 @@ export function RoutineTab({ active, view }: { active: boolean; view: RoutineVie
   const editorRef = useRef<HTMLElement>(null);
 
   async function reload() {
-    const [list, settings, used] = await Promise.all([services.routine.list(), services.settings.get(), services.usage.get()]);
+    const [list, settings, used, paused] = await Promise.all([services.routine.list(), services.settings.get(), services.usage.get(), services.releases.list()]);
     setSites(list);
+    setReleases(paused);
     setUsage(used);
     setFriction(settings.friction);
     setEnabled(settings.routineEnabled);
@@ -120,8 +130,8 @@ export function RoutineTab({ active, view }: { active: boolean; view: RoutineVie
    * Aplica uma mudança. Pede confirmação se ela afrouxa algo que protege AGORA, e o acesso aos sites
    * (precisa do clique do usuário, por isso vem antes de gravar).
    */
-  async function commit(nextSites: RoutineSite[], nextEnabled = enabled, okText = 'Rotina salva.'): Promise<boolean> {
-    if (loosensNow({ sites, enabled }, { sites: nextSites, enabled: nextEnabled }, Date.now(), usage)
+  async function commit(nextSites: RoutineSite[], nextEnabled = enabled, okText = 'Rotina salva.', skipGate = false): Promise<boolean> {
+    if (!skipGate && loosensNow({ sites, enabled }, { sites: nextSites, enabled: nextEnabled }, Date.now(), usage)
       && !(await new Promise<boolean>((resolve) => setGate(() => resolve)))) return false;
     const needed = accessDomains({ rules: rulesAnyTime(effectiveSites(nextSites, nextEnabled)) });
     const granted = needed.length ? await ensureHostAccess(needed) : true;
@@ -284,7 +294,38 @@ export function RoutineTab({ active, view }: { active: boolean; view: RoutineVie
     setLimitInputs((m) => ({ ...m, [domain]: m[domain] ?? '30' }));
     if (!limitDomains.includes(domain)) setExtraLimit((x) => [...new Set([...x, domain])]);
   }
-  const toggleSite = (site: RoutineSite) => commit(sites.map((s) => s.id === site.id ? { ...s, enabled: !s.enabled } : s), enabled, site.enabled ? 'Site desligado na rotina.' : 'Site ligado na rotina.');
+  /** Desligar abre a janela "Pausar" (5/15/30 min, fim do dia ou até religar); ligar religa e tira qualquer pausa. */
+  async function toggleSite(site: RoutineSite) {
+    if (site.enabled) return setPausing({ site });
+    await services.releases.save(removePause(await services.releases.list(), { domain: site.domain }));
+    await commit(sites.map((s) => s.id === site.id ? { ...s, enabled: true } : s), enabled, 'Site ligado na rotina.');
+  }
+  const gateNeeded = (t: PauseTarget) => protectsNow(sites, enabled, Date.now(), usage, releases, t);
+
+  async function applyPause(answer: PauseAnswer) {
+    if (!pausing) return;
+    const { site, slot } = pausing;
+    const target: PauseTarget = { domain: site.domain, ...(slot ? { slotId: slot.id } : {}) };
+    const what = slot ? `a faixa ${formatRange(slot)} de ${site.domain}` : site.domain;
+    if (answer.kind === 'manual') {
+      // Pausa sem prazo: a fricção já foi feita na janela, então não pergunta de novo.
+      const next = slot ? setSlotOff(sites, site.id, slot.id, true) : sites.map((s) => s.id === site.id ? { ...s, enabled: false } : s);
+      if (await commit(next, enabled, slot ? 'Faixa pausada. Retome quando quiser.' : 'Site desligado na rotina.', true)) setPausing(undefined);
+      return;
+    }
+    const now = Date.now();
+    const until = pauseUntil(answer, now);
+    await services.releases.save(addPause(await services.releases.list(), target, until, now));
+    await reload();
+    setPausing(undefined);
+    setNotice({ kind: 'ok', text: pauseUi.inPause(what, untilText(until)) });
+  }
+  async function resume(site: RoutineSite, slot?: RoutineSlot) {
+    const target: PauseTarget = { domain: site.domain, ...(slot ? { slotId: slot.id } : {}) };
+    await services.releases.save(removePause(await services.releases.list(), target));
+    if (slot?.off) await commit(setSlotOff(sites, site.id, slot.id, false), enabled, 'Faixa retomada.', true);
+    else { await reload(); setNotice({ kind: 'ok', text: slot ? 'Faixa retomada.' : `${site.domain} retomado.` }); }
+  }
   const removeSite = (site: RoutineSite) => confirm(`Tirar ${site.domain} da rotina?`) && commit(sites.filter((s) => s.id !== site.id), enabled, 'Site removido.');
   const clearRoutine = () => confirm('Limpar a rotina? Todos os sites, faixas e bloqueios rápidos serão removidos.') && commit(defaultRoutine(), enabled, 'Rotina limpa.');
   const grantAccess = async () => {
@@ -293,6 +334,7 @@ export function RoutineTab({ active, view }: { active: boolean; view: RoutineVie
   };
 
   const draftSite = draft?.siteId ? sites.find((x) => x.id === draft.siteId) : undefined;
+  const draftSlot = draftSite?.slots.find((sl) => sl.id === draft?.slot.id);
   const allDay = !!draft && draft.slot.startMin === 0 && draft.slot.endMin === MINUTES_PER_DAY;
   const directNow = sites.filter((x) => x.enabled && x.blockAll).map((x) => x.domain);
   const byHour = activeNow.map((r) => r.domain).filter((d) => !directNow.includes(d));
@@ -342,13 +384,15 @@ export function RoutineTab({ active, view }: { active: boolean; view: RoutineVie
           const slot = slots.find((sl) => sl.id === seg.slotId)!;
           const dragging = here(drag) && !!drag && 'slotId' in drag && drag.slotId === slot.id && drag.moved;
           const shown = ghostHere?.slotId === slot.id ? { ...slot, startMin: ghostHere.startMin, endMin: ghostHere.endMin } : slot;
+          const slotPause = pausedUntil(releases, { domain: site.domain, slotId: slot.id }, now);
+          const isPaused = !!slot.off || slotPause !== undefined;
           const canStart = seg.part !== 'tail';
           const canEnd = seg.part !== 'head';
           const canMove = seg.part === 'whole' && !(slot.startMin === 0 && slot.endMin === MINUTES_PER_DAY);
           const handle = (edge: 'start' | 'end') => (e: PointerEvent) =>
             beginDrag(e, { kind: 'resize', siteId: site.id, feature, slotId: slot.id, edge, startX: e.clientX, moved: false });
           return (
-            <div key={`${seg.slotId}-${seg.part}`} class={`rt-seg m-${slot.mode} ${canMove ? 'movable' : ''} ${dragging ? 'dragging' : ''} ${seg.lane % 2 ? 'alt' : ''}`}
+            <div key={`${seg.slotId}-${seg.part}`} class={`rt-seg m-${slot.mode} ${isPaused ? 'paused' : ''} ${canMove ? 'movable' : ''} ${dragging ? 'dragging' : ''} ${seg.lane % 2 ? 'alt' : ''}`}
               style={{ ...pct(seg.startMin, seg.endMin), top: `${4 + seg.lane * (laneH + 3)}px`, height: `${laneH}px`, bottom: 'auto' }}
               title={`${site.domain} · ${slotLabel(slot)} · ${formatRange(shown)} (clique para editar; arraste para mover; arraste as pontas para ajustar)`}
               role="button" tabIndex={0} onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && edit(site, slot)}
@@ -356,7 +400,7 @@ export function RoutineTab({ active, view }: { active: boolean; view: RoutineVie
                 ? beginDrag(e, { kind: 'move', siteId: site.id, feature, slotId: slot.id, grabMin: minuteAt(e, (e.currentTarget as HTMLElement).closest('.rt-track') as HTMLElement), startX: e.clientX, moved: false })
                 : (e.stopPropagation(), edit(site, slot))}>
               {canStart && <i class="rt-handle start" aria-hidden="true" onPointerDown={handle('start')} />}
-              <span>{dragging ? formatRange(shown) : feature ? 'Escondido' : slotLabel(slot)}</span>
+              <span>{dragging ? formatRange(shown) : isPaused ? `⏸ ${slot.off ? pauseUi.slotOff : pauseUi.pausedUntil(untilText(slotPause!))}` : feature ? 'Escondido' : slotLabel(slot)}</span>
               {canEnd && <i class="rt-handle end" aria-hidden="true" onPointerDown={handle('end')} />}
             </div>
           );
@@ -374,6 +418,11 @@ export function RoutineTab({ active, view }: { active: boolean; view: RoutineVie
 
   return (
     <main class="pane" hidden={!active}>
+      {pausing && (
+        <PauseModal title={pausing.slot ? pauseUi.titleSlot(pausing.site.domain, formatRange(pausing.slot)) : pauseUi.titleSite(pausing.site.domain)}
+          needsGate={gateNeeded({ domain: pausing.site.domain, ...(pausing.slot ? { slotId: pausing.slot.id } : {}) })} level={friction}
+          onChoose={applyPause} onCancel={() => setPausing(undefined)} />
+      )}
       {gate && (
         <div class="modal" role="dialog" aria-modal="true" aria-label="Afrouxar uma regra ativa">
           <div class="modal-card">
@@ -506,6 +555,7 @@ export function RoutineTab({ active, view }: { active: boolean; view: RoutineVie
           {sites.map((site) => {
             const service = serviceOf(site);
             const locked = !!site.blockAll && site.enabled;
+            const sitePause = site.enabled ? pausedUntil(releases, { domain: site.domain }, now) : undefined;
             const open = !!service && !locked && expanded.has(site.id);
             return (
               <div key={site.id} class="rt-group">
@@ -520,12 +570,14 @@ export function RoutineTab({ active, view }: { active: boolean; view: RoutineVie
                       )}
                       <button class="rt-site" onClick={() => openNew(site)} title="Adicionar uma faixa neste site">{site.domain}</button>
                     </div>
-                    {locked ? <small>bloqueio rápido</small> : site.slots.length === 0 && <small>sem faixas</small>}
+                    {sitePause !== undefined
+                      ? <span class="rt-paused-note">⏸ {pauseUi.pausedUntil(untilText(sitePause))} <button class="link" onClick={() => void resume(site)}>{pauseUi.resume}</button></span>
+                      : locked ? <small>bloqueio rápido</small> : site.slots.length === 0 && <small>sem faixas</small>}
                   </div>
                   {renderTrack(site, site.slots)}
                   <div class="rt-actions">
                     <button class="rt-plus" aria-label={`Adicionar uma faixa em ${site.domain}`} title="Adicionar outra faixa neste site" onClick={() => openNew(site)}>+</button>
-                    <label class="switch" title={site.enabled ? 'Desligar este site na rotina' : 'Ligar este site na rotina'}>
+                    <label class="switch" title={site.enabled ? 'Pausar este site (5, 15, 30 min, até o fim do dia ou até religar)' : 'Ligar este site na rotina'}>
                       <input type="checkbox" checked={site.enabled} onChange={() => toggleSite(site)} aria-label={`${site.domain} na rotina`} />
                       <span />
                     </label>
@@ -563,8 +615,8 @@ export function RoutineTab({ active, view }: { active: boolean; view: RoutineVie
             <div class="site-slots" role="group" aria-label={`Faixas de ${draft.domain}`}>
               <span class="lbl">Faixas deste site</span>
               {draftSite.slots.map((sl) => (
-                <button key={sl.id} type="button" class={`slot-chip m-${sl.mode}`} aria-pressed={!draft.isNewSlot && draft.slot.id === sl.id} onClick={() => edit(draftSite, sl)}>
-                  <i class="dot" /> {formatDays(sl.days)} · {formatRange(sl)} · {slotLabel(sl)}
+                <button key={sl.id} type="button" class={`slot-chip m-${sl.mode} ${sl.off || pausedUntil(releases, { domain: draftSite.domain, slotId: sl.id }, now) ? 'paused' : ''}`} aria-pressed={!draft.isNewSlot && draft.slot.id === sl.id} onClick={() => edit(draftSite, sl)}>
+                  <i class="dot" /> {sl.off || pausedUntil(releases, { domain: draftSite.domain, slotId: sl.id }, now) ? '⏸ ' : ''}{formatDays(sl.days)} · {formatRange(sl)} · {slotLabel(sl)}
                 </button>
               ))}
               <button type="button" class="slot-chip add" aria-pressed={draft.isNewSlot} onClick={() => openNew(draftSite)}>+ Nova faixa</button>
@@ -600,6 +652,9 @@ export function RoutineTab({ active, view }: { active: boolean; view: RoutineVie
             <button class="btn btn-primary" onClick={() => saveDraft()}>Salvar faixa</button>
             <button class="btn" onClick={() => saveDraft(true)} title="Salva esta e já abre outra faixa neste site">Salvar e adicionar outra</button>
             {!draft.isNewSlot && <button class="btn btn-ghost" onClick={duplicateDraft} title="Cria uma cópia desta faixa para ajustar">Duplicar</button>}
+            {!draft.isNewSlot && draftSite && draftSlot && (draftSlot.off || pausedUntil(releases, { domain: draftSite.domain, slotId: draftSlot.id }, now)
+              ? <button class="btn btn-ghost" onClick={() => void resume(draftSite, draftSlot)}>{pauseUi.resumeSlot}</button>
+              : <button class="btn btn-ghost" onClick={() => setPausing({ site: draftSite, slot: draftSlot })} title="Pausa só esta faixa por um tempo ou até religar">{pauseUi.pauseSlot}</button>)}
             <button class="btn btn-ghost" onClick={() => { setDraft(undefined); setNotice(undefined); }}>Cancelar</button>
             <span class="grow" />
             {!draft.isNewSlot && <button class="btn btn-ghost btn-danger" onClick={deleteSlot}>Apagar faixa</button>}

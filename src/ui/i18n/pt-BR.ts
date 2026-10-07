@@ -204,3 +204,21 @@ export const donateUi = {
   thanks: 'Obrigado por fazer parte disso. 🕯️',
   privacy: 'O Pavio não registra quem doa nem quanto: o pagamento acontece fora da extensão, no seu banco ou no site de apoio.',
 };
+
+export const pauseUi = {
+  titleSite: (domain: string) => `Pausar ${domain}`,
+  titleSlot: (domain: string, range: string) => `Pausar a faixa ${range} de ${domain}`,
+  hint: 'Por quanto tempo? Depois o bloqueio volta sozinho.',
+  min: (m: number) => `${m} min`,
+  day: 'Até o fim do dia',
+  manual: 'Até eu religar',
+  action: (what: string) => `Pausar · ${what}`,
+  cancel: 'Manter ligado',
+  pausedUntil: (until: string) => `Pausado até ${until}`,
+  endOfDay: 'o fim do dia',
+  inPause: (what: string, until: string) => `${what} em pausa até ${until}. Depois o bloqueio volta sozinho.`,
+  resume: 'Retomar',
+  slotOff: 'Pausada',
+  pauseSlot: 'Pausar faixa',
+  resumeSlot: 'Retomar faixa',
+};
