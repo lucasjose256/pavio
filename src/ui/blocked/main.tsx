@@ -117,7 +117,7 @@ function Blocked() {
         <button class="btn" onClick={goBack}>Voltar</button>
         {released && site && <a class="btn btn-primary" href={`https://${site}/`}>{breakUi.open(site)}</a>}
       </div>
-      {!released && loaded && releasable && <ReleasePanel domain={releasable} level={(settings ?? DEFAULT_SETTINGS).friction} limited={!!limitedDomain} />}
+      {!released && loaded && releasable && (settings ?? DEFAULT_SETTINGS).releaseOffer && <ReleasePanel domain={releasable} level={(settings ?? DEFAULT_SETTINGS).friction} limited={!!limitedDomain} />}
     </main>
   );
 }

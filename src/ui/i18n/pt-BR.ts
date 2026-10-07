@@ -76,6 +76,14 @@ export const limitUi = {
   message: (site: string | null) => `${site ?? 'O app'} usou o tempo que você combinou consigo. Amanhã ele volta, e você também.`,
 };
 
+/** Opção da página "Para liberar": a tela de bloqueio oferece mais tempo? */
+export const releaseOfferUi = {
+  title: 'Pedir mais tempo na tela de bloqueio',
+  on: 'Mostrar "Precisa dele agora?"',
+  onNote: 'Na tela de bloqueio aparecem as opções de liberar por 5, 15 ou 30 min.',
+  offNote: 'A tela de bloqueio mostra só a vela e o "Voltar", sem oferecer mais tempo. Dá para pausar pelas Opções, em Horários.',
+};
+
 export const releaseUi = {
   ask: 'Precisa dele agora?',
   option: (min: number) => `${min} min`,

@@ -138,3 +138,14 @@ describe('helpers de ambiente', () => {
     expect(accessDomains(createBuiltinEnvironment('builtin-night', 0)!)).toEqual(['facebook.com', 'linkedin.com', 'tiktok.com', 'reddit.com']);
   });
 });
+
+describe('Settings.releaseOffer', () => {
+  it('vem ligado e um settings antigo (sem o campo) também fica ligado', async () => {
+    const storage = new MemoryStorage();
+    expect((await new SettingsRepository(storage).get()).releaseOffer).toBe(true);
+    await storage.set('settings', { candleSkin: 'jar', theme: 'night' });
+    const s = await new SettingsRepository(storage).get();
+    expect(s).toMatchObject({ candleSkin: 'jar', releaseOffer: true });
+    expect((await new SettingsRepository(storage).update({ releaseOffer: false })).releaseOffer).toBe(false);
+  });
+});

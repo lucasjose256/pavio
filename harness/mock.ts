@@ -11,7 +11,7 @@ const params = new URLSearchParams(location.search);
 const data: Record<string, unknown> = {
   schemaVersion: 4,
   environments: createBuiltinEnvironments(now),
-  settings: { candleSkin: params.get('skin') ?? 'classic', theme: params.get('theme') ?? 'cream', routineEnabled: true, friction: params.get('friction') ?? 'light' },
+  settings: { candleSkin: params.get('skin') ?? 'classic', theme: params.get('theme') ?? 'cream', routineEnabled: true, friction: params.get('friction') ?? 'light', releaseOffer: params.get('offer') !== '0' },
   policy: { rules: [{ id: 'r', domain: 'reddit.com', mode: 'blocked' }], youtubeAllowlist: [], routineActive: true, timerActive: false, releasable: ['reddit.com'], released: [] },
   routine: [
     { id: 'a', domain: 'youtube.com', enabled: true, limitMin: 30, slots: [{ id: 's1', days: [1, 2, 3, 4, 5], startMin: 540, endMin: 1080, mode: 'restricted', restrictedKind: 'youtube' }] },

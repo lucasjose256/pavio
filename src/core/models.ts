@@ -82,13 +82,15 @@ export interface Settings {
    * escolhido no popup. `light` = só confirmar (padrão); `focus` = "Firme": digitar a frase. Sem espera em nenhum caso.
    */
   friction: Strictness;
+  /** A tela de bloqueio oferece "Precisa dele agora?" (liberar por 5/15/30 min)? Desligado: só a vela e o "Voltar". */
+  releaseOffer: boolean;
   /** Sugestões de velas de verdade (links de afiliado) nas opções e, raramente, no popup após uma vela concluída. */
   shopSuggestions: boolean;
   /** Mostrar a linha de sugestão também no popup (o "esconder" do popup desliga só isto). */
   shopInPopup: boolean;
 }
 
-export const DEFAULT_SETTINGS: Settings = { candleSkin: 'classic', theme: 'cream', routineEnabled: true, friction: 'light', shopSuggestions: true, shopInPopup: true };
+export const DEFAULT_SETTINGS: Settings = { candleSkin: 'classic', theme: 'cream', routineEnabled: true, friction: 'light', releaseOffer: true, shopSuggestions: true, shopInPopup: true };
 
 /**
  * Pausa temporária: até `until` (epoch ms) as regras da rotina e do limite do app saem (ou só as de UMA faixa,
