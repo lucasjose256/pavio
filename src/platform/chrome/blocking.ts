@@ -7,8 +7,13 @@ const BLOCK_BASE = 1;
 const INTENT_BASE = 500;
 const ALLOW_BASE = 1000;
 
-export const blockedPageUrl = (domain: string, why?: string) =>
-  chrome.runtime.getURL(`src/ui/blocked/index.html?site=${encodeURIComponent(domain)}${why ? `&why=${why}` : ''}`);
+/**
+ * Página de bloqueio. `next` (opcional) é onde a pessoa estava, para voltar sozinha quando o site for liberado; vai por
+ * último na query. Só se conhece ao levar abas JÁ abertas ou nos content scripts: nas regras de rede o redirect é
+ * simples (sem `regexSubstitution`, que não é garantido), então ali a volta é para a página inicial do site.
+ */
+export const blockedPageUrl = (domain: string, why?: string, next?: string) =>
+  chrome.runtime.getURL(`src/ui/blocked/index.html?site=${encodeURIComponent(domain)}${why ? `&why=${why}` : ''}${next ? `&next=${encodeURIComponent(next)}` : ''}`);
 
 /**
  * Página "o que você vai fazer aqui?". `next` (opcional) é a URL a abrir depois da resposta; só é usado ao levar
@@ -67,7 +72,7 @@ export class ChromeBlocker implements BlockerPort {
     });
 
     // Abas já abertas não passam pelo DNR: leva-as para o destino certo.
-    await this.redirectOpenTabs(plan.block.filter((d) => !was.block.includes(d)), (d) => blockedPageUrl(d));
+    await this.redirectOpenTabs(plan.block.filter((d) => !was.block.includes(d)), (d, tab) => blockedPageUrl(d, undefined, tab.url));
     await this.redirectOpenTabs(plan.intent.filter((d) => !was.intent.includes(d)), (d, tab) => intentPageUrl(d, tab.url));
   }
 

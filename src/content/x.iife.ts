@@ -37,7 +37,7 @@ function evaluate() {
   if (!features) return;
   const decision = xDecision(location.pathname, features);
   if (decision.action === 'block')
-    location.replace(chrome.runtime.getURL(`src/ui/blocked/index.html?site=x.com&why=${decision.reason}`));
+    location.replace(chrome.runtime.getURL(`src/ui/blocked/index.html?site=x.com&why=${decision.reason}&next=${encodeURIComponent(location.href)}`));
 }
 
 function apply(policy: Policy | undefined) {

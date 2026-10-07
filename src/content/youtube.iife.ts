@@ -25,7 +25,7 @@ function setStyle(features: ReadonlySet<string> | null, feedFree: boolean) {
 }
 
 const leave = (why: string) =>
-  location.replace(chrome.runtime.getURL(`src/ui/blocked/index.html?site=youtube.com&why=${why}`));
+  location.replace(chrome.runtime.getURL(`src/ui/blocked/index.html?site=youtube.com&why=${why}&next=${encodeURIComponent(location.href)}`));
 
 const pending = (on: boolean) => root.classList.toggle('pavio-yt-pending', on);
 const pauseVideos = () => document.querySelectorAll('video').forEach((v) => v.pause());

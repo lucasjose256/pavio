@@ -68,6 +68,7 @@ export const releasedUi = {
   title: 'Liberado agora',
   message: (site: string | null) => `${site ?? 'O site'} não está mais bloqueado. Pode abrir.`,
   until: (when: string) => `Volta a liberar ${when}`,
+  returning: (site: string | null) => `Voltando para ${site ?? 'o site'}…`,
   backAt: (time: string) => `O bloqueio volta às ${time}`,
 };
 

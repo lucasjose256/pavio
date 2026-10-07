@@ -1,5 +1,5 @@
 import { render } from 'preact';
-import { useEffect, useMemo, useState } from 'preact/hooks';
+import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import '../theme.css';
 import './blocked.css';
 import { Candle } from '../candle/Candle';
@@ -8,6 +8,7 @@ import { frictionForRelease } from '../../core/friction';
 import { RELEASE_OPTIONS_MIN, addRelease } from '../../core/release';
 import { DEFAULT_SETTINGS } from '../../core/models';
 import { hostMatchesDomain } from '../../core/matching';
+import { rawNextParam, returnTarget } from '../../core/return-url';
 import { blockStillApplies } from '../../core/policy';
 import { onBreak } from '../../core/pomodoro';
 import { candleProgress, formatRemaining, remainingMs } from '../../core/session';
@@ -51,6 +52,19 @@ function ReleasePanel({ domain, level, limited }: { domain: string; level: Stric
   );
 }
 
+/**
+ * Depois de liberar, o Chrome ainda leva um instante para tirar a regra de bloqueio da rede: navegar antes disso
+ * mandaria a pessoa de volta para esta mesma tela. Espera a regra sumir (no máximo ~4 s).
+ */
+async function waitForRuleRemoval(site: string) {
+  for (let i = 0; i < 40; i++) {
+    const rules = await chrome.declarativeNetRequest.getDynamicRules();
+    const stillThere = rules.some((r) => r.id < 500 && r.condition.requestDomains?.some((d) => hostMatchesDomain(site, d)));
+    if (!stillThere) return;
+    await new Promise((r) => setTimeout(r, 100));
+  }
+}
+
 function goBack() {
   if (history.length > 1) history.back();
   else void chrome.tabs.update({ url: 'chrome://newtab/' });
@@ -77,6 +91,20 @@ function Blocked() {
   const released = loaded && !stillBlocked;
   const limitedDomain = site ? policy?.limitReached?.find((d) => hostMatchesDomain(site, d)) : undefined;
   const resting = timer && onBreak(timer) ? timer : undefined;
+  // Onde a pessoa estava (quando sabemos) ou a página inicial do site.
+  const destination = site ? returnTarget(site, rawNextParam(location.search)) : undefined;
+  // Voltar sozinho só quando o site era bloqueado AQUI e é liberado enquanto a página está aberta (mais tempo, pausa,
+  // regra desligada, fim da faixa). Na pausa do Pomodoro a página fica, para a pessoa respirar e escolher.
+  const sawBlocked = useRef(false);
+  const [returning, setReturning] = useState(false);
+  useEffect(() => {
+    if (!loaded) return;
+    if (stillBlocked) { sawBlocked.current = true; return; }
+    if (!sawBlocked.current || resting || !site || !destination) return;
+    sawBlocked.current = false;
+    setReturning(true);
+    void waitForRuleRemoval(site).then(() => location.replace(destination));
+  }, [loaded, stillBlocked, !!resting]);
   const releasable = site ? policy?.releasable?.find((d) => hostMatchesDomain(site, d)) : undefined;
   const releasedUntil = site ? policy?.released?.find((r) => hostMatchesDomain(site, r.domain))?.until : undefined;
 
@@ -94,6 +122,7 @@ function Blocked() {
               ? breakUi.message(site, clock(resting.pomodoro.phaseEndsAt))
               : releasedUi.message(site)}
           </p>
+          {returning && <p class="time" role="status">{releasedUi.returning(site)}</p>}
           {releasedUntil && <p class="time">{releasedUi.backAt(clock(releasedUntil))}</p>}
         </>
       ) : (
@@ -115,7 +144,7 @@ function Blocked() {
 
       <div class="actions">
         <button class="btn" onClick={goBack}>Voltar</button>
-        {released && site && <a class="btn btn-primary" href={`https://${site}/`}>{breakUi.open(site)}</a>}
+        {released && site && <a class="btn btn-primary" href={destination ?? `https://${site}/`}>{breakUi.open(site)}</a>}
       </div>
       {!released && loaded && releasable && (settings ?? DEFAULT_SETTINGS).releaseOffer && <ReleasePanel domain={releasable} level={(settings ?? DEFAULT_SETTINGS).friction} limited={!!limitedDomain} />}
     </main>

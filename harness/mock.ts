@@ -12,7 +12,7 @@ const data: Record<string, unknown> = {
   schemaVersion: 4,
   environments: createBuiltinEnvironments(now),
   settings: { candleSkin: params.get('skin') ?? 'classic', theme: params.get('theme') ?? 'cream', routineEnabled: true, friction: params.get('friction') ?? 'light', releaseOffer: params.get('offer') !== '0' },
-  policy: { rules: [{ id: 'r', domain: 'reddit.com', mode: 'blocked' }], youtubeAllowlist: [], routineActive: true, timerActive: false, releasable: ['reddit.com'], released: [] },
+  policy: { rules: [{ id: 'r', domain: params.get('site') ?? 'reddit.com', mode: 'blocked' }], youtubeAllowlist: [], routineActive: true, timerActive: false, releasable: [params.get('site') ?? 'reddit.com'], released: [] },
   routine: [
     { id: 'a', domain: 'youtube.com', enabled: true, limitMin: 30, slots: [{ id: 's1', days: [1, 2, 3, 4, 5], startMin: 540, endMin: 1080, mode: 'restricted', restrictedKind: 'youtube' }] },
     { id: 'b', domain: 'instagram.com', enabled: true, limitMin: 30, slots: [] },
@@ -42,6 +42,7 @@ const ev = () => ({ addListener: () => {}, removeListener: () => {} });
   runtime: { getURL: (p: string) => `/${p}`, onMessage: ev(), openOptionsPage: () => {}, getContexts: async () => [], ContextType: { TAB: 'TAB' } },
   windows: { create: async () => {}, update: async () => {}, getCurrent: async () => ({ id: 1 }) },
   tabs: { create: async ({ url }: { url: string }) => { location.href = url; }, getCurrent: async () => undefined, update: async () => {}, query: async () => [] },
+  declarativeNetRequest: { getDynamicRules: async () => [] },
   alarms: { create: async () => {}, clear: async () => true, onAlarm: ev() },
   notifications: { create: async () => '', clear: async () => true, onClicked: ev(), onButtonClicked: ev() },
 };

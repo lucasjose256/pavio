@@ -4,9 +4,10 @@ import '../theme.css';
 import './intent.css';
 import { Candle } from '../candle/Candle';
 import { INTENT_MAX_MINUTES, INTENT_MAX_TEXT, INTENT_MIN_MINUTES, INTENT_PRESETS_MIN, validateIntent } from '../../core/intent-service';
-import { findRule, hostMatchesDomain } from '../../core/matching';
+import { findRule } from '../../core/matching';
 import type { Policy, Settings } from '../../core/models';
 import { DEFAULT_SETTINGS } from '../../core/models';
+import { rawNextParam, returnTarget } from '../../core/return-url';
 import { createServices } from '../../platform/chrome/services';
 import { intentPage as t } from '../i18n/pt-BR';
 import { initTheme } from '../shared/theme';
@@ -18,22 +19,8 @@ initTheme();
 const search = location.search;
 const site = new URLSearchParams(search).get('site') ?? '';
 // `next` só vem ao levar abas já abertas (codificada). Pelas regras de rede não vem: aí abrimos a página inicial do site.
-const rawNext = search.includes('next=') ? search.slice(search.indexOf('next=') + 5) : '';
-
-/** Só volta para o mesmo site (evita virar redirecionador aberto). */
-function destination(): string {
-  const fallback = `https://${site}/`;
-  for (const candidate of [rawNext, safeDecode(rawNext)]) {
-    try {
-      const url = new URL(candidate);
-      if (/^https?:$/.test(url.protocol) && hostMatchesDomain(url.hostname, site)) return url.href;
-    } catch { /* tenta o próximo */ }
-  }
-  return fallback;
-}
-function safeDecode(v: string) {
-  try { return decodeURIComponent(v); } catch { return v; }
-}
+const rawNext = rawNextParam(search);
+const destination = () => returnTarget(site, rawNext);
 
 /** O DNR atualiza as regras de forma assíncrona: espera a regra sumir antes de navegar. */
 async function waitForRuleRemoval() {

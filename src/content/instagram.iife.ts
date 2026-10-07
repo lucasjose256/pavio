@@ -16,7 +16,7 @@ function evaluate() {
   const decision = instagramDecision(location.pathname, features);
   if (decision.action === 'redirect') location.replace(decision.to);
   else if (decision.action === 'block')
-    location.replace(chrome.runtime.getURL(`src/ui/blocked/index.html?site=instagram.com&why=${decision.reason}`));
+    location.replace(chrome.runtime.getURL(`src/ui/blocked/index.html?site=instagram.com&why=${decision.reason}&next=${encodeURIComponent(location.href)}`));
 }
 
 function apply(policy: Policy | undefined) {
