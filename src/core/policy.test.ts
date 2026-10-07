@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createBuiltinEnvironment } from './environments';
 import type { RoutineSite, Session } from './models';
-import { blockStillApplies, computePolicy } from './policy';
+import { blockStillApplies, computePolicy, returnTimeFor } from './policy';
 import { pomodoroState } from './pomodoro';
 import { addUsage } from './usage';
 
@@ -198,5 +198,52 @@ describe('faixa pausada e pausa temporária de uma faixa', () => {
     ] }];
     const p = computePolicy({ routine: two, routineEnabled: true, session: undefined, now: mon(10), releases: [{ domain: 'instagram.com', slotId: 'a', until: mon(11) }] });
     expect(p.rules[0]!.features).toEqual(['reels']);
+  });
+});
+
+describe('quando o bloqueio acaba de verdade (unblockAt / freeAt)', () => {
+  const site = (over: Partial<RoutineSite>): RoutineSite => ({ id: 'x', domain: 'x.com', enabled: true, slots: [], ...over });
+  const slot = (id: string, startMin: number, endMin: number, over = {}) => ({ id, days: [0, 1, 2, 3, 4, 5, 6], startMin, endMin, mode: 'blocked' as const, ...over });
+  const at = (routine: RoutineSite[], now: number, extra = {}) => computePolicy({ routine, routineEnabled: true, session: undefined, now, ...extra });
+
+  it('faixa com fim: mostra o fim dela, e emenda de duas faixas conta como uma só', () => {
+    expect(at([site({ slots: [slot('a', 9 * 60, 18 * 60)] })], mon(10)).unblockAt).toEqual({ 'x.com': mon(18) });
+    expect(at([site({ slots: [slot('a', 9 * 60, 12 * 60), slot('b', 12 * 60, 18 * 60)] })], mon(10)).unblockAt).toEqual({ 'x.com': mon(18) });
+  });
+  it('sem fim: bloqueio rápido e faixa de dia todo, todo dia, não prometem horário', () => {
+    expect(at([site({ blockAll: true })], mon(10)).unblockAt).toEqual({});
+    expect(at([site({ slots: [slot('a', 0, 1440)] })], mon(10)).unblockAt).toEqual({});
+  });
+  it('a hora de OUTRO site não aparece (o erro da tela de bloqueio)', () => {
+    const routine = [site({ blockAll: true }), site({ id: 'y', domain: 'y.com', slots: [slot('b', 9 * 60, 20 * 60 + 30)] })];
+    const p = at(routine, mon(10));
+    expect(p.unblockAt).toEqual({ 'y.com': mon(20, 30) });
+    expect(returnTimeFor(p, 'x.com', false)).toBeUndefined();
+    expect(returnTimeFor(p, 'www.y.com', false)).toBe(mon(20, 30));
+  });
+  it('limite estourado: volta à meia-noite', () => {
+    const limited = [site({ limitMin: 10 })];
+    const p = at(limited, mon(10), { usage: addUsage({}, 'x.com', min(12), mon(10)) });
+    expect(p.unblockAt).toEqual({ 'x.com': new Date(2026, 9, 6).getTime() });
+  });
+  it('só a vela: o fim da vela; vela + bloqueio rápido: nada (a vela acabar não libera)', () => {
+    const env = createBuiltinEnvironment('builtin-study', 0)!;
+    const s = session({ environmentSnapshot: env });
+    expect(computePolicy({ routine: [], routineEnabled: true, session: s, now: mon(10, 30) }).unblockAt?.['reddit.com']).toBe(s.endsAt);
+    const both = computePolicy({ routine: [site({ domain: 'reddit.com', blockAll: true })], routineEnabled: true, session: s, now: mon(10, 30) });
+    expect(both.unblockAt?.['reddit.com']).toBeUndefined();
+  });
+  it('recurso escondido (restrito): freeAt = fim da restrição; bloqueio por cima só acaba quando acabar o bloqueio', () => {
+    const feature = slot('f', 0, 1440, { mode: 'restricted', restrictedKind: 'instagram', features: ['reels'] });
+    const blocked = slot('b', 9 * 60, 18 * 60);
+    const p = at([site({ domain: 'instagram.com', slots: [feature, blocked] })], mon(10));
+    expect(p.unblockAt).toEqual({ 'instagram.com': mon(18) });
+    expect(p.freeAt).toEqual({});
+    const timed = at([site({ domain: 'instagram.com', slots: [slot('f', 9 * 60, 12 * 60, { mode: 'restricted', restrictedKind: 'instagram', features: ['reels'] })] })], mon(10));
+    expect(returnTimeFor(timed, 'instagram.com', true)).toBe(mon(12));
+  });
+  it('pausa temporária que vence volta a bloquear: o fim real é depois', () => {
+    const p = at([site({ slots: [slot('a', 9 * 60, 18 * 60)] })], mon(10), { releases: [{ domain: 'x.com', slotId: 'zzz', until: mon(11) }] });
+    expect(p.unblockAt).toEqual({ 'x.com': mon(18) });
   });
 });

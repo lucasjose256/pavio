@@ -12,7 +12,7 @@ const data: Record<string, unknown> = {
   schemaVersion: 4,
   environments: createBuiltinEnvironments(now),
   settings: { candleSkin: params.get('skin') ?? 'classic', theme: params.get('theme') ?? 'cream', routineEnabled: true, friction: params.get('friction') ?? 'light', releaseOffer: params.get('offer') !== '0' },
-  policy: { rules: [{ id: 'r', domain: params.get('site') ?? 'reddit.com', mode: 'blocked' }], youtubeAllowlist: [], routineActive: true, timerActive: false, releasable: [params.get('site') ?? 'reddit.com'], released: [] },
+  policy: { rules: [{ id: 'r', domain: params.get('site') ?? 'reddit.com', mode: 'blocked' }], youtubeAllowlist: [], routineActive: true, timerActive: false, releasable: [params.get('site') ?? 'reddit.com'], released: [], ...(params.get('until') ? { unblockAt: { [params.get('site') ?? 'reddit.com']: Date.now() + 3 * 3_600_000 }, freeAt: {} } : {}) },
   routine: [
     { id: 'a', domain: 'youtube.com', enabled: true, limitMin: 30, slots: [{ id: 's1', days: [1, 2, 3, 4, 5], startMin: 540, endMin: 1080, mode: 'restricted', restrictedKind: 'youtube' }] },
     { id: 'b', domain: 'instagram.com', enabled: true, limitMin: 30, slots: [] },

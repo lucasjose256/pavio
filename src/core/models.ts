@@ -199,4 +199,11 @@ export interface Policy {
   releasable?: string[];
   /** Liberações temporárias valendo agora. */
   released?: Release[];
+  /**
+   * Por domínio da regra: quando o bloqueio (`unblockAt`) ou qualquer restrição (`freeAt`, para recursos escondidos)
+   * **realmente acaba**. Ausente = não acaba nos próximos dias (app bloqueado o tempo todo, faixa de dia todo…),
+   * e a tela de bloqueio não promete horário nenhum.
+   */
+  unblockAt?: Record<string, number>;
+  freeAt?: Record<string, number>;
 }

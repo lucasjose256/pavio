@@ -9,7 +9,7 @@ import { RELEASE_OPTIONS_MIN, addRelease } from '../../core/release';
 import { DEFAULT_SETTINGS } from '../../core/models';
 import { hostMatchesDomain } from '../../core/matching';
 import { rawNextParam, returnTarget } from '../../core/return-url';
-import { blockStillApplies } from '../../core/policy';
+import { blockStillApplies, returnTimeFor } from '../../core/policy';
 import { onBreak } from '../../core/pomodoro';
 import { candleProgress, formatRemaining, remainingMs } from '../../core/session';
 import { formatMinutes } from '../../core/timeslots';
@@ -105,6 +105,8 @@ function Blocked() {
     setReturning(true);
     void waitForRuleRemoval(site).then(() => location.replace(destination));
   }, [loaded, stillBlocked, !!resting]);
+  // Quando ESTE site (ou recurso) volta de verdade; sem fim à vista, não prometemos horário nenhum.
+  const returnAt = returnTimeFor(policy, site, !!why);
   const releasable = site ? policy?.releasable?.find((d) => hostMatchesDomain(site, d)) : undefined;
   const releasedUntil = site ? policy?.released?.find((r) => hostMatchesDomain(site, r.domain))?.until : undefined;
 
@@ -130,14 +132,15 @@ function Blocked() {
           <>
             <p class="quote">{limitUi.title}</p>
             <p class="site">{limitUi.message(limitedDomain)}</p>
-            {policy?.nextChange && <p class="time">{releasedUi.until(formatWhen(policy.nextChange, now))}</p>}
+            {returnAt && <p class="time">{releasedUi.until(formatWhen(returnAt, now))}</p>}
           </>
         ) : (
         <>
           <p class="quote">{quote}</p>
           {why ? <p class="site">{why}</p> : site && <p class="site">{site} está fora do seu foco agora. Tudo bem, ele espera.</p>}
-          {timer && <p class="time">{formatRemaining(remainingMs(timer, now))} até a vela acabar</p>}
-          {!timer && policy?.nextChange && <p class="time">{releasedUi.until(formatWhen(policy.nextChange, now))}</p>}
+          {returnAt && (timer && returnAt === timer.endsAt
+            ? <p class="time">{formatRemaining(remainingMs(timer, now))} até a vela acabar</p>
+            : <p class="time">{releasedUi.until(formatWhen(returnAt, now))}</p>)}
         </>
         )
       )}

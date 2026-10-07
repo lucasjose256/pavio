@@ -12,7 +12,7 @@ import type { UsageData } from './usage';
  * Apps que estouraram o limite de tempo de hoje entram como bloqueados até a meia-noite (também fazem parte da
  * rotina: a pausa do timer não os libera).
  */
-export function computePolicy(input: {
+export interface PolicyInput {
   routine: RoutineSite[];
   routineEnabled: boolean;
   session: Pick<Session, 'status' | 'environmentSnapshot' | 'youtubeAllowlist' | 'pomodoro' | 'endsAt'> | undefined;
@@ -21,7 +21,62 @@ export function computePolicy(input: {
   usage?: UsageData;
   /** "Preciso disso agora": tiram as regras da rotina e do limite do app até vencerem (as do Timer ficam). */
   releases?: Release[];
-}): Policy {
+}
+
+export function computePolicy(input: PolicyInput): Policy {
+  const policy = policyAt(input);
+  const unblockAt: Record<string, number> = {};
+  const freeAt: Record<string, number> = {};
+  for (const rule of policy.rules) {
+    if (rule.mode === 'allowed') continue;
+    const free = endOfRestriction(input, rule.domain, true);
+    if (free !== undefined) freeAt[rule.domain] = free;
+    if (rule.mode === 'blocked') {
+      const open = endOfRestriction(input, rule.domain, false);
+      if (open !== undefined) unblockAt[rule.domain] = open;
+    }
+  }
+  return { ...policy, unblockAt, freeAt };
+}
+
+/**
+ * Quando a restrição de `domain` acaba DE VERDADE: anda pelas próximas viradas (faixas, fim da vela, meia-noite do
+ * limite, fim de uma liberação) e devolve a primeira em que ele já não é restringido. Sem fim à vista (bloqueio rápido,
+ * faixa de dia todo, outra faixa logo em seguida…) devolve undefined. `anyRule`: conta também "restrito" (recursos).
+ * A pausa do Pomodoro não entra na conta (o horário mostrado é o do fim da vela).
+ */
+function endOfRestriction(input: PolicyInput, domain: string, anyRule: boolean): number | undefined {
+  const { routine, routineEnabled, session, usage = {} } = input;
+  const releases = activeReleases(input.releases, input.now);
+  const limitActive = limitRules(routine, usage, input.now).length > 0;
+  const restricted = (policy: Policy) => {
+    const rule = findRule(policy, domain);
+    return anyRule ? !!rule && rule.mode !== 'allowed' : rule?.mode === 'blocked';
+  };
+  let t = input.now;
+  for (let step = 0; step < 60; step++) {
+    const candidates = [
+      nextBoundary(routine, routineEnabled, t, releases),
+      session?.status === 'active' ? session.endsAt : undefined,
+      limitActive ? nextMidnight(t) : undefined,
+      ...releases.map((r) => r.until),
+    ].filter((c): c is number => typeof c === 'number' && c > t);
+    if (!candidates.length) return undefined;
+    t = Math.min(...candidates);
+    const policy = policyAt({ ...input, now: t, session: session && t < session.endsAt ? session : undefined });
+    if (!restricted(policy)) return t;
+  }
+  return undefined;
+}
+
+/** Quando a tela de bloqueio pode dizer "volta a liberar": o fim da restrição DESTE site (ou recurso), se houver. */
+export function returnTimeFor(policy: Pick<Policy, 'rules' | 'unblockAt' | 'freeAt'> | undefined, site: string | null, cameFromFeature: boolean): number | undefined {
+  if (!policy || !site) return undefined;
+  const rule = findRule(policy, site);
+  return rule ? (cameFromFeature ? policy.freeAt : policy.unblockAt)?.[rule.domain] : undefined;
+}
+
+function policyAt(input: PolicyInput): Policy {
   const { routine, routineEnabled, session, now, usage = {} } = input;
   const releases = activeReleases(input.releases, now);
   const timer = session?.status === 'active' ? session : undefined;

@@ -61,6 +61,7 @@ O que vale **agora** é a **Política** = regras da rotina ativas agora + regras
 ## Política (`core/policy.ts`, `core/policy-service.ts`)
 - `computePolicy({ routine, routineEnabled, session, now })`: regras da rotina ativas + regras do ambiente do timer (só se `enforcing(session)`: ativa e fora da pausa). Por domínio, `combineSpecs` (`core/restrictions.ts`): **bloqueado > esconder partes (une os recursos) > intenção > liberado**. O timer não libera o que a rotina restringe, nem com regra "liberado" no ambiente.
 - `youtubeAllowlist` vem só do timer; `nextChange` = próxima virada (faixa, fim da vela, fim da fase) para "volta a liberar às…".
+- **"Volta a liberar…" (por site):** `Policy.unblockAt` / `freeAt` (por domínio da regra) dizem quando o bloqueio — ou qualquer restrição, para recursos escondidos — **realmente acaba** (`endOfRestriction`: anda pelas viradas de faixa, fim da vela, meia-noite do limite e fim de liberação até o domínio sair; emenda de faixas conta como uma só). **Ausente = sem fim à vista** (bloqueio rápido, faixa de dia todo, vela + bloqueio rápido): a tela de bloqueio **não mostra horário**. `returnTimeFor(policy, site, veioDeRecurso)` escolhe qual. **Nunca use `policy.nextChange` para isso** (é a próxima virada de QUALQUER regra e mostrava hora de outro site). A pausa do Pomodoro não entra na conta (vale o fim da vela).
 - `blockStillApplies(policy, site, veioDeRecurso)`: a página de bloqueio que ficou aberta se libera sozinha quando a política já não restringe o site.
 
 ## Timer: sessão, Pomodoro e fricção
