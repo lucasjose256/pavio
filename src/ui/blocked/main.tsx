@@ -95,6 +95,7 @@ function Blocked() {
   const destination = site ? returnTarget(site, rawNextParam(location.search)) : undefined;
   // Voltar sozinho só quando o site era bloqueado AQUI e é liberado enquanto a página está aberta (mais tempo, pausa,
   // regra desligada, fim da faixa). Na pausa do Pomodoro a página fica, para a pessoa respirar e escolher.
+  const cameBack = params.get('back') === '1';
   const sawBlocked = useRef(false);
   const [returning, setReturning] = useState(false);
   useEffect(() => {
@@ -103,7 +104,14 @@ function Blocked() {
     if (!sawBlocked.current || resting || !site || !destination) return;
     sawBlocked.current = false;
     setReturning(true);
-    void waitForRuleRemoval(site).then(() => location.replace(destination));
+    void waitForRuleRemoval(site).then(() => {
+      // Aba que já estava aberta: voltar pelo histórico deixa o Chrome restaurar a página como estava (rolagem, vídeo,
+      // texto digitado), em vez de recarregá-la do zero. Se não sair daqui, abre o endereço.
+      if (cameBack && history.length > 1) {
+        history.back();
+        setTimeout(() => location.replace(destination), 1500);
+      } else location.replace(destination);
+    });
   }, [loaded, stillBlocked, !!resting]);
   // Quando ESTE site (ou recurso) volta de verdade; sem fim à vista, não prometemos horário nenhum.
   const returnAt = returnTimeFor(policy, site, !!why);
