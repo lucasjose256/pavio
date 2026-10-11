@@ -1,0 +1,10 @@
+import './mock';
+await import('../src/ui/popup/main');
+const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+await wait(700);
+const q = (sel: string) => document.querySelector<HTMLElement>(sel);
+[...document.querySelectorAll<HTMLButtonElement>('.seg.wrap button')].find((b) => b.textContent === 'Outro')?.click();
+await wait(150);
+q('.pomo-adjust')?.click();
+const more = q('details.more') as HTMLDetailsElement | null;
+if (more) more.open = true;

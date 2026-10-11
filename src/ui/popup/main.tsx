@@ -101,21 +101,20 @@ function StartForm({ skin }: { skin: string }) {
             <button type="button" aria-pressed={custom} onClick={() => setCustom(true)}>Outro</button>
           </div>
           {custom && (
-            <input class="field full minutes" type="number" min={MIN_DURATION_MIN} max={MAX_DURATION_MIN} value={minutes}
-              aria-label="Minutos" onInput={(e) => chooseMinutes(Number(e.currentTarget.value))} />
+            <label class="minutes-row">
+              <input class="field" type="number" min={MIN_DURATION_MIN} max={MAX_DURATION_MIN} value={minutes}
+                aria-label="Minutos" onInput={(e) => chooseMinutes(Number(e.currentTarget.value))} />
+              <span>minutos <small>({MIN_DURATION_MIN} a {MAX_DURATION_MIN})</small></span>
+            </label>
           )}
-          {/* O Pomodoro já vem sugerido para este tempo; é só desmarcar, ou ajustar em "Mais opções". */}
-          <label class="check pomo-quick">
-            <input type="checkbox" checked={!!pomodoro} onChange={(e) => togglePomodoro(e.currentTarget.checked)} />
-            <span>
-              <strong>Pomodoro</strong>{' '}
-              {(() => {
-                const p = pomodoro ?? pomodoroSuggestionFor(isValidDuration(minutes) ? minutes : DEFAULT_DURATION_MIN);
-                return `foco ${p.focusMin} · pausa ${p.breakMin} min`;
-              })()}
-            </span>
-          </label>
         </div>
+
+        <PomodoroFields
+          value={pomodoro}
+          suggestion={pomodoroSuggestionFor(isValidDuration(minutes) ? minutes : DEFAULT_DURATION_MIN)}
+          onToggle={togglePomodoro}
+          onChange={(v) => { setPomodoro(v); setAutoPomodoro(false); }}
+        />
 
         <details class="more">
           <summary>Mais opções</summary>
@@ -126,11 +125,11 @@ function StartForm({ skin }: { skin: string }) {
                 <button type="button" title="Você pode parar com uma confirmação" aria-pressed={strictness === 'light'} onClick={() => setStrictness('light')}>Leve</button>
                 <button type="button" title="Para apagar antes da hora, digite uma frase" aria-pressed={strictness === 'focus'} onClick={() => setStrictness('focus')}>Foco</button>
               </div>
+              <span class="hint">{strictness === 'light' ? 'Basta confirmar para apagar a vela.' : 'Para apagar a vela, é preciso digitar uma frase.'}</span>
             </div>
-            <PomodoroFields value={pomodoro} onChange={(v) => { setPomodoro(v && !pomodoro ? pomodoroSuggestionFor(isValidDuration(minutes) ? minutes : DEFAULT_DURATION_MIN) : v); setAutoPomodoro(false); }} />
-            <label class="check" title={newTabUi.optionHint}>
-              <input type="checkbox" checked={blockNewTabs} onChange={(e) => setBlockNewTabs(e.currentTarget.checked)} />
-              {newTabUi.popupLabel}
+            <label class="opt-row" title={newTabUi.optionHint}>
+              <span class="switch"><input type="checkbox" checked={blockNewTabs} onChange={(e) => setBlockNewTabs(e.currentTarget.checked)} /><span /></span>
+              <span class="opt-text"><strong>{newTabUi.popupLabel}</strong><small>Ctrl+T e links em nova aba ficam fechados.</small></span>
             </label>
             {usesYouTube && (
               <label>
