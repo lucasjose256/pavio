@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'preact/hooks';
-import { formatDuration, summarizeHistory } from '../../core/history';
+import { RECENT_SESSIONS_LIMIT, formatDuration, recentSessions, summarizeHistory } from '../../core/history';
 import type { HistoryEntry } from '../../core/models';
 import { usageByApp, type UsageData } from '../../core/usage';
 import { Candle } from '../candle/Candle';
@@ -24,7 +24,7 @@ export function HistoryTab({ active }: { active: boolean }) {
   }, [active]);
 
   const summary = useMemo(() => (entries ? summarizeHistory(entries, Date.now()) : undefined), [entries, active]);
-  const recent = useMemo(() => [...(entries ?? [])].sort((a, b) => b.endedAt - a.endedAt).slice(0, 40), [entries]);
+  const recent = useMemo(() => recentSessions(entries ?? []), [entries]);
 
   function exportJson() {
     const url = URL.createObjectURL(new Blob([JSON.stringify(entries ?? [], null, 2)], { type: 'application/json' }));
@@ -84,7 +84,7 @@ export function HistoryTab({ active }: { active: boolean }) {
           </section>
 
           <section class="card">
-            <h3>Sessões recentes</h3>
+            <h3>Últimas {Math.min(RECENT_SESSIONS_LIMIT, recent.length)} sessões</h3>
             <ul class="sessions">
               {recent.map((e) => (
                 <li key={e.sessionId} class="session">

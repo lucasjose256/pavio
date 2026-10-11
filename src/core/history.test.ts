@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatDuration, summarizeHistory } from './history';
+import { formatDuration, recentSessions, summarizeHistory } from './history';
 import type { HistoryEntry } from './models';
 
 const at = (y: number, m: number, d: number, h = 12) => new Date(y, m - 1, d, h).getTime();
@@ -46,5 +46,23 @@ describe('formatDuration', () => {
     expect(formatDuration(min(35))).toBe('35 min');
     expect(formatDuration(min(180))).toBe('3 h');
     expect(formatDuration(min(125))).toBe('2 h 05 min');
+  });
+});
+
+describe('recentSessions', () => {
+  const entry = (n: number): HistoryEntry => ({
+    sessionId: `s${n}`, environmentName: 'Estudo', startedAt: n * 1000, endedAt: n * 1000 + 500, plannedMs: 1500, actualMs: 500, outcome: 'completed', blockedAttempts: 0,
+  });
+  it('só as 20 últimas, da mais recente para a mais antiga', () => {
+    const all = Array.from({ length: 35 }, (_, i) => entry(i + 1)).sort(() => 0.5 - Math.random());
+    const out = recentSessions(all);
+    expect(out).toHaveLength(20);
+    expect(out[0]!.sessionId).toBe('s35');
+    expect(out[19]!.sessionId).toBe('s16');
+  });
+  it('menos de 20: mostra todas; não altera a lista original', () => {
+    const few = [entry(1), entry(2)];
+    expect(recentSessions(few).map((e) => e.sessionId)).toEqual(['s2', 's1']);
+    expect(few.map((e) => e.sessionId)).toEqual(['s1', 's2']);
   });
 });

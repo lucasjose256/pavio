@@ -76,3 +76,11 @@ export function formatDuration(ms: number): string {
   if (h === 0) return `${m} min`;
   return m === 0 ? `${h} h` : `${h} h ${String(m).padStart(2, '0')} min`;
 }
+
+/** Quantas sessões a lista "Sessões recentes" mostra (o histórico guardado e as estatísticas seguem completos). */
+export const RECENT_SESSIONS_LIMIT = 20;
+
+/** As sessões mais recentes primeiro (por fim da sessão), limitadas a `limit`. */
+export function recentSessions(entries: HistoryEntry[], limit = RECENT_SESSIONS_LIMIT): HistoryEntry[] {
+  return [...entries].sort((a, b) => b.endedAt - a.endedAt).slice(0, limit);
+}
