@@ -247,3 +247,17 @@ describe('quando o bloqueio acaba de verdade (unblockAt / freeAt)', () => {
     expect(p.unblockAt).toEqual({ 'x.com': mon(18) });
   });
 });
+
+describe('pausa de um recurso na política', () => {
+  const yt: RoutineSite[] = [{ id: 'y', domain: 'youtube.com', enabled: true, slots: [
+    { id: 'a', days: [1], startMin: 9 * 60, endMin: 18 * 60, mode: 'restricted', restrictedKind: 'youtube', features: ['shorts', 'related', 'comments'] },
+  ] }];
+  it('só o recurso pausado sai das regras (content scripts leem isto); volta no fim da pausa', () => {
+    const until = mon(10, 30);
+    const p = computePolicy({ routine: yt, routineEnabled: true, session: undefined, now: mon(10), releases: [{ domain: 'youtube.com', feature: 'shorts', until }] });
+    expect(p.rules.find((r) => r.domain === 'youtube.com')?.features).toEqual(['related', 'comments']);
+    expect(p.nextChange).toBe(until);
+    const back = computePolicy({ routine: yt, routineEnabled: true, session: undefined, now: until, releases: [{ domain: 'youtube.com', feature: 'shorts', until }] });
+    expect(back.rules.find((r) => r.domain === 'youtube.com')?.features).toEqual(['shorts', 'related', 'comments']);
+  });
+});

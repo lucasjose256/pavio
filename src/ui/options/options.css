@@ -432,3 +432,9 @@ input[type="range"] { accent-color: var(--accent); }
 .feature-editor .muted { font-family: var(--font-body); font-size: 14px; font-weight: 400; color: var(--muted); }
 .rt-row.lane .rt-label { padding-left: 4px; }
 .rt-row.lane .rt-feature { white-space: normal; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+/* pausa de um recurso (sub-linha) */
+.rt-pause { width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--border); background: var(--bg); color: var(--muted); font-size: 12px; line-height: 1; display: grid; place-items: center; }
+.rt-pause:hover { color: var(--text); border-color: var(--muted); }
+.rt-pause.on { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+.rt-row.lane.paused .rt-feature { text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--muted) 60%, transparent); }

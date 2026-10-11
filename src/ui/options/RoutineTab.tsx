@@ -9,7 +9,7 @@ import { PauseModal, type PauseAnswer } from './PauseModal';
 import { frictionForRelease } from '../../core/friction';
 import { FrictionGate } from '../shared/FrictionGate';
 import { randomId } from '../../core/ports';
-import { activeRules, dropFeature, featureSlotsOf, isBlockedAll, loosensNow, newFeatureSlot, nextBoundary, reshapeFeature, retimeFeature, protectsNow, rulesAnyTime, serviceOf, setBlockAll, setLimit, setSlotOff, validateSlot } from '../../core/routine';
+import { activeRules, dropFeature, featureSlotsOf, isBlockedAll, loosensNow, newFeatureSlot, nextBoundary, reshapeFeature, retimeFeature, protectsNow, rulesAnyTime, serviceOf, setBlockAll, setFeatureOff, setLimit, setSlotOff, validateSlot } from '../../core/routine';
 import { isValidLimit, limitStatuses, MAX_LIMIT_MIN, type UsageData } from '../../core/usage';
 import { ROUTINE_SUGGESTIONS, SLOT_PRESETS, defaultRoutine } from '../../core/routine-defaults';
 import { FEATURE_DEFS, featuresOf } from '../../core/restrictions';
@@ -91,7 +91,7 @@ export function RoutineTab({ active, view }: { active: boolean; view: RoutineVie
   /** Editor de UM recurso (feed, Shorts…) aberto a partir da sub-linha dele. */
   const [featureDraft, setFeatureDraft] = useState<FeatureDraft>();
   const featureEditorRef = useRef<HTMLElement>(null);
-  const [pausing, setPausing] = useState<{ site: RoutineSite; slot?: RoutineSlot }>();
+  const [pausing, setPausing] = useState<{ site: RoutineSite; slot?: RoutineSlot; feature?: string }>();
   // Fricção de afrouxar (Leve: confirmar; Firme: frase), como uma pergunta que a função `commit` espera.
   const [gate, setGate] = useState<(ok: boolean) => void>();
   const [limitInputs, setLimitInputs] = useState<Record<string, string>>({});
@@ -376,13 +376,18 @@ export function RoutineTab({ active, view }: { active: boolean; view: RoutineVie
 
   async function applyPause(answer: PauseAnswer) {
     if (!pausing) return;
-    const { site, slot } = pausing;
-    const target: PauseTarget = { domain: site.domain, ...(slot ? { slotId: slot.id } : {}) };
-    const what = slot ? `a faixa ${formatRange(slot)} de ${site.domain}` : site.domain;
+    const { site, slot, feature } = pausing;
+    const target: PauseTarget = { domain: site.domain, ...(slot ? { slotId: slot.id } : {}), ...(feature ? { feature } : {}) };
+    const service = serviceOf(site);
+    const featureName = feature && service ? (featureLabel[service]?.[feature] ?? feature) : '';
+    const what = feature ? `${featureName} em ${site.domain}` : slot ? `a faixa ${formatRange(slot)} de ${site.domain}` : site.domain;
     if (answer.kind === 'manual') {
       // Pausa sem prazo: a fricção já foi feita na janela, então não pergunta de novo.
-      const next = slot ? setSlotOff(sites, site.id, slot.id, true) : sites.map((s) => s.id === site.id ? { ...s, enabled: false } : s);
-      if (await commit(next, enabled, slot ? 'Faixa pausada. Retome quando quiser.' : 'Site desligado na rotina.', true)) setPausing(undefined);
+      const next = feature ? setFeatureOff(sites, site.id, feature, true)
+        : slot ? setSlotOff(sites, site.id, slot.id, true)
+          : sites.map((s) => s.id === site.id ? { ...s, enabled: false } : s);
+      const text = feature ? `${featureName} pausado. Retome quando quiser.` : slot ? 'Faixa pausada. Retome quando quiser.' : 'Site desligado na rotina.';
+      if (await commit(next, enabled, text, true)) setPausing(undefined);
       return;
     }
     const now = Date.now();
@@ -392,11 +397,12 @@ export function RoutineTab({ active, view }: { active: boolean; view: RoutineVie
     setPausing(undefined);
     setNotice({ kind: 'ok', text: pauseUi.inPause(what, untilText(until)) });
   }
-  async function resume(site: RoutineSite, slot?: RoutineSlot) {
-    const target: PauseTarget = { domain: site.domain, ...(slot ? { slotId: slot.id } : {}) };
+  async function resume(site: RoutineSite, slot?: RoutineSlot, feature?: string) {
+    const target: PauseTarget = { domain: site.domain, ...(slot ? { slotId: slot.id } : {}), ...(feature ? { feature } : {}) };
     await services.releases.save(removePause(await services.releases.list(), target));
-    if (slot?.off) await commit(setSlotOff(sites, site.id, slot.id, false), enabled, 'Faixa retomada.', true);
-    else { await reload(); setNotice({ kind: 'ok', text: slot ? 'Faixa retomada.' : `${site.domain} retomado.` }); }
+    if (feature && site.offFeatures?.includes(feature)) await commit(setFeatureOff(sites, site.id, feature, false), enabled, 'Recurso retomado.', true);
+    else if (slot?.off) await commit(setSlotOff(sites, site.id, slot.id, false), enabled, 'Faixa retomada.', true);
+    else { await reload(); setNotice({ kind: 'ok', text: feature ? 'Recurso retomado.' : slot ? 'Faixa retomada.' : `${site.domain} retomado.` }); }
   }
   const removeSite = (site: RoutineSite) => confirm(`Tirar ${site.domain} da rotina?`) && commit(sites.filter((s) => s.id !== site.id), enabled, 'Site removido.');
   const clearRoutine = () => confirm('Limpar a rotina? Todos os sites, faixas e bloqueios rápidos serão removidos.') && commit(defaultRoutine(), enabled, 'Rotina limpa.');
@@ -457,7 +463,8 @@ export function RoutineTab({ active, view }: { active: boolean; view: RoutineVie
           const dragging = here(drag) && !!drag && 'slotId' in drag && drag.slotId === slot.id && drag.moved;
           const shown = ghostHere?.slotId === slot.id ? { ...slot, startMin: ghostHere.startMin, endMin: ghostHere.endMin } : slot;
           const slotPause = pausedUntil(releases, { domain: site.domain, slotId: slot.id }, now);
-          const isPaused = !!slot.off || slotPause !== undefined;
+          const featurePaused = !!feature && (!!site.offFeatures?.includes(feature) || pausedUntil(releases, { domain: site.domain, feature }, now) !== undefined);
+          const isPaused = !!slot.off || slotPause !== undefined || featurePaused;
           const canStart = seg.part !== 'tail';
           const canEnd = seg.part !== 'head';
           const canMove = seg.part === 'whole' && !(slot.startMin === 0 && slot.endMin === MINUTES_PER_DAY);
@@ -472,7 +479,7 @@ export function RoutineTab({ active, view }: { active: boolean; view: RoutineVie
                 ? beginDrag(e, { kind: 'move', siteId: site.id, feature, slotId: slot.id, grabMin: minuteAt(e, (e.currentTarget as HTMLElement).closest('.rt-track') as HTMLElement), startX: e.clientX, moved: false })
                 : (e.stopPropagation(), editSegment(site, slot, feature))}>
               {canStart && <i class="rt-handle start" aria-hidden="true" onPointerDown={handle('start')} />}
-              <span>{dragging ? formatRange(shown) : isPaused ? `⏸ ${slot.off ? pauseUi.slotOff : pauseUi.pausedUntil(untilText(slotPause!))}` : feature ? 'Escondido' : slotLabel(slot)}</span>
+              <span>{dragging ? formatRange(shown) : isPaused ? `⏸ ${slot.off || featurePaused ? pauseUi.slotOff : pauseUi.pausedUntil(untilText(slotPause!))}` : feature ? 'Escondido' : slotLabel(slot)}</span>
               {canEnd && <i class="rt-handle end" aria-hidden="true" onPointerDown={handle('end')} />}
             </div>
           );
@@ -491,8 +498,11 @@ export function RoutineTab({ active, view }: { active: boolean; view: RoutineVie
   return (
     <main class="pane" hidden={!active}>
       {pausing && (
-        <PauseModal title={pausing.slot ? pauseUi.titleSlot(pausing.site.domain, formatRange(pausing.slot)) : pauseUi.titleSite(pausing.site.domain)}
-          needsGate={gateNeeded({ domain: pausing.site.domain, ...(pausing.slot ? { slotId: pausing.slot.id } : {}) })} level={friction}
+        <PauseModal
+          title={pausing.feature
+            ? pauseUi.titleFeature(featureLabel[serviceOf(pausing.site) ?? '']?.[pausing.feature] ?? pausing.feature, pausing.site.domain)
+            : pausing.slot ? pauseUi.titleSlot(pausing.site.domain, formatRange(pausing.slot)) : pauseUi.titleSite(pausing.site.domain)}
+          needsGate={gateNeeded({ domain: pausing.site.domain, ...(pausing.slot ? { slotId: pausing.slot.id } : {}), ...(pausing.feature ? { feature: pausing.feature } : {}) })} level={friction}
           onChoose={applyPause} onCancel={() => setPausing(undefined)} />
       )}
       {gate && (
@@ -664,15 +674,29 @@ export function RoutineTab({ active, view }: { active: boolean; view: RoutineVie
                     <button class="btn btn-ghost x" aria-label={`Tirar ${site.domain} da rotina`} onClick={() => removeSite(site)}>✕</button>
                   </div>
                 </div>
-                {open && service && FEATURE_DEFS[service].map((f) => (
-                  <div key={f.id} class={`rt-row lane ${site.enabled ? '' : 'off'}`}>
-                    <div class="rt-label"><span class="rt-feature" title={featureLabel[service]?.[f.id] ?? f.id}>{featureLabel[service]?.[f.id] ?? f.id}</span></div>
-                    {renderTrack(site, featureSlotsOf(site, f.id), f.id)}
-                    <div class="rt-actions">
-                      <button class="rt-plus" aria-label={`Adicionar horário para ${featureLabel[service]?.[f.id] ?? f.id}`} title="Digitar o horário deste recurso" onClick={() => openNew(site, undefined, undefined, f.id)}>+</button>
+                {open && service && FEATURE_DEFS[service].map((f) => {
+                  const name = featureLabel[service]?.[f.id] ?? f.id;
+                  // Só a pausa DESTE recurso (a do site inteiro aparece na linha do site, com o próprio "Retomar").
+                  const own = releases.filter((r) => r.domain === site.domain && r.feature === f.id && r.until > now).map((r) => r.until);
+                  const until = own.length ? Math.max(...own) : undefined;
+                  const off = !!site.offFeatures?.includes(f.id);
+                  const paused = off || until !== undefined;
+                  return (
+                    <div key={f.id} class={`rt-row lane ${site.enabled ? '' : 'off'} ${paused ? 'paused' : ''}`}>
+                      <div class="rt-label">
+                        <span class="rt-feature" title={name}>{name}</span>
+                        {paused && <span class="rt-paused-note">⏸ {off ? pauseUi.featureOff : pauseUi.pausedUntil(untilText(until!))}</span>}
+                      </div>
+                      {renderTrack(site, featureSlotsOf(site, f.id), f.id)}
+                      <div class="rt-actions">
+                        <button class="rt-plus" aria-label={`Adicionar horário para ${name}`} title="Digitar o horário deste recurso" onClick={() => openNew(site, undefined, undefined, f.id)}>+</button>
+                        {paused
+                          ? <button class="rt-pause on" aria-label={`Retomar ${name}`} title={pauseUi.resumeFeature} onClick={() => void resume(site, undefined, f.id)}>▶</button>
+                          : <button class="rt-pause" aria-label={`Pausar ${name}`} title={`${pauseUi.pauseFeature}: ${pauseUi.featureHint}`} onClick={() => setPausing({ site, feature: f.id })}>⏸</button>}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             );
           })}

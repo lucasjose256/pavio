@@ -59,3 +59,18 @@ describe('pausas por app e por faixa', () => {
     expect(isReleased({ domain: 'a.com' }, list, noon)).toBe(false);
   });
 });
+
+describe('pausa por recurso', () => {
+  const noon = new Date(2026, 9, 5, 12).getTime();
+  it('vale só para o recurso; a do app vale para todos; retomar o recurso não mexe nas outras', () => {
+    const list = addPause(addPause([], { domain: 'a.com', feature: 'shorts' }, noon + min(15), noon), { domain: 'a.com', slotId: 's1' }, noon + min(30), noon);
+    expect(pausedUntil(list, { domain: 'a.com', feature: 'shorts' }, noon)).toBe(noon + min(15));
+    expect(pausedUntil(list, { domain: 'a.com', feature: 'related' }, noon)).toBeUndefined();
+    expect(pausedUntil(list, { domain: 'a.com', slotId: 's1' }, noon)).toBe(noon + min(30));
+    expect(pausedUntil(list, { domain: 'a.com' }, noon)).toBeUndefined();
+    const whole = addPause(list, { domain: 'a.com' }, noon + min(5), noon);
+    expect(pausedUntil(whole, { domain: 'a.com', feature: 'related' }, noon)).toBe(noon + min(5));
+    expect(removePause(list, { domain: 'a.com', feature: 'shorts' })).toEqual([{ domain: 'a.com', slotId: 's1', until: noon + min(30) }]);
+    expect(isReleased({ domain: 'a.com' }, list, noon)).toBe(false);
+  });
+});

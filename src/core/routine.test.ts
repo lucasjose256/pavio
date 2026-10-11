@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { RoutineSite, RoutineSlot } from './models';
-import { activeRules, dropFeature, featureSlotsOf, isBlockedAll, loosensNow, mergeRules, newFeatureSlot, nextBoundary, reshapeFeature, retimeFeature, rulesAnyTime, setBlockAll, setLimit, setSlotOff, protectsNow, validateSite } from './routine';
+import { activeRules, dropFeature, featureSlotsOf, isBlockedAll, loosensNow, mergeRules, newFeatureSlot, nextBoundary, reshapeFeature, retimeFeature, rulesAnyTime, setBlockAll, setFeatureOff, setLimit, setSlotOff, protectsNow, validateSite } from './routine';
 import { defaultRoutine } from './routine-defaults';
 import { addUsage } from './usage';
 
@@ -303,5 +303,53 @@ describe('reshapeFeature (editor por recurso)', () => {
   it('faixa inexistente não muda nada', () => {
     const site = yt([base({ features: ['shorts'] })]);
     expect(reshapeFeature(site, 'zzz', 'shorts', { startMin: 0 }, id)).toBe(site);
+  });
+});
+
+describe('pausar só um recurso (offFeatures e pausa por recurso)', () => {
+  const mon = (h: number, m = 0) => new Date(2026, 9, 5, h, m).getTime();
+  const yt: RoutineSite[] = [{ id: 'y', domain: 'youtube.com', enabled: true, slots: [
+    { id: 'a', days: [1], startMin: 9 * 60, endMin: 18 * 60, mode: 'restricted', restrictedKind: 'youtube', features: ['shorts', 'related', 'comments'] },
+    { id: 'b', days: [1], startMin: 9 * 60, endMin: 18 * 60, mode: 'blocked' },
+  ] }];
+  const hidden = (rules: ReturnType<typeof activeRules>) => rules.find((r) => r.domain === 'youtube.com');
+
+  it('sem pausa: a faixa esconde os três recursos', () => {
+    const r = activeRules([{ ...yt[0]!, slots: [yt[0]!.slots[0]!] }], true, mon(10));
+    expect(hidden(r)?.features).toEqual(['shorts', 'related', 'comments']);
+  });
+  it('recurso pausado até religar: só ele sai, os outros seguem escondidos', () => {
+    const only = [{ ...yt[0]!, slots: [yt[0]!.slots[0]!] }];
+    const off = setFeatureOff(only, 'y', 'shorts', true);
+    expect(off[0]!.offFeatures).toEqual(['shorts']);
+    expect(hidden(activeRules(off, true, mon(10)))?.features).toEqual(['related', 'comments']);
+    expect('offFeatures' in setFeatureOff(off, 'y', 'shorts', false)[0]!).toBe(false);
+  });
+  it('pausa temporária de um recurso volta sozinha no fim', () => {
+    const only = [{ ...yt[0]!, slots: [yt[0]!.slots[0]!] }];
+    const paused = [{ domain: 'youtube.com', feature: 'related', until: mon(10, 30) }];
+    expect(hidden(activeRules(only, true, mon(10), paused))?.features).toEqual(['shorts', 'comments']);
+    expect(hidden(activeRules(only, true, mon(10, 30), paused))?.features).toEqual(['shorts', 'related', 'comments']);
+  });
+  it('todos os recursos pausados: a faixa deixa de valer; faixa de bloqueio não é afetada por pausa de recurso', () => {
+    const only = [{ ...yt[0]!, slots: [yt[0]!.slots[0]!] }];
+    let off = setFeatureOff(setFeatureOff(setFeatureOff(only, 'y', 'shorts', true), 'y', 'related', true), 'y', 'comments', true);
+    expect(activeRules(off, true, mon(10))).toEqual([]);
+    off = setFeatureOff(yt, 'y', 'shorts', true);
+    expect(hidden(activeRules(off, true, mon(10)))?.mode).toBe('blocked');
+  });
+  it('faixa sem lista usa os recursos padrão do serviço (e a pausa tira só o escolhido)', () => {
+    const def = [{ ...yt[0]!, slots: [{ ...yt[0]!.slots[0]!, features: undefined }] }];
+    const all = hidden(activeRules(def, true, mon(10)))?.features;
+    const off = hidden(activeRules(setFeatureOff(def, 'y', 'shorts', true), true, mon(10)))?.features;
+    expect(all).toBeUndefined(); // padrão do serviço
+    expect(off).not.toContain('shorts');
+    expect(off!.length).toBeGreaterThan(0);
+  });
+  it('protectsNow para um recurso: só se ele está sendo escondido agora', () => {
+    const only = [{ ...yt[0]!, slots: [yt[0]!.slots[0]!] }];
+    expect(protectsNow(only, true, mon(10), {}, [], { domain: 'youtube.com', feature: 'shorts' })).toBe(true);
+    expect(protectsNow(only, true, mon(19), {}, [], { domain: 'youtube.com', feature: 'shorts' })).toBe(false);
+    expect(protectsNow(setFeatureOff(only, 'y', 'shorts', true), true, mon(10), {}, [], { domain: 'youtube.com', feature: 'shorts' })).toBe(false);
   });
 });

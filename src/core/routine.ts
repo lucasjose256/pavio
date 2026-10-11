@@ -12,10 +12,20 @@ type FlatSlot = RoutineSlot & { siteId: string; domain: string };
 
 /** `live` tira as faixas pausadas (`off`) e as de pausa temporária: para o que vale agora. Sem isso, todas (permissões, desenho). */
 const flatten = (routine: RoutineSite[], live?: { now: number; releases: Release[] }): FlatSlot[] =>
-  routine.filter((s) => s.enabled).flatMap((site) =>
-    site.slots
+  routine.filter((s) => s.enabled).flatMap((site) => {
+    // Recursos pausados (até religar ou por um tempo): saem da lista do que a faixa esconde.
+    const off = new Set(site.offFeatures ?? []);
+    if (live) for (const r of live.releases) if (r.feature !== undefined && r.until > live.now && r.domain === site.domain) off.add(r.feature);
+    return site.slots
       .filter((slot) => !live || (!slot.off && !live.releases.some((r) => r.slotId === slot.id && r.until > live.now)))
-      .map((slot) => ({ ...slot, siteId: site.id, domain: site.domain })));
+      .flatMap((slot): FlatSlot[] => {
+        const flat: FlatSlot = { ...slot, siteId: site.id, domain: site.domain };
+        if (!live || off.size === 0 || slot.mode !== 'restricted' || !slot.restrictedKind || slot.restrictedKind === 'intent') return [flat];
+        const features = [...featuresOf(slot)].filter((f) => !off.has(f));
+        if (features.length === 0) return []; // todos os recursos desta faixa estão pausados
+        return [{ ...flat, features }];
+      });
+  });
 
 const toRule = (domain: string, spec: RestrictionSpec): Rule => ({
   id: `routine:${domain}`,
@@ -97,6 +107,19 @@ export function nextBoundary(routine: RoutineSite[], enabled: boolean, now: numb
   return times.length ? Math.min(...times) : undefined;
 }
 
+/** Pausa (`off`) ou retoma um recurso do site até a pessoa religar (vale em todas as faixas). */
+export function setFeatureOff(routine: RoutineSite[], siteId: string, feature: string, off: boolean): RoutineSite[] {
+  return routine.map((s) => {
+    if (s.id !== siteId) return s;
+    const list = (s.offFeatures ?? []).filter((f) => f !== feature);
+    const next: RoutineSite = { ...s };
+    if (off) next.offFeatures = [...list, feature];
+    else if (list.length) next.offFeatures = list;
+    else delete next.offFeatures;
+    return next;
+  });
+}
+
 /** Pausa (`off`) ou retoma uma faixa até a pessoa religar. */
 export function setSlotOff(routine: RoutineSite[], siteId: string, slotId: string, off: boolean): RoutineSite[] {
   return routine.map((s) => s.id !== siteId ? s : {
@@ -116,11 +139,11 @@ export function setSlotOff(routine: RoutineSite[], siteId: string, slotId: strin
  * App inteiro: qualquer regra da rotina ou limite estourado dele. Faixa: ela estar valendo neste instante.
  */
 export function protectsNow(
-  routine: RoutineSite[], enabled: boolean, now: number, usage: UsageData, releases: Release[], target: { domain: string; slotId?: string },
+  routine: RoutineSite[], enabled: boolean, now: number, usage: UsageData, releases: Release[], target: { domain: string; slotId?: string; feature?: string },
 ): boolean {
   if (releases.some((r) => r.until > now && r.slotId === undefined && r.domain === target.domain)) return false; // já pausado
   const mine = (rules: Rule[]) => rules.filter((r) => r.domain === target.domain);
-  if (target.slotId === undefined) return mine(mergeRules(activeRules(routine, enabled, now, releases), limitRules(routine, usage, now))).length > 0;
+  if (target.slotId === undefined && target.feature === undefined) return mine(mergeRules(activeRules(routine, enabled, now, releases), limitRules(routine, usage, now))).length > 0;
   const paused = [...releases, { ...target, until: now + 60_000 }];
   return JSON.stringify(mine(activeRules(routine, enabled, now, releases))) !== JSON.stringify(mine(activeRules(routine, enabled, now, paused)));
 }

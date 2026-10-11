@@ -17,13 +17,14 @@ export function activeReleases(list: Release[] | undefined, now: number): Releas
 export const PAUSE_MINUTES = [5, 15, 30] as const;
 export type PauseChoice = { kind: 'min'; minutes: number } | { kind: 'day' };
 
-/** Alvo de uma pausa: o app inteiro (`slotId` ausente) ou uma faixa dele. */
+/** Alvo de uma pausa: o app inteiro, uma faixa dele (`slotId`) ou um recurso dele (`feature`). */
 export interface PauseTarget {
   domain: string;
   slotId?: string;
+  feature?: string;
 }
 
-const sameTarget = (r: Release, t: PauseTarget) => r.domain === t.domain && r.slotId === t.slotId;
+const sameTarget = (r: Release, t: PauseTarget) => r.domain === t.domain && r.slotId === t.slotId && r.feature === t.feature;
 
 /** Instante em que a pausa acaba. `day` = a meia-noite que vem (o dia de hoje inteiro). */
 export function pauseUntil(choice: PauseChoice, now: number): number {
@@ -43,20 +44,28 @@ export function addRelease(list: Release[] | undefined, domain: string, minutes:
   return addPause(list, { domain }, pauseUntil({ kind: 'min', minutes }, now), now);
 }
 
-/** Retoma (tira a pausa de) um alvo. Retomar o app inteiro também tira as pausas de suas faixas. */
+/** Retoma (tira a pausa de) um alvo. Retomar o app inteiro também tira as pausas de suas faixas e recursos. */
 export function removePause(list: Release[] | undefined, target: PauseTarget): Release[] {
-  return (list ?? []).filter((r) => (target.slotId === undefined ? r.domain !== target.domain : !sameTarget(r, target)));
+  const whole = target.slotId === undefined && target.feature === undefined;
+  return (list ?? []).filter((r) => (whole ? r.domain !== target.domain : !sameTarget(r, target)));
 }
 
-/** Até quando `slotId` (ou o app, sem `slotId`) está pausado agora; undefined se não está. Pausa do app vale para as faixas. */
+/**
+ * Até quando o alvo está pausado agora; undefined se não está. A pausa do app inteiro vale para tudo; a de um recurso
+ * só para esse recurso; a de uma faixa só para ela.
+ */
 export function pausedUntil(list: Release[] | undefined, target: PauseTarget, now: number): number | undefined {
-  const ends = activeReleases(list, now)
-    .filter((r) => hostMatchesDomain(target.domain, r.domain) && (r.slotId === undefined || r.slotId === target.slotId))
-    .map((r) => r.until);
+  const applies = (r: Release) => {
+    if (!hostMatchesDomain(target.domain, r.domain)) return false;
+    if (r.feature !== undefined) return r.feature === target.feature;
+    if (r.slotId !== undefined) return r.slotId === target.slotId;
+    return true;
+  };
+  const ends = activeReleases(list, now).filter(applies).map((r) => r.until);
   return ends.length ? Math.max(...ends) : undefined;
 }
 
 /** A regra (de um domínio, ou subdomínio dele) está liberada agora? Só conta a pausa do app inteiro. */
 export function isReleased(rule: Pick<Rule, 'domain'>, list: Release[], now: number): boolean {
-  return list.some((r) => r.slotId === undefined && r.until > now && hostMatchesDomain(rule.domain, r.domain));
+  return list.some((r) => r.slotId === undefined && r.feature === undefined && r.until > now && hostMatchesDomain(rule.domain, r.domain));
 }

@@ -116,7 +116,7 @@ function Blocked() {
   // Quando ESTE site (ou recurso) volta de verdade; sem fim à vista, não prometemos horário nenhum.
   const returnAt = returnTimeFor(policy, site, !!why);
   const releasable = site ? policy?.releasable?.find((d) => hostMatchesDomain(site, d)) : undefined;
-  const releasedUntil = site ? policy?.released?.find((r) => hostMatchesDomain(site, r.domain))?.until : undefined;
+  const releasedUntil = site ? policy?.released?.find((r) => r.slotId === undefined && r.feature === undefined && hostMatchesDomain(site, r.domain))?.until : undefined;
 
   return (
     <main class="blocked">

@@ -217,6 +217,11 @@ export const donateUi = {
 export const pauseUi = {
   titleSite: (domain: string) => `Pausar ${domain}`,
   titleSlot: (domain: string, range: string) => `Pausar a faixa ${range} de ${domain}`,
+  titleFeature: (label: string, domain: string) => `Pausar ${label} em ${domain}`,
+  featureHint: 'Só este recurso sai do bloqueio; os outros continuam escondidos.',
+  pauseFeature: 'Pausar este recurso',
+  resumeFeature: 'Retomar',
+  featureOff: 'Pausado',
   hint: 'Por quanto tempo? Depois o bloqueio volta sozinho.',
   min: (m: number) => `${m} min`,
   day: 'Até o fim do dia',

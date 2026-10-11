@@ -101,6 +101,8 @@ export interface Release {
   until: number;
   /** Ausente = o app inteiro; presente = só esta faixa. */
   slotId?: string;
+  /** Presente = só este recurso (feed, Shorts…), em todas as faixas do site; os outros continuam escondidos. */
+  feature?: string;
 }
 
 /** Regras de rede desejadas agora. `allow` = exceções (subdomínios de um domínio bloqueado/com intenção). */
@@ -174,6 +176,8 @@ export interface RoutineSite {
    * (Desligar o site na rotina também o libera.)
    */
   blockAll?: boolean;
+  /** Recursos pausados até a pessoa religar (em todas as faixas do site); os outros seguem escondidos. */
+  offFeatures?: string[];
   /**
    * Limite de tempo: minutos por dia que o app pode ser usado (aba ativa e em foco). Estourou, fica bloqueado até a
    * meia-noite. Ausente = sem limite. Vale mesmo com os horários desligados (controle direto, como o bloqueio rápido).
