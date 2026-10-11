@@ -36,10 +36,47 @@ export interface HistorySummary {
   last7Days: DaySummary[];
 }
 
-export function summarizeHistory(entries: HistoryEntry[], now: number): HistorySummary {
+/** Quantas sessões ficam guardadas COM detalhe, e por quanto tempo. O que passa disso vira só um total acumulado. */
+export const HISTORY_MAX_ENTRIES = 500;
+export const HISTORY_MAX_AGE_DAYS = 180;
+
+/** Soma do que já saiu da lista detalhada (para o "Horas devolvidas" e os contadores não encolherem). */
+export interface HistoryTotals {
+  sessions: number;
+  focusedMs: number;
+  completed: number;
+  abandoned: number;
+  blockedAttempts: number;
+}
+
+export const EMPTY_TOTALS: HistoryTotals = { sessions: 0, focusedMs: 0, completed: 0, abandoned: 0, blockedAttempts: 0 };
+
+/** Separa o que continua detalhado (as mais recentes, dentro do prazo) do que vira total. */
+export function pruneHistory(entries: HistoryEntry[], now: number): { kept: HistoryEntry[]; dropped: HistoryEntry[] } {
+  const oldest = daysAgo(now, HISTORY_MAX_AGE_DAYS);
+  const newestFirst = [...entries].sort((a, b) => b.endedAt - a.endedAt);
+  const kept: HistoryEntry[] = [];
+  const dropped: HistoryEntry[] = [];
+  for (const e of newestFirst) (kept.length < HISTORY_MAX_ENTRIES && e.endedAt >= oldest ? kept : dropped).push(e);
+  return { kept: kept.reverse(), dropped };
+}
+
+/** Acrescenta as sessões descartadas ao total acumulado. */
+export function addToTotals(totals: HistoryTotals, dropped: HistoryEntry[]): HistoryTotals {
+  return dropped.reduce<HistoryTotals>((t, e) => ({
+    sessions: t.sessions + 1,
+    focusedMs: t.focusedMs + e.actualMs,
+    completed: t.completed + (e.outcome === 'completed' ? 1 : 0),
+    abandoned: t.abandoned + (e.outcome === 'completed' ? 0 : 1),
+    blockedAttempts: t.blockedAttempts + e.blockedAttempts,
+  }), totals);
+}
+
+export function summarizeHistory(entries: HistoryEntry[], now: number, totals: HistoryTotals = EMPTY_TOTALS): HistorySummary {
   const perDay = new Map<string, number>();
   const completedDays = new Set<string>();
-  let focusedMs = 0, completed = 0, abandoned = 0, blockedAttempts = 0;
+  // Parte de quem já saiu da lista detalhada: os totais nunca encolhem por causa do limite.
+  let focusedMs = totals.focusedMs, completed = totals.completed, abandoned = totals.abandoned, blockedAttempts = totals.blockedAttempts;
 
   for (const e of entries) {
     focusedMs += e.actualMs;

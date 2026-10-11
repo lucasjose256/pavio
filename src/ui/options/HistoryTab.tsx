@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'preact/hooks';
-import { RECENT_SESSIONS_LIMIT, formatDuration, recentSessions, summarizeHistory } from '../../core/history';
+import { EMPTY_TOTALS, HISTORY_MAX_AGE_DAYS, HISTORY_MAX_ENTRIES, RECENT_SESSIONS_LIMIT, formatDuration, recentSessions, summarizeHistory } from '../../core/history';
+import type { HistoryTotals } from '../../core/history';
 import type { HistoryEntry } from '../../core/models';
 import { usageByApp, type UsageData } from '../../core/usage';
 import { Candle } from '../candle/Candle';
@@ -15,19 +16,24 @@ export function HistoryTab({ active }: { active: boolean }) {
   const [skin, setSkin] = useState('classic');
   const [usage, setUsage] = useState<UsageData>({});
 
-  const load = () => void services.history.list().then(setEntries);
+  const [totals, setTotals] = useState<HistoryTotals>(EMPTY_TOTALS);
+  const [shown, setShown] = useState(RECENT_SESSIONS_LIMIT);
+
+  const load = () => void Promise.all([services.history.list(), services.history.totals()]).then(([list, t]) => { setEntries(list); setTotals(t); });
   useEffect(() => {
     if (!active) return;
-    load();
+    // O que passou do limite de sessões/dias vira só total; depois recarrega a lista.
+    void services.history.prune(Date.now()).then(load);
     void services.usage.get().then(setUsage);
     void services.settings.get().then((s) => setSkin(s.candleSkin));
   }, [active]);
 
-  const summary = useMemo(() => (entries ? summarizeHistory(entries, Date.now()) : undefined), [entries, active]);
-  const recent = useMemo(() => recentSessions(entries ?? []), [entries]);
+  const summary = useMemo(() => (entries ? summarizeHistory(entries, Date.now(), totals) : undefined), [entries, totals, active]);
+  const allRecent = useMemo(() => recentSessions(entries ?? [], HISTORY_MAX_ENTRIES), [entries]);
+  const recent = allRecent.slice(0, shown);
 
   function exportJson() {
-    const url = URL.createObjectURL(new Blob([JSON.stringify(entries ?? [], null, 2)], { type: 'application/json' }));
+    const url = URL.createObjectURL(new Blob([JSON.stringify({ totaisAnteriores: totals, sessoes: entries ?? [] }, null, 2)], { type: 'application/json' }));
     const a = Object.assign(document.createElement('a'), { href: url, download: 'pavio-historico.json' });
     a.click();
     URL.revokeObjectURL(url);
@@ -84,7 +90,7 @@ export function HistoryTab({ active }: { active: boolean }) {
           </section>
 
           <section class="card">
-            <h3>Últimas {Math.min(RECENT_SESSIONS_LIMIT, recent.length)} sessões</h3>
+            <h3>Sessões recentes</h3>
             <ul class="sessions">
               {recent.map((e) => (
                 <li key={e.sessionId} class="session">
@@ -95,6 +101,12 @@ export function HistoryTab({ active }: { active: boolean }) {
                 </li>
               ))}
             </ul>
+            <div class="more-row">
+              {shown < allRecent.length && (
+                <button class="btn" onClick={() => setShown((n) => n + RECENT_SESSIONS_LIMIT)}>Ver mais ({Math.min(RECENT_SESSIONS_LIMIT, allRecent.length - shown)})</button>
+              )}
+              <span class="hint">Mostrando {recent.length} de {allRecent.length}. O Pavio guarda os detalhes das últimas {HISTORY_MAX_ENTRIES} sessões ou de {HISTORY_MAX_AGE_DAYS} dias; as mais antigas entram só nos totais{totals.sessions > 0 ? ` (${totals.sessions} já somadas)` : ''}.</span>
+            </div>
           </section>
         </>
       )}

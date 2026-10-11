@@ -1,10 +1,12 @@
 import { beforeEach, describe, expect, it } from 'vitest';
+import { HISTORY_MAX_ENTRIES } from './history';
 import { createBuiltinEnvironment, createBuiltinEnvironments, createEnvironment, createRule, duplicateEnvironment, ruleCounts, validateEnvironment } from './environments';
 import { accessDomains } from './blocking';
+import type { HistoryEntry } from './models';
 import { MemoryStorage } from './memory-storage';
 import { migrate } from './migrations';
 import {
-  EnvironmentRepository, HISTORY_LIMIT, HistoryRepository, InvalidEnvironmentError,
+  EnvironmentRepository, HistoryRepository, InvalidEnvironmentError,
   KEYS, SettingsRepository,
 } from './repositories';
 
@@ -110,14 +112,39 @@ describe('Settings e History', () => {
     expect((await s.get()).theme).toBe('cream');
     expect((await s.update({ candleSkin: 'minimal' })).candleSkin).toBe('minimal');
   });
-  it('histórico mantém só as últimas entradas', async () => {
+  const day = 86_400_000;
+  const entry = (id: string, endedAt: number, over: Partial<HistoryEntry> = {}): HistoryEntry =>
+    ({ sessionId: id, environmentName: 'E', startedAt: endedAt - 1000, endedAt, plannedMs: 1000, actualMs: 1000, outcome: 'completed', blockedAttempts: 1, ...over });
+
+  it('histórico: passou do limite de sessões, as mais antigas viram total (e nada some do total)', async () => {
     const h = new HistoryRepository(storage);
-    for (let i = 0; i < HISTORY_LIMIT + 5; i++) {
-      await h.append({ sessionId: `s${i}`, environmentName: 'E', startedAt: 0, endedAt: 1, plannedMs: 1, actualMs: 1, outcome: 'completed', blockedAttempts: 0 });
-    }
+    const base = Date.UTC(2026, 9, 1);
+    for (let i = 0; i < HISTORY_MAX_ENTRIES + 5; i++) await h.append(entry(`s${i}`, base + i * 1000));
     const all = await h.list();
-    expect(all).toHaveLength(HISTORY_LIMIT);
-    expect(all[0]?.sessionId).toBe('s5');
+    expect(all).toHaveLength(HISTORY_MAX_ENTRIES);
+    expect(all[0]?.sessionId).toBe('s5'); // as 5 mais antigas saíram
+    expect(await h.totals()).toMatchObject({ sessions: 5, focusedMs: 5000, completed: 5, blockedAttempts: 5 });
+  });
+  it('histórico: o que passa de 180 dias vira total, e prune() faz isso sem nova sessão', async () => {
+    const h = new HistoryRepository(storage);
+    const now = Date.UTC(2026, 9, 1);
+    await h.append(entry('velha', now - 200 * day, { outcome: 'abandoned', actualMs: 600_000 }));
+    // appendar a velha sozinha já a descarta (a idade conta a partir do fim dela): grava só a recente
+    await h.append(entry('nova', now));
+    expect((await h.list()).map((e) => e.sessionId)).toEqual(['nova']);
+    expect(await h.totals()).toMatchObject({ sessions: 1, abandoned: 1, focusedMs: 600_000 });
+    await h.prune(now + 400 * day); // um ano depois, a "nova" também passou do prazo
+    expect(await h.list()).toEqual([]);
+    expect((await h.totals()).sessions).toBe(2);
+  });
+  it('histórico: apagar limpa a lista e o total', async () => {
+    const h = new HistoryRepository(storage);
+    await h.append(entry('a', 1));
+    await h.prune(1 + 400 * day);
+    expect((await h.totals()).sessions).toBe(1);
+    await h.clear();
+    expect(await h.list()).toEqual([]);
+    expect((await h.totals()).sessions).toBe(0);
   });
 });
 

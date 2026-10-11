@@ -14,7 +14,7 @@ Esses dados ficam em `chrome.storage.local`, que **não é sincronizado** com a 
 - **Sua rotina:** os sites e, para cada um, os dias, os horários e o que fazer (bloquear ou esconder partes).
 - **Ambientes** do timer (regras por site) e configurações (tema, estilo da vela, se a rotina está ligada).
 - **Timer em andamento:** quando começou, quando termina, o ambiente e o estado do Pomodoro.
-- **Histórico de sessões:** data, duração, ambiente, se foi concluída e quantas vezes você tentou abrir um site bloqueado.
+- **Histórico de sessões:** data, duração, ambiente, se foi concluída e quantas vezes você tentou abrir um site bloqueado. O detalhe fica só das últimas 500 sessões ou dos últimos 180 dias; das mais antigas guardamos apenas totais somados (horas, velas concluídas e encerradas, tentativas).
 - **Tempo de uso dos apps com limite:** só os minutos usados por dia de cada app em que você definiu um limite (guardados por 90 dias). **Não** guardamos endereços visitados nem uma lista de páginas.
 - **Modo intenção:** o texto que você digita ("o que você vai fazer aqui") e o tempo escolhido, apenas durante a sessão.
 

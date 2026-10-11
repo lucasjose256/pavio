@@ -1,4 +1,6 @@
 import { createBuiltinEnvironment, validateEnvironment } from './environments';
+import { EMPTY_TOTALS, addToTotals, pruneHistory } from './history';
+import type { HistoryTotals } from './history';
 import { DEFAULT_SETTINGS } from './models';
 import type { Environment, HistoryEntry, IntentGrant, Policy, Release, RoutineSite, Session, Settings } from './models';
 import type { Clock, StoragePort } from './ports';
@@ -17,9 +19,9 @@ export const KEYS = {
   policy: 'policy',
   usage: 'usage',
   releases: 'releases',
+  historyTotals: 'historyTotals',
 } as const;
 
-export const HISTORY_LIMIT = 1000;
 
 export class InvalidEnvironmentError extends Error {
   constructor(public readonly errors: string[]) {
@@ -113,14 +115,30 @@ export class HistoryRepository {
     return (await this.storage.get<HistoryEntry[]>(KEYS.history)) ?? [];
   }
 
-  async clear(): Promise<void> {
-    await this.storage.remove(KEYS.history);
+  /** Total acumulado do que já saiu da lista detalhada (limite de sessões e de dias). */
+  async totals(): Promise<HistoryTotals> {
+    return { ...EMPTY_TOTALS, ...(await this.storage.get<HistoryTotals>(KEYS.historyTotals)) };
   }
 
-  /** Mantém só as HISTORY_LIMIT entradas mais recentes. */
+  async clear(): Promise<void> {
+    await this.storage.remove(KEYS.history);
+    await this.storage.remove(KEYS.historyTotals);
+  }
+
+  /** Grava a sessão e aplica o limite (`HISTORY_MAX_ENTRIES` sessões / `HISTORY_MAX_AGE_DAYS` dias). */
   async append(entry: HistoryEntry): Promise<void> {
-    const all = [...(await this.list()), entry];
-    await this.storage.set(KEYS.history, all.slice(-HISTORY_LIMIT));
+    await this.save([...(await this.list()), entry], entry.endedAt);
+  }
+
+  /** Aplica o limite agora (o que passou do prazo vira total). Idempotente; só grava se algo saiu. */
+  async prune(now: number): Promise<void> {
+    await this.save(await this.list(), now, false);
+  }
+
+  private async save(all: HistoryEntry[], now: number, always = true): Promise<void> {
+    const { kept, dropped } = pruneHistory(all, now);
+    if (dropped.length) await this.storage.set(KEYS.historyTotals, addToTotals(await this.totals(), dropped));
+    if (always || dropped.length) await this.storage.set(KEYS.history, kept);
   }
 }
 

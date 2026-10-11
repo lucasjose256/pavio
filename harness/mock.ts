@@ -21,7 +21,12 @@ const data: Record<string, unknown> = {
     { id: 'e', domain: 'noticias.uol.com.br', enabled: true, blockAll: true, slots: [] },
   ],
   usage,
-  history: params.get('done') ? [{ sessionId: 'h', environmentName: 'Estudo', startedAt: now - 40 * 60_000, endedAt: now - 15 * 60_000, plannedMs: 25 * 60_000, actualMs: 25 * 60_000, outcome: 'completed', blockedAttempts: 2 }] : [],
+  history: params.get('history')
+    ? Array.from({ length: Number(params.get('history')) }, (_, i) => ({ sessionId: `h${i}`, environmentName: i % 2 ? 'Estudo' : 'Noite', startedAt: now - (i + 1) * 3_600_000, endedAt: now - (i + 1) * 3_600_000 + 1_500_000, plannedMs: 1_500_000, actualMs: 1_500_000, outcome: i % 5 ? 'completed' : 'abandoned', blockedAttempts: i % 3 }))
+    : params.get('done')
+      ? [{ sessionId: 'h', environmentName: 'Estudo', startedAt: now - 40 * 60_000, endedAt: now - 15 * 60_000, plannedMs: 25 * 60_000, actualMs: 25 * 60_000, outcome: 'completed', blockedAttempts: 2 }]
+      : [],
+  historyTotals: params.get('history') ? { sessions: 12, focusedMs: 12 * 3_600_000, completed: 10, abandoned: 2, blockedAttempts: 30 } : undefined,
 };
 if (params.get('running')) {
   const env = (data.environments as { id: string }[])[0];

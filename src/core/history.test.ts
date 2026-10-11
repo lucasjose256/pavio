@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatDuration, recentSessions, summarizeHistory } from './history';
+import { EMPTY_TOTALS, addToTotals, formatDuration, pruneHistory, recentSessions, summarizeHistory } from './history';
 import type { HistoryEntry } from './models';
 
 const at = (y: number, m: number, d: number, h = 12) => new Date(y, m - 1, d, h).getTime();
@@ -64,5 +64,23 @@ describe('recentSessions', () => {
     const few = [entry(1), entry(2)];
     expect(recentSessions(few).map((e) => e.sessionId)).toEqual(['s2', 's1']);
     expect(few.map((e) => e.sessionId)).toEqual(['s1', 's2']);
+  });
+});
+
+describe('pruneHistory e totais', () => {
+  const day = 86_400_000;
+  const e = (n: number, endedAt: number): HistoryEntry => ({ sessionId: `s${n}`, environmentName: 'E', startedAt: endedAt - 1000, endedAt, plannedMs: 1000, actualMs: 1000, outcome: 'completed', blockedAttempts: 2 });
+  it('fora do prazo ou além do máximo vira "dropped"; as mais recentes ficam', () => {
+    const now = Date.UTC(2026, 9, 1);
+    const { kept, dropped } = pruneHistory([e(1, now - 200 * day), e(2, now - 10 * day), e(3, now)], now);
+    expect(kept.map((x) => x.sessionId)).toEqual(['s2', 's3']);
+    expect(dropped.map((x) => x.sessionId)).toEqual(['s1']);
+  });
+  it('o total acumulado entra no resumo (os números grandes não encolhem)', () => {
+    const now = Date.UTC(2026, 9, 1);
+    const totals = addToTotals(EMPTY_TOTALS, [e(1, 1), { ...e(2, 2), outcome: 'abandoned', actualMs: 4000 }]);
+    expect(totals).toEqual({ sessions: 2, focusedMs: 5000, completed: 1, abandoned: 1, blockedAttempts: 4 });
+    const s = summarizeHistory([e(3, now)], now, totals);
+    expect(s).toMatchObject({ focusedMs: 6000, completed: 2, abandoned: 1, blockedAttempts: 6 });
   });
 });
