@@ -231,3 +231,30 @@ export const pauseUi = {
   pauseSlot: 'Pausar faixa',
   resumeSlot: 'Retomar faixa',
 };
+
+/** Horários: criar uma regra em frases e toques ("Nova regra") e ler as regras em palavras. */
+export const quickRuleUi = {
+  title: 'Nova regra',
+  sub: 'Escolha o site, os dias e o horário. Leva uns 10 segundos.',
+  stepSite: 'Qual site?',
+  stepDays: 'Em quais dias?',
+  stepTime: 'Em que horário?',
+  stepAction: 'O que fazer?',
+  otherSite: 'Outro site (ex.: reddit.com)',
+  customTime: 'Escolher horário',
+  from: 'Das',
+  to: 'Até',
+  block: 'Bloquear o site',
+  blockHint: 'A vela aparece no lugar do site.',
+  hide: 'Esconder partes',
+  hideHint: 'Esconde o feed, Shorts e similares. Dá para ajustar depois.',
+  hideOther: 'Perguntar o que vai fazer',
+  hideOtherHint: 'Antes de abrir, o Pavio pergunta "o que você vai fazer aqui?".',
+  create: 'Criar regra',
+  pickSite: 'Escolha um site.',
+  badTime: 'Escolha um horário válido (início e fim diferentes).',
+  summary: (what: string, domain: string, days: string, time: string) => `${what} ${domain} · ${days} · ${time}`,
+  listTitle: 'Suas regras',
+  listEmpty: 'Nenhuma regra ainda. Crie a primeira acima.',
+  edit: 'Editar',
+};
