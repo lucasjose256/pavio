@@ -36,7 +36,8 @@ async function candleImage(vars: CSSStyleDeclaration): Promise<HTMLImageElement 
 }
 
 /** Desenha um quadro: vela, tempo restante, ambiente e a fase do Pomodoro. */
-export async function drawCandleFrame(ctx: CanvasRenderingContext2D, now = Date.now()): Promise<void> {
+/** Devolve `true` se a vela ainda está acesa neste quadro. */
+export async function drawCandleFrame(ctx: CanvasRenderingContext2D, now = Date.now()): Promise<boolean> {
   const colors = themeColors();
   const stored = (await chrome.storage.local.get('activeSession')).activeSession as Session | undefined;
   const lit = stored?.status === 'active' && stored.endsAt > now ? stored : undefined;
@@ -59,6 +60,7 @@ export async function drawCandleFrame(ctx: CanvasRenderingContext2D, now = Date.
     ctx.font = '600 20px ui-rounded, "SF Pro Rounded", system-ui, sans-serif';
     ctx.fillText(phase.phase === 'break' ? 'Pausa' : `Foco ${phase.cycle}`, W / 2, 440);
   }
+  return !!lit;
 }
 
 /**
@@ -79,7 +81,14 @@ export async function openVideoPip(onClose: () => void): Promise<void> {
   video.srcObject = canvas.captureStream(5);
   document.body.append(video);
 
-  const timer = setInterval(() => void drawCandleFrame(ctx), 1000);
+  // A janelinha fecha sozinha uns segundos depois que a vela se apaga.
+  let dark = 0;
+  const timer = setInterval(() => {
+    void drawCandleFrame(ctx).then((lit) => {
+      dark = lit ? 0 : dark + 1;
+      if (dark >= 4 && document.pictureInPictureElement === video) void document.exitPictureInPicture();
+    });
+  }, 1000);
   const cleanup = () => {
     clearInterval(timer);
     (video.srcObject as MediaStream | null)?.getTracks().forEach((t) => t.stop());

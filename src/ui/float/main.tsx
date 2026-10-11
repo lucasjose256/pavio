@@ -70,8 +70,19 @@ function Float() {
     let firstError: unknown;
     if (videoPipAvailable()) {
       try {
-        await openVideoPip(() => setPinned(false));
+        // A janela da vela é a "dona" da janelinha (fechá-la fecharia as duas): ela só sai da tela, e volta quando a
+        // janelinha é fechada.
+        const me = await chrome.windows.getCurrent();
+        let hidden = false;
+        await openVideoPip(() => {
+          setPinned(false);
+          if (hidden && me.id !== undefined) void chrome.windows.update(me.id, { state: 'normal', focused: true });
+        });
         setPinned(true);
+        if (me.id !== undefined) {
+          hidden = true;
+          void chrome.windows.update(me.id, { state: 'minimized' });
+        }
         return;
       } catch (error) {
         firstError = error;
@@ -124,7 +135,7 @@ function Float() {
       <RunningCandle session={active} skin={skin} now={now} />
       <div class="float-actions">
         {(pip || videoPipAvailable()) && !pinned && <button class="btn" onClick={pinOnTop} title="Uma janelinha que fica por cima das outras">Deixar sempre por cima</button>}
-        {pinned && <p class="hint pip-note">A vela está numa janelinha por cima. Feche-a para voltar.</p>}
+        {pinned && <p class="hint pip-note">A vela está numa janelinha por cima. Feche-a para voltar a esta janela.</p>}
         {pinError && <p class="notice error" role="alert">Seu Chrome não deixou abrir a janelinha por cima ({pinError}).</p>}
         <button class="btn btn-ghost" onClick={() => void openFriction()}>Preciso parar antes da hora</button>
       </div>
