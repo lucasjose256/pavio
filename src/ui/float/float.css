@@ -8,3 +8,5 @@ body { width: auto; padding: 0; background: var(--bg); }
 .popup.float.mini { gap: 4px; padding: 10px; cursor: default; }
 .mini .time { font-size: 34px; }
 .mini .sub { font-size: 12px; }
+.pip-note { margin: 0; text-align: center; }
+.float-actions .notice { margin: 4px 0 0; font-size: 12px; text-align: left; }

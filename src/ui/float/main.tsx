@@ -8,6 +8,7 @@ import type { Session, Settings } from '../../core/models';
 import { DEFAULT_SETTINGS } from '../../core/models';
 import { remainingMs } from '../../core/session';
 import { createServices } from '../../platform/chrome/services';
+import { openVideoPip, videoPipAvailable } from '../shared/candlePip';
 import { RunningCandle, openFriction } from '../shared/RunningCandle';
 import { initTheme } from '../shared/theme';
 import { useNow } from '../shared/useNow';
@@ -57,10 +58,41 @@ function copyStyles(target: Document) {
 function Float() {
   const { active, loaded, now, skin } = useCandleState();
   const [pinned, setPinned] = useState(false);
+  const [pinError, setPinError] = useState('');
   useEffect(() => { void services.sessionService.reconcile(); }, [active === undefined]);
 
+  /**
+   * Primeiro o Picture-in-Picture de vídeo (o mais compatível; tentar o de documento antes poderia gastar o gesto do
+   * clique). Se o Chrome recusar, tenta a janelinha de documento; se as duas falharem, mostra o motivo.
+   */
   async function pinOnTop() {
-    if (!pip) return;
+    setPinError('');
+    let firstError: unknown;
+    if (videoPipAvailable()) {
+      try {
+        await openVideoPip(() => setPinned(false));
+        setPinned(true);
+        return;
+      } catch (error) {
+        firstError = error;
+        console.warn('[Pavio] PiP de vídeo recusado:', error);
+      }
+    }
+    if (pip) {
+      try {
+        await pinDocumentWindow();
+        return;
+      } catch (error) {
+        firstError ??= error;
+        console.warn('[Pavio] PiP de documento recusado:', error);
+      }
+    }
+    const e = firstError;
+    setPinError(e instanceof Error ? `${e.name}: ${e.message}` : 'erro desconhecido');
+  }
+
+  async function pinDocumentWindow() {
+    if (!pip) throw new Error('indisponível');
     const win = await pip.requestWindow({ width: 200, height: 260 });
     copyStyles(win.document);
     win.document.title = 'Pavio';
@@ -91,7 +123,9 @@ function Float() {
     <main class="popup float">
       <RunningCandle session={active} skin={skin} now={now} />
       <div class="float-actions">
-        {pip && !pinned && <button class="btn" onClick={pinOnTop} title="Uma janelinha que fica por cima das outras">Deixar sempre por cima</button>}
+        {(pip || videoPipAvailable()) && !pinned && <button class="btn" onClick={pinOnTop} title="Uma janelinha que fica por cima das outras">Deixar sempre por cima</button>}
+        {pinned && <p class="hint pip-note">A vela está numa janelinha por cima. Feche-a para voltar.</p>}
+        {pinError && <p class="notice error" role="alert">Seu Chrome não deixou abrir a janelinha por cima ({pinError}).</p>}
         <button class="btn btn-ghost" onClick={() => void openFriction()}>Preciso parar antes da hora</button>
       </div>
     </main>
