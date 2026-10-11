@@ -32,7 +32,7 @@ COMO FUNCIONA
 
 • Bloqueio rápido. Para bloquear um app inteiro (YouTube, Instagram, TikTok…), é só um clique, e outro para liberar. Nada vem bloqueado por padrão: a rotina começa limpa e é você quem escolhe.
 
-• Timer em forma de vela. Para um foco a mais, inicie uma sessão de 25, 50, 90 minutos ou o tempo que quiser. A vela derrete de verdade, com chama animada, e as regras do ambiente que você escolher (por exemplo, "Estudo") valem por cima da sua rotina. Quando ela acaba, você recebe um aviso.
+• Timer em forma de vela. Para um foco a mais, inicie uma sessão de 30 min, 45 min, 1 h, 1h30, 2 h, 2h30 ou o tempo que quiser, já com um Pomodoro sugerido para cada tempo. A vela derrete de verdade, com chama animada, e as regras do ambiente que você escolher (por exemplo, "Estudo") valem por cima da sua rotina. Quando ela acaba, você recebe um aviso.
 
 • Pomodoro automático. No timer, ative pausas no ritmo que preferir (por exemplo, 25 minutos de foco e 5 de pausa, com pausa longa opcional). Na pausa, os bloqueios do timer se desligam sozinhos e voltam quando o foco recomeça; as regras da rotina continuam firmes.
 

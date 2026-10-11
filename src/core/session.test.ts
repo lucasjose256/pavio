@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { candleProgress, formatRemaining, remainingMs } from './session';
+import { DURATION_PRESETS_MIN, candleProgress, durationLabel, formatRemaining, remainingMs } from './session';
 
 const s = { endsAt: 10_000, plannedMs: 10_000 };
 
@@ -17,5 +17,13 @@ describe('session time', () => {
     expect(formatRemaining(1)).toBe('00:01');
     expect(formatRemaining(25 * 60_000)).toBe('25:00');
     expect(formatRemaining(90 * 60_000)).toBe('1:30:00');
+  });
+});
+
+describe('durationLabel', () => {
+  it('formata os tempos prontos', () => {
+    expect(DURATION_PRESETS_MIN.map(durationLabel)).toEqual(['30 min', '45 min', '1 h', '1h30', '2 h', '2h30']);
+    expect(durationLabel(5)).toBe('5 min');
+    expect(durationLabel(185)).toBe('3h05');
   });
 });

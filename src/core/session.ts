@@ -2,7 +2,18 @@ import type { AllowedLink, Environment, HistoryEntry, PomodoroConfig, Session, S
 import { pomodoroState } from './pomodoro';
 import type { IdGenerator } from './ports';
 
-export const DURATION_PRESETS_MIN = [25, 50, 90];
+/** Tempos prontos da vela (minutos): 30, 45, 1 h, 1h30, 2 h, 2h30. */
+export const DURATION_PRESETS_MIN = [30, 45, 60, 90, 120, 150];
+/** Tempo que já vem escolhido. */
+export const DEFAULT_DURATION_MIN = 30;
+
+/** "30 min", "1 h", "1h30", "2 h", "2h30". */
+export function durationLabel(minutes: number): string {
+  if (minutes < 60) return `${minutes} min`;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return m === 0 ? `${h} h` : `${h}h${String(m).padStart(2, '0')}`;
+}
 export const MIN_DURATION_MIN = 1;
 export const MAX_DURATION_MIN = 480;
 

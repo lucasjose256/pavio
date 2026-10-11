@@ -4,12 +4,12 @@ import '../theme.css';
 import './popup.css';
 import { Candle } from '../candle/Candle';
 import {
-  DURATION_PRESETS_MIN, MAX_DURATION_MIN, MIN_DURATION_MIN, isValidDuration, remainingMs,
+  DEFAULT_DURATION_MIN, DURATION_PRESETS_MIN, MAX_DURATION_MIN, MIN_DURATION_MIN, durationLabel, isValidDuration, remainingMs,
 } from '../../core/session';
 import type { Environment, Session, Settings, Strictness } from '../../core/models';
 import { DEFAULT_SETTINGS } from '../../core/models';
 import { accessDomains } from '../../core/blocking';
-import { validatePomodoro } from '../../core/pomodoro';
+import { pomodoroSuggestionFor, validatePomodoro } from '../../core/pomodoro';
 import type { PomodoroConfig } from '../../core/models';
 import { PomodoroFields } from '../shared/PomodoroFields';
 import { RunningCandle, openFriction } from '../shared/RunningCandle';
@@ -30,12 +30,14 @@ initTheme();
 function StartForm({ skin }: { skin: string }) {
   const [envs, setEnvs] = useState<Environment[]>([]);
   const [envId, setEnvId] = useState('');
-  const [minutes, setMinutes] = useState(25);
+  const [minutes, setMinutes] = useState(DEFAULT_DURATION_MIN);
   const [custom, setCustom] = useState(false);
   const [strictness, setStrictness] = useState<Strictness>('light');
   const [error, setError] = useState('');
   const [links, setLinks] = useState('');
-  const [pomodoro, setPomodoro] = useState<PomodoroConfig>();
+  // Pomodoro sugerido para o tempo escolhido (ligado de partida). Enquanto a pessoa não mexe nele, acompanha o tempo.
+  const [pomodoro, setPomodoro] = useState<PomodoroConfig | undefined>(() => pomodoroSuggestionFor(DEFAULT_DURATION_MIN));
+  const [autoPomodoro, setAutoPomodoro] = useState(true);
   const [blockNewTabs, setBlockNewTabs] = useState(false);
 
   // O modo da vela já vem como a fricção escolhida nas opções (padrão: Leve); dá para trocar em "Mais opções".
@@ -46,6 +48,15 @@ function StartForm({ skin }: { skin: string }) {
       setEnvId((id) => id || list[0]?.id || '');
     });
   }, []);
+
+  function chooseMinutes(m: number) {
+    setMinutes(m);
+    if (autoPomodoro && pomodoro && isValidDuration(m)) setPomodoro(pomodoroSuggestionFor(m));
+  }
+  function togglePomodoro(on: boolean) {
+    setPomodoro(on ? pomodoroSuggestionFor(isValidDuration(minutes) ? minutes : DEFAULT_DURATION_MIN) : undefined);
+    setAutoPomodoro(on);
+  }
 
   const selected = envs.find((e) => e.id === envId);
   const youtubeRule = selected && findRule(selected, 'www.youtube.com');
@@ -83,16 +94,27 @@ function StartForm({ skin }: { skin: string }) {
 
         <div>
           <span class="lbl">Duração</span>
-          <div class="seg" role="group" aria-label="Duração">
+          <div class="seg wrap" role="group" aria-label="Duração">
             {DURATION_PRESETS_MIN.map((m) => (
-              <button type="button" aria-pressed={!custom && minutes === m} onClick={() => { setCustom(false); setMinutes(m); }}>{m} min</button>
+              <button type="button" aria-pressed={!custom && minutes === m} onClick={() => { setCustom(false); chooseMinutes(m); }}>{durationLabel(m)}</button>
             ))}
             <button type="button" aria-pressed={custom} onClick={() => setCustom(true)}>Outro</button>
           </div>
           {custom && (
             <input class="field full minutes" type="number" min={MIN_DURATION_MIN} max={MAX_DURATION_MIN} value={minutes}
-              aria-label="Minutos" onInput={(e) => setMinutes(Number(e.currentTarget.value))} />
+              aria-label="Minutos" onInput={(e) => chooseMinutes(Number(e.currentTarget.value))} />
           )}
+          {/* O Pomodoro já vem sugerido para este tempo; é só desmarcar, ou ajustar em "Mais opções". */}
+          <label class="check pomo-quick">
+            <input type="checkbox" checked={!!pomodoro} onChange={(e) => togglePomodoro(e.currentTarget.checked)} />
+            <span>
+              <strong>Pomodoro</strong>{' '}
+              {(() => {
+                const p = pomodoro ?? pomodoroSuggestionFor(isValidDuration(minutes) ? minutes : DEFAULT_DURATION_MIN);
+                return `foco ${p.focusMin} · pausa ${p.breakMin} min`;
+              })()}
+            </span>
+          </label>
         </div>
 
         <details class="more">
@@ -105,7 +127,7 @@ function StartForm({ skin }: { skin: string }) {
                 <button type="button" title="Para apagar antes da hora, digite uma frase" aria-pressed={strictness === 'focus'} onClick={() => setStrictness('focus')}>Foco</button>
               </div>
             </div>
-            <PomodoroFields value={pomodoro} onChange={setPomodoro} />
+            <PomodoroFields value={pomodoro} onChange={(v) => { setPomodoro(v && !pomodoro ? pomodoroSuggestionFor(isValidDuration(minutes) ? minutes : DEFAULT_DURATION_MIN) : v); setAutoPomodoro(false); }} />
             <label class="check" title={newTabUi.optionHint}>
               <input type="checkbox" checked={blockNewTabs} onChange={(e) => setBlockNewTabs(e.currentTarget.checked)} />
               {newTabUi.popupLabel}

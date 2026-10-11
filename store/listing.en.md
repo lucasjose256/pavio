@@ -14,7 +14,7 @@ Pavio is a focus extension for people who get distracted easily. Instead of only
 
 • Routine by site and time — see your 24 hours as a timeline per site and draw when each one is blocked or has parts hidden: work hours, nights, weekends, or always. It works by itself.
 • Quick block — block a whole app (YouTube, Instagram, TikTok…) with one click, and one more to release it. Nothing is blocked by default: the routine starts clean and you choose.
-• Candle timer — for extra focus, start a 25/50/90-minute (or custom) session; the candle visibly melts and the rules of the environment you pick apply on top of your routine.
+• Candle timer — for extra focus, start a 30 min / 45 min / 1 h / 1.5 h / 2 h / 2.5 h (or custom) session, each with a suggested Pomodoro; the candle visibly melts and the rules of the environment you pick apply on top of your routine.
 • Automatic Pomodoro — focus/break cycles for the timer; the timer's blocks switch off during breaks.
 • Intent mode — on restricted sites, Pavio asks "what are you here to do?" and for how long, then nudges you gently when time is up.
 • Friction to quit early — a message, a 10-second wait and a phrase to type (or a light confirmation mode). Loosening a rule that is protecting you right now asks for confirmation too.

@@ -50,3 +50,12 @@ body { width: 300px; padding: 5px; background: var(--surface-2); }
 
 .check { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; color: var(--text); line-height: 1.35; }
 .check input { margin-top: 2px; }
+
+/* tempos prontos: grade de 4 colunas ("Outro" ocupa duas) */
+.seg.wrap { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--border); }
+.seg.wrap button { background: var(--surface); border-left: 0; padding: 9px 2px; }
+.seg.wrap button:hover { background: var(--surface-2); }
+.seg.wrap button[aria-pressed="true"] { background: var(--accent); }
+.seg.wrap button:last-child { grid-column: span 2; }
+.pomo-quick { margin-top: 8px; }
+.pomo-quick strong { font-weight: 650; }

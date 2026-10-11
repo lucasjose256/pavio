@@ -2,6 +2,26 @@ import type { PomodoroConfig, PomodoroPhase, PomodoroSession, Session } from './
 
 export const DEFAULT_POMODORO: PomodoroConfig = { focusMin: 25, breakMin: 5, longBreakMin: 15, cyclesBeforeLong: 4 };
 
+/**
+ * Pomodoro sugerido para cada tempo pronto da vela: ciclos que fecham certinho (sem pausa longa).
+ * 30 = 25+5 · 45 = 20+5+20 · 1 h = 2×(25+5) · 1h30 = 2×(40+10)+40 · 2 h = 2×(50+10) · 2h30 = 3×(40+10).
+ */
+export const POMODORO_PRESETS: Record<number, PomodoroConfig> = {
+  30: { focusMin: 25, breakMin: 5, longBreakMin: 0, cyclesBeforeLong: 4 },
+  45: { focusMin: 20, breakMin: 5, longBreakMin: 0, cyclesBeforeLong: 4 },
+  60: { focusMin: 25, breakMin: 5, longBreakMin: 0, cyclesBeforeLong: 4 },
+  90: { focusMin: 40, breakMin: 10, longBreakMin: 0, cyclesBeforeLong: 4 },
+  120: { focusMin: 50, breakMin: 10, longBreakMin: 0, cyclesBeforeLong: 4 },
+  150: { focusMin: 40, breakMin: 10, longBreakMin: 0, cyclesBeforeLong: 4 },
+};
+
+/** O Pomodoro sugerido para `minutes`: o do tempo pronto igual ou, num tempo livre, o do mais próximo. */
+export function pomodoroSuggestionFor(minutes: number): PomodoroConfig {
+  const known = Object.keys(POMODORO_PRESETS).map(Number);
+  const nearest = known.reduce((best, m) => (Math.abs(m - minutes) < Math.abs(best - minutes) ? m : best), known[0]!);
+  return { ...POMODORO_PRESETS[minutes] ?? POMODORO_PRESETS[nearest]! };
+}
+
 export const POMODORO_LIMITS = { focus: [1, 180], break: [1, 60], long: [0, 60], cycles: [2, 10] } as const;
 
 const inRange = (n: number, [min, max]: readonly [number, number]) => Number.isInteger(n) && n >= min && n <= max;
