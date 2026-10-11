@@ -426,3 +426,9 @@ input[type="range"] { accent-color: var(--accent); }
 .extra-range { align-items: flex-end; }
 .extra-add { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .extra-add .hint { margin: 0; }
+
+/* editor de um recurso (feed, Shorts…) */
+.feature-editor h3 { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.feature-editor .muted { font-family: var(--font-body); font-size: 14px; font-weight: 400; color: var(--muted); }
+.rt-row.lane .rt-label { padding-left: 4px; }
+.rt-row.lane .rt-feature { white-space: normal; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { RoutineSite, RoutineSlot } from './models';
-import { activeRules, dropFeature, featureSlotsOf, isBlockedAll, loosensNow, mergeRules, newFeatureSlot, nextBoundary, retimeFeature, rulesAnyTime, setBlockAll, setLimit, setSlotOff, protectsNow, validateSite } from './routine';
+import { activeRules, dropFeature, featureSlotsOf, isBlockedAll, loosensNow, mergeRules, newFeatureSlot, nextBoundary, reshapeFeature, retimeFeature, rulesAnyTime, setBlockAll, setLimit, setSlotOff, protectsNow, validateSite } from './routine';
 import { defaultRoutine } from './routine-defaults';
 import { addUsage } from './usage';
 
@@ -276,5 +276,32 @@ describe('pausar faixa e protectsNow', () => {
     expect(protectsNow(site, true, mon(10), {}, [], { domain: 'instagram.com', slotId: 'b' })).toBe(false); // ainda não é a hora
     expect(protectsNow(site, true, mon(19), {}, [], { domain: 'instagram.com' })).toBe(false); // fora de faixa
     expect(protectsNow(site, true, mon(10), {}, [{ domain: 'instagram.com', until: mon(11) }], { domain: 'instagram.com' })).toBe(false); // já pausado
+  });
+});
+
+describe('reshapeFeature (editor por recurso)', () => {
+  const yt = (slots: RoutineSlot[]): RoutineSite => ({ id: 'y', domain: 'youtube.com', enabled: true, slots });
+  const base = (over: Partial<RoutineSlot>): RoutineSlot => ({ id: 'a', days: [1, 2, 3, 4, 5], startMin: 540, endMin: 1080, mode: 'restricted', restrictedKind: 'youtube', ...over });
+  let n = 0;
+  const id = () => `n${++n}`;
+
+  it('faixa só deste recurso: muda dias e horário nela mesma', () => {
+    const out = reshapeFeature(yt([base({ features: ['shorts'] })]), 'a', 'shorts', { days: [0, 6], startMin: 600, endMin: 720 }, id);
+    expect(out.slots).toHaveLength(1);
+    expect(out.slots[0]).toMatchObject({ id: 'a', days: [0, 6], startMin: 600, endMin: 720 });
+  });
+  it('faixa com vários recursos: o recurso vai para uma faixa própria; os outros ficam como estavam', () => {
+    const out = reshapeFeature(yt([base({ features: ['home', 'shorts'] })]), 'a', 'shorts', { days: [6], startMin: 0, endMin: 1440 }, id);
+    expect(out.slots).toHaveLength(2);
+    expect(out.slots[0]).toMatchObject({ id: 'a', features: ['home'], days: [1, 2, 3, 4, 5], startMin: 540, endMin: 1080 });
+    expect(out.slots[1]).toMatchObject({ features: ['shorts'], days: [6], startMin: 0, endMin: 1440, mode: 'restricted', restrictedKind: 'youtube' });
+  });
+  it('só o horário (retimeFeature) mantém os dias da faixa original', () => {
+    const out = retimeFeature(yt([base({ features: ['home', 'shorts'] })]), 'a', 'home', { startMin: 60, endMin: 120 }, id);
+    expect(out.slots[1]).toMatchObject({ features: ['home'], days: [1, 2, 3, 4, 5], startMin: 60, endMin: 120 });
+  });
+  it('faixa inexistente não muda nada', () => {
+    const site = yt([base({ features: ['shorts'] })]);
+    expect(reshapeFeature(site, 'zzz', 'shorts', { startMin: 0 }, id)).toBe(site);
   });
 });

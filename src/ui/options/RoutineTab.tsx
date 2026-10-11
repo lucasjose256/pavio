@@ -4,11 +4,12 @@ import { normalizeDomain } from '../../core/matching';
 import type { Release, RestrictionSpec, RoutineSite, RoutineSlot, Strictness } from '../../core/models';
 import { addPause, pauseUntil, pausedUntil, removePause, type PauseTarget } from '../../core/release';
 import { DAY_PRESETS, dayPresetOf, toggleDay } from '../../core/day-presets';
+import { FeatureEditor, type FeatureDraft } from './FeatureEditor';
 import { PauseModal, type PauseAnswer } from './PauseModal';
 import { frictionForRelease } from '../../core/friction';
 import { FrictionGate } from '../shared/FrictionGate';
 import { randomId } from '../../core/ports';
-import { activeRules, featureSlotsOf, isBlockedAll, loosensNow, newFeatureSlot, nextBoundary, retimeFeature, protectsNow, rulesAnyTime, serviceOf, setBlockAll, setLimit, setSlotOff, validateSlot } from '../../core/routine';
+import { activeRules, dropFeature, featureSlotsOf, isBlockedAll, loosensNow, newFeatureSlot, nextBoundary, reshapeFeature, retimeFeature, protectsNow, rulesAnyTime, serviceOf, setBlockAll, setLimit, setSlotOff, validateSlot } from '../../core/routine';
 import { isValidLimit, limitStatuses, MAX_LIMIT_MIN, type UsageData } from '../../core/usage';
 import { ROUTINE_SUGGESTIONS, SLOT_PRESETS, defaultRoutine } from '../../core/routine-defaults';
 import { FEATURE_DEFS, featuresOf } from '../../core/restrictions';
@@ -87,6 +88,9 @@ export function RoutineTab({ active, view }: { active: boolean; view: RoutineVie
   const [friction, setFriction] = useState<Strictness>('light');
   const [releases, setReleases] = useState<Release[]>([]);
   /** Janela "Pausar": o app inteiro ou uma faixa dele. */
+  /** Editor de UM recurso (feed, Shorts…) aberto a partir da sub-linha dele. */
+  const [featureDraft, setFeatureDraft] = useState<FeatureDraft>();
+  const featureEditorRef = useRef<HTMLElement>(null);
   const [pausing, setPausing] = useState<{ site: RoutineSite; slot?: RoutineSlot }>();
   // Fricção de afrouxar (Leve: confirmar; Firme: frase), como uma pergunta que a função `commit` espera.
   const [gate, setGate] = useState<(ok: boolean) => void>();
@@ -123,6 +127,7 @@ export function RoutineTab({ active, view }: { active: boolean; view: RoutineVie
   }, []);
 
   useEffect(() => { if (draft) editorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }, [draft?.domain, draft?.slot.id]);
+  useEffect(() => { if (featureDraft) featureEditorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }, [featureDraft?.siteId, featureDraft?.feature, featureDraft?.slotId]);
 
   const today = new Date(now).getDay();
   const nowMin = new Date(now).getHours() * 60 + new Date(now).getMinutes();
@@ -158,10 +163,54 @@ export function RoutineTab({ active, view }: { active: boolean; view: RoutineVie
       startMin: start,
       endMin: endAt ?? free?.endMin ?? Math.min(start + 120, MINUTES_PER_DAY),
     };
-    // Numa barra de recurso, a faixa nasce escondendo só aquele recurso.
-    const featureSlot = feature ? newFeatureSlot(site, feature, slot.days, { startMin: slot.startMin, endMin: slot.endMin }, randomId) : undefined;
-    setDraft({ domain: site.domain, siteId: site.id, isNewSlot: true, slot: featureSlot ?? slot });
+    // Numa barra de recurso, abre o editor DAQUELE recurso (escondendo só ele).
+    if (feature) {
+      setDraft(undefined);
+      setFeatureDraft({ siteId: site.id, feature, days: slot.days, startMin: slot.startMin, endMin: slot.endMin, extra: [] });
+      setNotice(undefined);
+      return;
+    }
+    setDraft({ domain: site.domain, siteId: site.id, isNewSlot: true, slot });
     setNotice(undefined);
+  }
+
+  /** Clique numa barra: do site abre o editor da faixa; de um recurso abre o editor dele (com os dias e o horário dessa faixa). */
+  function editSegment(site: RoutineSite, slot: RoutineSlot, feature?: string) {
+    if (!feature) return edit(site, slot);
+    setDraft(undefined);
+    setFeatureDraft({ siteId: site.id, feature, slotId: slot.id, days: [...slot.days], startMin: slot.startMin, endMin: slot.endMin, extra: [] });
+    setNotice(undefined);
+  }
+
+  // Sempre parte do rascunho mais novo (dois eventos no mesmo instante não pisam um no outro).
+  const featureRef = useRef<FeatureDraft | undefined>(undefined);
+  featureRef.current = featureDraft;
+  function mutateFeature(fn: (d: FeatureDraft) => FeatureDraft) {
+    if (!featureRef.current) return;
+    const next = fn(featureRef.current);
+    featureRef.current = next;
+    setFeatureDraft(next);
+  }
+
+  async function saveFeature() {
+    const fd = featureDraft;
+    const site = fd && sites.find((x) => x.id === fd.siteId);
+    if (!fd || !site) return;
+    const allDay = fd.startMin === 0 && fd.endMin === MINUTES_PER_DAY;
+    const extras = allDay ? [] : fd.extra;
+    const make = (r: { startMin: number; endMin: number }) => newFeatureSlot(site, fd.feature, fd.days, { startMin: r.startMin, endMin: r.endMin }, randomId);
+    const errors = [...new Set([fd, ...extras].flatMap((r) => validateSlot(make(r))))];
+    if (errors.length) return setNotice({ kind: 'error', text: errors.map(slotErrorText).join(' ') });
+    const base = fd.slotId ? reshapeFeature(site, fd.slotId, fd.feature, { days: fd.days, startMin: fd.startMin, endMin: fd.endMin }, randomId) : { ...site, slots: [...site.slots, make(fd)] };
+    const nextSite = { ...base, slots: [...base.slots, ...extras.map(make)] };
+    if (await commit(sites.map((x) => (x.id === site.id ? nextSite : x)), enabled, extras.length ? `${extras.length + 1} horários salvos.` : 'Horário salvo.')) setFeatureDraft(undefined);
+  }
+
+  async function removeFeatureSlot() {
+    const fd = featureDraft;
+    const site = fd && sites.find((x) => x.id === fd.siteId);
+    if (!fd || !site || !fd.slotId) return;
+    if (await commit(sites.map((x) => (x.id === site.id ? dropFeature(site, fd.slotId!, fd.feature) : x)), enabled, 'Horário removido.')) setFeatureDraft(undefined);
   }
 
   function edit(site: RoutineSite, slot: RoutineSlot) {
@@ -214,7 +263,7 @@ export function RoutineTab({ active, view }: { active: boolean; view: RoutineVie
     const slot = 'slotId' in current ? site.slots.find((s) => s.id === current.slotId) : undefined;
 
     if (!current.moved) {
-      if (current.kind === 'move' && slot) edit(site, slot); // clique simples na faixa: abre o editor
+      if (current.kind === 'move' && slot) editSegment(site, slot, feature); // clique simples na faixa: abre o editor
       if (current.kind === 'create') openNew(site, Math.round(current.fromMin / 30) * 30, undefined, feature); // clique no vazio: faixa de 2 h
       return;
     }
@@ -418,10 +467,10 @@ export function RoutineTab({ active, view }: { active: boolean; view: RoutineVie
             <div key={`${seg.slotId}-${seg.part}`} class={`rt-seg m-${slot.mode} ${isPaused ? 'paused' : ''} ${canMove ? 'movable' : ''} ${dragging ? 'dragging' : ''} ${seg.lane % 2 ? 'alt' : ''}`}
               style={{ ...pct(seg.startMin, seg.endMin), top: `${4 + seg.lane * (laneH + 3)}px`, height: `${laneH}px`, bottom: 'auto' }}
               title={`${site.domain} · ${slotLabel(slot)} · ${formatRange(shown)} (clique para editar; arraste para mover; arraste as pontas para ajustar)`}
-              role="button" tabIndex={0} onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && edit(site, slot)}
+              role="button" tabIndex={0} onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && editSegment(site, slot, feature)}
               onPointerDown={(e) => canMove
                 ? beginDrag(e, { kind: 'move', siteId: site.id, feature, slotId: slot.id, grabMin: minuteAt(e, (e.currentTarget as HTMLElement).closest('.rt-track') as HTMLElement), startX: e.clientX, moved: false })
-                : (e.stopPropagation(), edit(site, slot))}>
+                : (e.stopPropagation(), editSegment(site, slot, feature))}>
               {canStart && <i class="rt-handle start" aria-hidden="true" onPointerDown={handle('start')} />}
               <span>{dragging ? formatRange(shown) : isPaused ? `⏸ ${slot.off ? pauseUi.slotOff : pauseUi.pausedUntil(untilText(slotPause!))}` : feature ? 'Escondido' : slotLabel(slot)}</span>
               {canEnd && <i class="rt-handle end" aria-hidden="true" onPointerDown={handle('end')} />}
@@ -550,7 +599,7 @@ export function RoutineTab({ active, view }: { active: boolean; view: RoutineVie
           <button class="btn btn-primary" onClick={grantAccess}>Conceder acesso</button>
         </p>
       )}
-      {notice && !draft && <p class={`notice ${notice.kind}`} role="status">{notice.text}</p>}
+      {notice && !draft && !featureDraft && <p class={`notice ${notice.kind}`} role="status">{notice.text}</p>}
 
       {view === 'schedule' && (<>
       <section class="card">
@@ -569,7 +618,7 @@ export function RoutineTab({ active, view }: { active: boolean; view: RoutineVie
             <li><strong>Escolha os dias e o que fazer:</strong> na janela que abre, marque <em>Dias úteis</em>, <em>Fim de semana</em> ou só um dia, e escolha bloquear ou esconder partes. Quer <em>intervalos</em> no mesmo dia (9h–12h e 14h–18h)? Use <strong>+ Adicionar outro horário</strong>. Salve.</li>
             <li><strong>Ajuste quando quiser:</strong> arraste as <strong>pontas</strong> para mudar início e fim, ou a <strong>faixa</strong> para movê-la. Clique nela para editar, pausar ou apagar.</li>
           </ol>
-          <p class="hint">As abas <strong>Seg…Dom</strong> mostram o que vale em cada dia. A seta <strong>▸</strong> ao lado de YouTube, Instagram, X ou LinkedIn dá horários diferentes a cada recurso. Encaixa de 15 em 15 min; faixas que se cruzam ficam empilhadas e vale a mais rigorosa.</p>
+          <p class="hint">As abas <strong>Seg…Dom</strong> mostram o que vale em cada dia. A seta <strong>▸</strong> ao lado de YouTube, Instagram, X ou LinkedIn dá horários diferentes a cada recurso: arraste na barra do recurso <em>ou</em> clique nela (ou no <strong>+</strong>) para digitar dias e horário. Encaixa de 15 em 15 min; faixas que se cruzam ficam empilhadas e vale a mais rigorosa.</p>
         </div>
         <ul class="rt-legend" aria-label="Legenda de cores">
           <li><i class="dot m-blocked" /> Bloqueado</li>
@@ -617,9 +666,11 @@ export function RoutineTab({ active, view }: { active: boolean; view: RoutineVie
                 </div>
                 {open && service && FEATURE_DEFS[service].map((f) => (
                   <div key={f.id} class={`rt-row lane ${site.enabled ? '' : 'off'}`}>
-                    <div class="rt-label"><span class="rt-feature">{featureLabel[service]?.[f.id] ?? f.id}</span></div>
+                    <div class="rt-label"><span class="rt-feature" title={featureLabel[service]?.[f.id] ?? f.id}>{featureLabel[service]?.[f.id] ?? f.id}</span></div>
                     {renderTrack(site, featureSlotsOf(site, f.id), f.id)}
-                    <span />
+                    <div class="rt-actions">
+                      <button class="rt-plus" aria-label={`Adicionar horário para ${featureLabel[service]?.[f.id] ?? f.id}`} title="Digitar o horário deste recurso" onClick={() => openNew(site, undefined, undefined, f.id)}>+</button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -730,6 +781,17 @@ export function RoutineTab({ active, view }: { active: boolean; view: RoutineVie
           </div>
         </section>
       )}
+
+      {featureDraft && (() => {
+        const site = sites.find((x) => x.id === featureDraft.siteId);
+        const service = site ? serviceOf(site) : null;
+        if (!site || !service) return null;
+        return (
+          <FeatureEditor ref={featureEditorRef} domain={site.domain} label={featureLabel[service]?.[featureDraft.feature] ?? featureDraft.feature}
+            value={featureDraft} onChange={mutateFeature} onSave={() => void saveFeature()} onCancel={() => { setFeatureDraft(undefined); setNotice(undefined); }}
+            onRemove={featureDraft.slotId ? () => void removeFeatureSlot() : undefined} notice={notice} />
+        );
+      })()}
 
       <p class="hint footnote">
         O acesso aos sites serve só para bloquear ou limitar essas páginas; nada sai do seu computador.{' '}

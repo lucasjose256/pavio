@@ -205,12 +205,24 @@ export function newFeatureSlot(site: Pick<RoutineSite, 'domain'>, feature: strin
  * é separado numa faixa própria (com os mesmos dias), e a original continua igual para os demais.
  */
 export function retimeFeature(site: RoutineSite, slotId: string, feature: string, times: Times, newId: () => string): RoutineSite {
+  return reshapeFeature(site, slotId, feature, times, newId);
+}
+
+/**
+ * Muda dias e/ou horário SÓ do recurso `feature` na faixa `slotId` (o que o editor por recurso grava). Se a faixa
+ * escondia outros recursos, ele é separado numa faixa própria e a original continua igual para os demais.
+ */
+export function reshapeFeature(
+  site: RoutineSite, slotId: string, feature: string, patch: Partial<Times & { days: number[] }>, newId: () => string,
+): RoutineSite {
   const slot = site.slots.find((s) => s.id === slotId);
   if (!slot) return site;
   const features = [...featuresOf(slot)];
-  if (features.length <= 1) return { ...site, slots: site.slots.map((s) => (s.id === slotId ? { ...s, ...times } : s)) };
+  if (features.length <= 1) return { ...site, slots: site.slots.map((s) => (s.id === slotId ? { ...s, ...patch } : s)) };
   const rest = features.filter((f) => f !== feature);
-  const detached = newFeatureSlot(site, feature, slot.days, times, newId);
+  const detached = newFeatureSlot(
+    site, feature, patch.days ?? slot.days, { startMin: patch.startMin ?? slot.startMin, endMin: patch.endMin ?? slot.endMin }, newId,
+  );
   return { ...site, slots: [...site.slots.map((s) => (s.id === slotId ? { ...s, features: rest } : s)), detached] };
 }
 
