@@ -172,3 +172,18 @@ export function suggestFreeTime(occupied: { startMin: number; endMin: number }[]
   for (const r of free) { const f = fit(r, 0); if (f) return f; }
   return null;
 }
+
+/**
+ * Intervalos LIVRES entre os horários de um mesmo dia (do fim de um ao início do seguinte). Ignora os que viram a
+ * noite e junta os que se cruzam. Para mostrar "livre entre 12:00 e 14:00" ao montar vários horários.
+ */
+export function gapsBetween(ranges: { startMin: number; endMin: number }[]): { startMin: number; endMin: number }[] {
+  const sorted = ranges.filter((r) => r.endMin > r.startMin).sort((a, b) => a.startMin - b.startMin);
+  const merged: { startMin: number; endMin: number }[] = [];
+  for (const r of sorted) {
+    const last = merged[merged.length - 1];
+    if (last && r.startMin <= last.endMin) last.endMin = Math.max(last.endMin, r.endMin);
+    else merged.push({ ...r });
+  }
+  return merged.slice(1).map((r, i) => ({ startMin: merged[i]!.endMin, endMin: r.startMin }));
+}

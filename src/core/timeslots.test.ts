@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatMinutes, layoutLanes, moveSlot, occurrencesAround, parseTime, resizeSlot, segmentsForDay, slotDurationMin, snapMinute, suggestFreeTime, validateTimeSlot } from './timeslots';
+import { formatMinutes, gapsBetween, layoutLanes, moveSlot, occurrencesAround, parseTime, resizeSlot, segmentsForDay, slotDurationMin, snapMinute, suggestFreeTime, validateTimeSlot } from './timeslots';
 import type { TimeSlot } from './timeslots';
 
 const t = (h: number, m = 0) => h * 60 + m;
@@ -129,5 +129,19 @@ describe('suggestFreeTime', () => {
   it('sem espaço depois das 9h, usa antes; dia cheio devolve null', () => {
     expect(suggestFreeTime([{ startMin: t(6), endMin: 1440 }])).toEqual({ startMin: 0, endMin: t(2) });
     expect(suggestFreeTime([{ startMin: 0, endMin: 1440 }])).toBeNull();
+  });
+});
+
+describe('gapsBetween', () => {
+  it('mostra o que fica livre entre os horários, em qualquer ordem', () => {
+    expect(gapsBetween([{ startMin: 14 * 60, endMin: 18 * 60 }, { startMin: 9 * 60, endMin: 12 * 60 }])).toEqual([{ startMin: 12 * 60, endMin: 14 * 60 }]);
+    expect(gapsBetween([{ startMin: 8 * 60, endMin: 10 * 60 }, { startMin: 11 * 60, endMin: 12 * 60 }, { startMin: 15 * 60, endMin: 16 * 60 }]))
+      .toEqual([{ startMin: 10 * 60, endMin: 11 * 60 }, { startMin: 12 * 60, endMin: 15 * 60 }]);
+  });
+  it('junta os que se cruzam ou encostam, e ignora os que viram a noite', () => {
+    expect(gapsBetween([{ startMin: 9 * 60, endMin: 12 * 60 }, { startMin: 12 * 60, endMin: 14 * 60 }])).toEqual([]);
+    expect(gapsBetween([{ startMin: 9 * 60, endMin: 13 * 60 }, { startMin: 12 * 60, endMin: 15 * 60 }])).toEqual([]);
+    expect(gapsBetween([{ startMin: 9 * 60, endMin: 10 * 60 }, { startMin: 22 * 60, endMin: 6 * 60 }])).toEqual([]);
+    expect(gapsBetween([])).toEqual([]);
   });
 });

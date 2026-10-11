@@ -12,7 +12,7 @@ import { activeRules, featureSlotsOf, isBlockedAll, loosensNow, newFeatureSlot, 
 import { isValidLimit, limitStatuses, MAX_LIMIT_MIN, type UsageData } from '../../core/usage';
 import { ROUTINE_SUGGESTIONS, SLOT_PRESETS, defaultRoutine } from '../../core/routine-defaults';
 import { FEATURE_DEFS, featuresOf } from '../../core/restrictions';
-import { MINUTES_PER_DAY, SNAP_MIN, formatMinutes, layoutLanes, moveSlot, parseTime, resizeSlot, segmentsForDay, slotDurationMin, snapMinute, suggestFreeTime } from '../../core/timeslots';
+import { MINUTES_PER_DAY, SNAP_MIN, formatMinutes, gapsBetween, layoutLanes, moveSlot, parseTime, resizeSlot, segmentsForDay, slotDurationMin, snapMinute, suggestFreeTime } from '../../core/timeslots';
 import { ensureHostAccess } from '../../platform/chrome/permissions';
 import { featureLabel, pauseUi } from '../i18n/pt-BR';
 import { DAY_SHORT, WEEK_ORDER, formatDays, formatRange, formatWhen } from '../shared/format';
@@ -30,6 +30,8 @@ interface Draft {
   siteId?: string;
   isNewSlot: boolean;
   slot: DraftSlot;
+  /** Outros horários no mesmo dia (mesmos dias e mesma ação): viram faixas próprias ao salvar. */
+  extra?: { id: string; startMin: number; endMin: number }[];
 }
 
 const WEEKDAYS = [1, 2, 3, 4, 5];
@@ -237,17 +239,36 @@ export function RoutineTab({ active, view }: { active: boolean; view: RoutineVie
     setNotice(undefined);
   }
 
-  const patch = (p: Partial<RoutineSlot>) => draft && setDraft({ ...draft, slot: { ...draft.slot, ...p } });
+  // Sempre parte do rascunho mais novo (dois eventos no mesmo instante não pisam um no outro).
+  const draftRef = useRef<Draft | undefined>(undefined);
+  draftRef.current = draft;
+  function mutateDraft(fn: (d: Draft) => Draft) {
+    if (!draftRef.current) return;
+    const next = fn(draftRef.current);
+    draftRef.current = next;
+    setDraft(next);
+  }
+  const patch = (p: Partial<RoutineSlot>) => mutateDraft((d) => ({ ...d, slot: { ...d.slot, ...p } }));
 
   async function saveDraft(andAddAnother = false) {
     if (!draft) return;
     const errors = draft.slot.mode ? validateSlot(draft.slot as RoutineSlot) : ['mode:invalid'];
     if (errors.length) return setNotice({ kind: 'error', text: errors.map(slotErrorText).join(' ') });
     const saving = draft.slot as RoutineSlot;
+    // Horários extras do mesmo dia: cada um vira uma faixa com os mesmos dias e a mesma ação (ignorados com "dia todo").
+    const extras = draft.slot.startMin === 0 && draft.slot.endMin === MINUTES_PER_DAY ? [] : (draft.extra ?? []);
+    const extraSlots: RoutineSlot[] = extras.map((r) => ({ ...saving, id: randomId(), startMin: r.startMin, endMin: r.endMin }));
+    const extraErrors = extraSlots.flatMap((sl) => validateSlot(sl));
+    if (extraErrors.length) return setNotice({ kind: 'error', text: [...new Set(extraErrors)].map(slotErrorText).join(' ') });
     const next = draft.siteId
-      ? sites.map((s) => s.id !== draft.siteId ? s : { ...s, slots: draft.isNewSlot ? [...s.slots, saving] : s.slots.map((x) => x.id === saving.id ? saving : x) })
-      : [...sites, { id: randomId(), domain: draft.domain, enabled: true, slots: [saving] }];
-    if (!(await commit(next, enabled, 'Faixa salva.'))) return;
+      ? sites.map((s) => s.id !== draft.siteId ? s : {
+        ...s,
+        slots: draft.isNewSlot
+          ? [...s.slots, saving, ...extraSlots]
+          : [...s.slots.map((x) => x.id === saving.id ? saving : x), ...extraSlots],
+      })
+      : [...sites, { id: randomId(), domain: draft.domain, enabled: true, slots: [saving, ...extraSlots] }];
+    if (!(await commit(next, enabled, extraSlots.length ? `${extraSlots.length + 1} horários salvos.` : 'Faixa salva.'))) return;
     setDraft(undefined);
     const saved = next.find((x) => x.domain === draft.domain);
     if (andAddAnother && saved) openNew(saved); // abre já a próxima, num horário livre
@@ -545,7 +566,7 @@ export function RoutineTab({ active, view }: { active: boolean; view: RoutineVie
           <h3>Como montar sua rotina</h3>
           <ol>
             <li><strong>Crie uma faixa:</strong> arraste num espaço vazio da linha do site (ou clique no <strong>+</strong>). A hora da faixa é a que você desenhou.</li>
-            <li><strong>Escolha os dias e o que fazer:</strong> na janela que abre, marque <em>Dias úteis</em>, <em>Fim de semana</em> ou só um dia, e escolha bloquear ou esconder partes. Salve.</li>
+            <li><strong>Escolha os dias e o que fazer:</strong> na janela que abre, marque <em>Dias úteis</em>, <em>Fim de semana</em> ou só um dia, e escolha bloquear ou esconder partes. Quer <em>intervalos</em> no mesmo dia (9h–12h e 14h–18h)? Use <strong>+ Adicionar outro horário</strong>. Salve.</li>
             <li><strong>Ajuste quando quiser:</strong> arraste as <strong>pontas</strong> para mudar início e fim, ou a <strong>faixa</strong> para movê-la. Clique nela para editar, pausar ou apagar.</li>
           </ol>
           <p class="hint">As abas <strong>Seg…Dom</strong> mostram o que vale em cada dia. A seta <strong>▸</strong> ao lado de YouTube, Instagram, X ou LinkedIn dá horários diferentes a cada recurso. Encaixa de 15 em 15 min; faixas que se cruzam ficam empilhadas e vale a mais rigorosa.</p>
@@ -658,6 +679,39 @@ export function RoutineTab({ active, view }: { active: boolean; view: RoutineVie
           <div class="chips tight">
             {SLOT_PRESETS.map((p) => <button type="button" key={p.label} class="chip" onClick={() => patch({ days: p.days, startMin: p.startMin, endMin: p.endMin })}>{p.label}</button>)}
           </div>
+
+          {!allDay && (
+            <div class="extra-ranges">
+              {(draft.extra ?? []).map((r) => {
+                const setRange = (p: Partial<{ startMin: number; endMin: number }>) =>
+                  mutateDraft((d) => ({ ...d, extra: (d.extra ?? []).map((x) => x.id === r.id ? { ...x, ...p } : x) }));
+                return (
+                  <div class="time-row extra-range" key={r.id}>
+                    <label><span class="lbl">Também das</span>
+                      <input class="field" type="time" value={formatMinutes(r.startMin)} onInput={(e) => { const m = parseTime(e.currentTarget.value); if (m !== null) setRange({ startMin: m }); }} /></label>
+                    <label><span class="lbl">Até</span>
+                      <input class="field" type="time" value={formatMinutes(r.endMin % MINUTES_PER_DAY)} onInput={(e) => { const m = parseTime(e.currentTarget.value); if (m !== null) setRange({ endMin: m }); }} /></label>
+                    <button type="button" class="btn btn-ghost x" aria-label="Tirar este horário" title="Tirar este horário"
+                      onClick={() => mutateDraft((d) => ({ ...d, extra: (d.extra ?? []).filter((x) => x.id !== r.id) }))}>✕</button>
+                  </div>
+                );
+              })}
+              <div class="extra-add">
+                <button type="button" class="btn" onClick={() => {
+                  const ranges = [draft.slot, ...(draft.extra ?? [])].filter((x) => x.endMin > x.startMin);
+                  const last = ranges.reduce((m, x) => Math.max(m, x.endMin), draft.slot.endMin > draft.slot.startMin ? draft.slot.endMin : 9 * 60);
+                  const next = suggestFreeTime(ranges, Math.min(last + 60, MINUTES_PER_DAY - 60)) ?? { startMin: Math.max(0, MINUTES_PER_DAY - 120), endMin: MINUTES_PER_DAY };
+                  mutateDraft((d) => ({ ...d, extra: [...(d.extra ?? []), { id: randomId(), ...next }] }));
+                }}>+ Adicionar outro horário neste dia</button>
+                {(() => {
+                  const gaps = gapsBetween([draft.slot, ...(draft.extra ?? [])]);
+                  return gaps.length > 0
+                    ? <span class="hint">Livre: {gaps.map((g) => `${formatMinutes(g.startMin)}–${formatMinutes(g.endMin)}`).join(' e ')}</span>
+                    : <span class="hint">Para bloquear em intervalos, como 9h–12h e 14h–18h.</span>;
+                })()}
+              </div>
+            </div>
+          )}
 
           <span class="lbl gap">O que fazer</span>
           <RestrictionPicker domain={draft.domain} spec={draft.slot} onChange={(spec) => patch({ mode: spec.mode, restrictedKind: spec.restrictedKind, features: spec.features })} />

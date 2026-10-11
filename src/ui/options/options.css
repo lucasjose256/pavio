@@ -420,3 +420,9 @@ input[type="range"] { accent-color: var(--accent); }
 .howto .hint { margin: 0 0 8px; }
 .day-presets { margin: 0 0 8px; }
 .chip[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-style: solid; border-color: transparent; }
+
+/* vários horários no mesmo dia */
+.extra-ranges { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+.extra-range { align-items: flex-end; }
+.extra-add { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.extra-add .hint { margin: 0; }
