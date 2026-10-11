@@ -55,6 +55,8 @@ export interface Session {
   blockedAttempts: number;
   /** Pomodoro automático: alterna foco e pausa dentro da sessão. Na pausa os bloqueios ficam desligados. */
   pomodoro?: PomodoroSession;
+  /** Fecha as abas novas enquanto a vela vale (fora da pausa do Pomodoro). Escolhido ao acender. */
+  blockNewTabs?: boolean;
 }
 
 /** Sessão encerrada, guardada para o futuro relatório de "horas devolvidas". */
@@ -84,13 +86,15 @@ export interface Settings {
   friction: Strictness;
   /** A tela de bloqueio oferece "Precisa dele agora?" (liberar por 5/15/30 min)? Desligado: só a vela e o "Voltar". */
   releaseOffer: boolean;
+  /** Valor inicial de "bloquear novas abas" ao acender a vela (a pessoa pode mudar em cada vela). */
+  blockNewTabs: boolean;
   /** Sugestões de velas de verdade (links de afiliado) nas opções e, raramente, no popup após uma vela concluída. */
   shopSuggestions: boolean;
   /** Mostrar a linha de sugestão também no popup (o "esconder" do popup desliga só isto). */
   shopInPopup: boolean;
 }
 
-export const DEFAULT_SETTINGS: Settings = { candleSkin: 'classic', theme: 'cream', routineEnabled: true, friction: 'light', releaseOffer: true, shopSuggestions: true, shopInPopup: true };
+export const DEFAULT_SETTINGS: Settings = { candleSkin: 'classic', theme: 'cream', routineEnabled: true, friction: 'light', releaseOffer: true, blockNewTabs: false, shopSuggestions: true, shopInPopup: true };
 
 /**
  * Pausa temporária: até `until` (epoch ms) as regras da rotina e do limite do app saem (ou só as de UMA faixa,

@@ -1,4 +1,5 @@
 import type { Settings, ThemeName } from '../../core/models';
+import { announceOwnTab } from './ownTab';
 
 const CACHE_KEY = 'pavio-theme';
 
@@ -7,8 +8,9 @@ export function applyTheme(theme: ThemeName): void {
   try { localStorage.setItem(CACHE_KEY, theme); } catch { /* storage bloqueado: ignora */ }
 }
 
-/** Aplica o tema salvo e acompanha mudanças. Chame no topo de cada página. */
+/** Aplica o tema salvo e acompanha mudanças. Chame no topo de cada página (também avisa que a aba é do Pavio). */
 export function initTheme(): void {
+  announceOwnTab();
   try {
     const cached = localStorage.getItem(CACHE_KEY);
     if (cached === 'night' || cached === 'cream') document.documentElement.dataset.theme = cached; // evita piscar

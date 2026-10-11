@@ -17,7 +17,7 @@ import { ShopNudge } from '../shared/ShopNudge';
 import { openFloatingCandle } from '../shared/floating';
 import { findRule } from '../../core/matching';
 import { parseYouTubeLinks } from '../../core/youtube';
-import { pomodoroError, youtubeUi } from '../i18n/pt-BR';
+import { newTabUi, pomodoroError, youtubeUi } from '../i18n/pt-BR';
 import { ensureHostAccess } from '../../platform/chrome/permissions';
 import { createServices } from '../../platform/chrome/services';
 import { initTheme } from '../shared/theme';
@@ -36,9 +36,10 @@ function StartForm({ skin }: { skin: string }) {
   const [error, setError] = useState('');
   const [links, setLinks] = useState('');
   const [pomodoro, setPomodoro] = useState<PomodoroConfig>();
+  const [blockNewTabs, setBlockNewTabs] = useState(false);
 
   // O modo da vela já vem como a fricção escolhida nas opções (padrão: Leve); dá para trocar em "Mais opções".
-  useEffect(() => { void services.settings.get().then((st) => setStrictness(st.friction)); }, []);
+  useEffect(() => { void services.settings.get().then((st) => { setStrictness(st.friction); setBlockNewTabs(st.blockNewTabs); }); }, []);
   useEffect(() => {
     void services.environments.list().then((list) => {
       setEnvs(list);
@@ -63,7 +64,7 @@ function StartForm({ skin }: { skin: string }) {
       return setError('Sem acesso aos sites bloqueados, a vela não conseguiria protegê-lo. Permita o acesso ou use outro ambiente.');
     }
     try {
-      await services.sessionService.start({ environment, minutes, strictness, youtubeAllowlist: parsed.links, pomodoro });
+      await services.sessionService.start({ environment, minutes, strictness, youtubeAllowlist: parsed.links, pomodoro, blockNewTabs });
     } catch {
       setError('Não foi possível acender a vela.');
     }
@@ -105,6 +106,10 @@ function StartForm({ skin }: { skin: string }) {
               </div>
             </div>
             <PomodoroFields value={pomodoro} onChange={setPomodoro} />
+            <label class="check" title={newTabUi.optionHint}>
+              <input type="checkbox" checked={blockNewTabs} onChange={(e) => setBlockNewTabs(e.currentTarget.checked)} />
+              {newTabUi.popupLabel}
+            </label>
             {usesYouTube && (
               <label>
                 <span class="lbl">{youtubeUi.summary}</span>

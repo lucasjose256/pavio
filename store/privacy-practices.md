@@ -86,3 +86,6 @@ Aba opcional "Apoie o Pavio" (só aparece quando o desenvolvedor configura): mos
 
 ## Links de afiliado (declarar no painel)
 O Pavio mostra sugestões opcionais de velas aromáticas com **links de afiliado do Mercado Livre**, sempre identificados ("link de afiliado") e desligáveis (Opções › Velas de verdade; a linha do popup tem "Esconder"). Só abrem a loja com um clique do usuário, numa aba nova, com `rel="sponsored noreferrer"`. A extensão **não** insere códigos de afiliado em links ou buscas do usuário, não altera páginas de lojas e não rastreia cliques. Isso está declarado na descrição da loja e na política de privacidade (exigência da política "Affiliate Ads" da Chrome Web Store).
+
+## Opção "Bloquear abas novas durante a vela"
+Opcional, por vela. Usa o evento `chrome.tabs.onCreated` (sem a permissão `tabs`): o Pavio só sabe que uma aba nasceu e a troca por uma página própria que se fecha; **não lê o endereço nem o conteúdo** das abas. Páginas do próprio Pavio e janelas de login (`popup`) ficam de fora.

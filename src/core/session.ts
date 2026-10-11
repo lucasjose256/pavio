@@ -17,6 +17,8 @@ export interface StartInput {
   youtubeAllowlist?: AllowedLink[];
   /** Pomodoro automático (pausas que liberam os bloqueios). */
   pomodoro?: PomodoroConfig;
+  /** Fechar abas novas enquanto a vela vale. */
+  blockNewTabs?: boolean;
 }
 
 export function buildSession(input: StartInput, now: number, newId: IdGenerator): Session {
@@ -33,6 +35,7 @@ export function buildSession(input: StartInput, now: number, newId: IdGenerator)
     youtubeAllowlist: input.youtubeAllowlist ?? [],
     status: 'active',
     blockedAttempts: 0,
+    ...(input.blockNewTabs && { blockNewTabs: true }),
     ...(input.pomodoro && { pomodoro: pomodoroState(input.pomodoro, now, now + plannedMs, now) }),
   };
 }

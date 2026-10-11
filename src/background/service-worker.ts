@@ -5,11 +5,12 @@ import { planFor } from '../core/blocking';
 import { domainFromIntentAlarm } from '../core/intent-service';
 import { ROUTINE_ALARM } from '../core/policy-service';
 import { POMODORO_ALARM, SESSION_ALARM } from '../core/session-service';
+import { OWN_TAB_MESSAGE, blocksNewTabs, shouldCloseNewTab } from '../core/new-tabs';
 import { INTENT_NOTIFICATION_PREFIX } from '../platform/chrome/notifications';
 import { createServices } from '../platform/chrome/services';
 import { USAGE_ALARM, observeHost, setTracking } from '../platform/chrome/usage-tracker';
 
-const { storage, routine, policies, intents, blocker, policyService, intentService, usageService } = createServices();
+const { storage, routine, policies, intents, sessions, blocker, policyService, intentService, usageService } = createServices();
 
 // Serializa: várias mudanças seguidas não podem mexer em regras/sessões ao mesmo tempo.
 let queue: Promise<unknown> = Promise.resolve();
@@ -61,6 +62,39 @@ chrome.notifications.onButtonClicked.addListener((id, button) => {
   void (button === 0 ? intentService.extend(domain) : intentService.revoke(domain));
   void chrome.notifications.clear(id);
 });
+// ---- Bloquear abas novas durante a vela (opção da vela) ----
+// Sem permissão `tabs`: o Chrome avisa que nasceu uma aba e a extensão pode fechá-la. As páginas do próprio Pavio
+// (opções, "preciso parar", janela da vela…) se anunciam por mensagem e ficam de fora; janelinhas `popup` (logins) também.
+const OWN_TABS_KEY = 'ownTabs';
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+chrome.runtime.onMessage.addListener((message, sender) => {
+  const id = sender.tab?.id;
+  if (message?.type !== OWN_TAB_MESSAGE || id === undefined) return;
+  void chrome.storage.session.get(OWN_TABS_KEY).then(async (r) => {
+    const list = [...new Set([...((r[OWN_TABS_KEY] as number[] | undefined) ?? []), id])].slice(-60);
+    await chrome.storage.session.set({ [OWN_TABS_KEY]: list });
+  });
+});
+
+chrome.tabs.onCreated.addListener((tab) => {
+  const id = tab.id;
+  if (id === undefined) return;
+  void (async () => {
+    if (!blocksNewTabs(await sessions.get(), Date.now())) return;
+    await sleep(1200); // dá tempo de uma página do Pavio se anunciar
+    if (!blocksNewTabs(await sessions.get(), Date.now())) return;
+    const current = await chrome.tabs.get(id).catch(() => undefined);
+    if (!current) return;
+    const ownTabs = ((await chrome.storage.session.get(OWN_TABS_KEY))[OWN_TABS_KEY] as number[] | undefined) ?? [];
+    const here = chrome.runtime.getURL('');
+    const own = ownTabs.includes(id) || (current.url ?? current.pendingUrl ?? '').startsWith(here);
+    const win = await chrome.windows.get(current.windowId).catch(() => undefined);
+    if (!shouldCloseNewTab({ own, windowType: win?.type })) return;
+    await chrome.tabs.update(id, { url: chrome.runtime.getURL('src/ui/newtab/index.html') });
+  })().catch((error) => console.error('[Pavio] falhou ao tratar a aba nova:', error));
+});
+
 // Vela (iniciada/encerrada), rotina e o interruptor da rotina só gravam no storage; a reação é aqui.
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'local') return;

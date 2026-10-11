@@ -438,3 +438,11 @@ input[type="range"] { accent-color: var(--accent); }
 .rt-pause:hover { color: var(--text); border-color: var(--muted); }
 .rt-pause.on { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
 .rt-row.lane.paused .rt-feature { text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--muted) 60%, transparent); }
+
+/* durante a vela */
+.during-candle .check { margin-top: 0; align-items: flex-start; color: var(--text); }
+.during-candle .hint { margin: 2px 0 0; }
+
+/* durante a vela */
+.during-candle .check { margin-top: 0; align-items: flex-start; color: var(--text); }
+.during-candle .hint { margin: 2px 0 0; }

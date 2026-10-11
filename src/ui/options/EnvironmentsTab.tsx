@@ -7,7 +7,7 @@ import type { Environment, RestrictedKind, Rule, RuleMode } from '../../core/mod
 import { randomId } from '../../core/ports';
 import { FEATURE_DEFS, defaultFeatures, featuresOf, serviceKindFor } from '../../core/restrictions';
 import { ensureHostAccess, hostPattern } from '../../platform/chrome/permissions';
-import { featureHelp, featureLabel, kindLabel, modeHelp, modeLabel, shopUi, validationMessage } from '../i18n/pt-BR';
+import { featureHelp, featureLabel, kindLabel, modeHelp, modeLabel, newTabUi, shopUi, validationMessage } from '../i18n/pt-BR';
 import { Candle } from '../candle/Candle';
 import { SiteIcon } from '../shared/SiteIcon';
 import { services } from './shared';
@@ -36,6 +36,7 @@ export function EnvironmentsTab({ active }: { active: boolean }) {
   const [newMode, setNewMode] = useState<RuleMode>('blocked');
   const [skin, setSkin] = useState('classic');
   const [shopOn, setShopOn] = useState(false);
+  const [blockTabs, setBlockTabs] = useState(false);
 
   async function reload(selectId?: string) {
     const list = await services.environments.list();
@@ -50,7 +51,7 @@ export function EnvironmentsTab({ active }: { active: boolean }) {
   useEffect(() => {
     void reload();
     void services.sessions.get().then((s) => setSessionActive(s?.status === 'active'));
-    void services.settings.get().then((st) => { setSkin(st.candleSkin); setShopOn(st.shopSuggestions); });
+    void services.settings.get().then((st) => { setSkin(st.candleSkin); setShopOn(st.shopSuggestions); setBlockTabs(st.blockNewTabs); });
   }, []);
 
   const domains = useMemo(() => new Set(draft?.rules.map((r) => r.domain)), [draft]);
@@ -174,6 +175,14 @@ export function EnvironmentsTab({ active }: { active: boolean }) {
           </ol>
           {shopOn && <p class="hint hero-tip">{shopUi.timerHint} <a href="#velas">{shopUi.timerLink} →</a></p>}
         </div>
+      </section>
+
+      <section class="card during-candle" aria-label="Durante a vela">
+        <label class="check">
+          <input type="checkbox" checked={blockTabs}
+            onChange={async (e) => { const on = e.currentTarget.checked; setBlockTabs(on); await services.settings.update({ blockNewTabs: on }); }} />
+          <span><strong>{newTabUi.optionTitle}</strong><br /><span class="hint">{newTabUi.optionHint} {newTabUi.settingNote}</span></span>
+        </label>
       </section>
 
       <section aria-label="Escolha o ambiente">

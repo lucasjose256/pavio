@@ -236,3 +236,14 @@ export const pauseUi = {
   pauseSlot: 'Pausar faixa',
   resumeSlot: 'Retomar faixa',
 };
+
+/** Aba nova barrada durante a vela. */
+export const newTabUi = {
+  title: 'Novas abas ficam de fora enquanto a vela queima',
+  message: 'Você escolheu foco sem abas novas. Esta aba se fecha sozinha e a vela continua acesa.',
+  close: (s: number) => (s > 0 ? `Fechar agora (${s})` : 'Fechando…'),
+  optionTitle: 'Bloquear abas novas durante a vela',
+  optionHint: 'Ctrl+T e links que abrem em nova aba ficam fechados enquanto a vela vale. Na pausa do Pomodoro volta ao normal. Janelas de login e as páginas do Pavio não são afetadas.',
+  popupLabel: 'Fechar abas novas durante esta vela',
+  settingNote: 'Valor inicial ao acender a vela; dá para mudar em "Mais opções" do popup.',
+};

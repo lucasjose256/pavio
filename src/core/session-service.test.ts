@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { createBuiltinEnvironment } from './environments';
+import { buildSession } from './session';
 import { MemoryStorage } from './memory-storage';
 import type { HistoryEntry, Session } from './models';
 import { HistoryRepository, SessionRepository } from './repositories';
@@ -167,3 +168,13 @@ describe('Pomodoro automático', () => {
   });
 });
 
+
+describe('blockNewTabs na vela', () => {
+  it('a opção escolhida ao acender fica guardada na sessão (e some quando desligada)', async () => {
+    const env = createBuiltinEnvironment('builtin-study', 0)!;
+    const withTabs = buildSession({ environment: env, minutes: 25, strictness: 'light', blockNewTabs: true }, 1000, () => 'id');
+    expect(withTabs.blockNewTabs).toBe(true);
+    const without = buildSession({ environment: env, minutes: 25, strictness: 'light', blockNewTabs: false }, 1000, () => 'id');
+    expect('blockNewTabs' in without).toBe(false);
+  });
+});
