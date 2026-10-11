@@ -88,13 +88,15 @@ export interface Settings {
   releaseOffer: boolean;
   /** Valor inicial de "bloquear novas abas" ao acender a vela (a pessoa pode mudar em cada vela). */
   blockNewTabs: boolean;
+  /** O ícone do Pavio na barra do Chrome muda de cor (fundo âmbar) enquanto a vela está acesa. */
+  iconOnCandle: boolean;
   /** Sugestões de velas de verdade (links de afiliado) nas opções e, raramente, no popup após uma vela concluída. */
   shopSuggestions: boolean;
   /** Mostrar a linha de sugestão também no popup (o "esconder" do popup desliga só isto). */
   shopInPopup: boolean;
 }
 
-export const DEFAULT_SETTINGS: Settings = { candleSkin: 'classic', theme: 'cream', routineEnabled: true, friction: 'light', releaseOffer: true, blockNewTabs: false, shopSuggestions: true, shopInPopup: true };
+export const DEFAULT_SETTINGS: Settings = { candleSkin: 'classic', theme: 'cream', routineEnabled: true, friction: 'light', releaseOffer: true, blockNewTabs: false, iconOnCandle: true, shopSuggestions: true, shopInPopup: true };
 
 /**
  * Pausa temporária: até `until` (epoch ms) as regras da rotina e do limite do app saem (ou só as de UMA faixa,

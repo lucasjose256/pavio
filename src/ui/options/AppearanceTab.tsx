@@ -55,6 +55,18 @@ export function AppearanceTab({ active }: { active: boolean }) {
           ))}
         </div>
       </section>
+      <section class="card icon-option">
+        <label class="master-row">
+          <span class="switch"><input type="checkbox" checked={settings.iconOnCandle} aria-label="Mudar a cor do ícone na barra do Chrome quando a vela estiver acesa"
+            onChange={async () => setSettings(await services.settings.update({ iconOnCandle: !settings.iconOnCandle }))} /><span /></span>
+          <span class="opt-text">
+            <strong>Ícone aceso na barra do Chrome</strong>
+            <small>Enquanto a vela queima, o ícone do Pavio ganha um fundo âmbar. Assim você vê, num relance, que o foco está ligado.</small>
+          </span>
+          <span class="icon-preview" aria-hidden="true"><img src="/public/icons/icon-32.png" alt="" /><i>→</i><img src="/public/icons/icon-active-32.png" alt="" /></span>
+        </label>
+      </section>
+
       <section class="card">
         <h2 class="section-title">Clima da tela</h2>
         <p class="section-sub">As cores de todas as telas do Pavio.</p>

@@ -440,3 +440,12 @@ input[type="range"] { accent-color: var(--accent); }
 /* durante a vela */
 .during-candle .check { margin-top: 0; align-items: flex-start; color: var(--text); }
 .during-candle .hint { margin: 2px 0 0; }
+
+/* ícone na barra do Chrome */
+.icon-option .master-row { display: flex; align-items: center; gap: 14px; cursor: pointer; }
+.icon-option .opt-text { display: flex; flex-direction: column; flex: 1; line-height: 1.35; }
+.icon-option .opt-text strong { font-size: 15px; }
+.icon-option .opt-text small { font-size: 13px; color: var(--muted); }
+.icon-preview { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); }
+.icon-preview img { width: 32px; height: 32px; }
+.icon-preview img:first-child { background: var(--surface-2); border-radius: 6px; padding: 2px; }

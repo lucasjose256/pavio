@@ -6,17 +6,25 @@ import { domainFromIntentAlarm } from '../core/intent-service';
 import { ROUTINE_ALARM } from '../core/policy-service';
 import { POMODORO_ALARM, SESSION_ALARM } from '../core/session-service';
 import { OWN_TAB_MESSAGE, blocksNewTabs, shouldCloseNewTab } from '../core/new-tabs';
+import { toolbarIconFor } from '../core/toolbar-icon';
+import { setToolbarIcon } from '../platform/chrome/toolbar-icon';
 import { INTENT_NOTIFICATION_PREFIX } from '../platform/chrome/notifications';
 import { createServices } from '../platform/chrome/services';
 import { USAGE_ALARM, observeHost, setTracking } from '../platform/chrome/usage-tracker';
 
-const { storage, routine, policies, intents, sessions, blocker, policyService, intentService, usageService } = createServices();
+const { storage, routine, settings, policies, intents, sessions, blocker, policyService, intentService, usageService } = createServices();
 
 // Serializa: várias mudanças seguidas não podem mexer em regras/sessões ao mesmo tempo.
 let queue: Promise<unknown> = Promise.resolve();
 // Um erro (ex.: regra de rede recusada pelo Chrome) aparece no console do service worker em vez de sumir.
 const enqueue = (task: () => Promise<unknown>) =>
   (queue = queue.then(task).catch((error) => console.error('[Pavio] falhou ao sincronizar:', error)));
+
+/** O ícone do Pavio na barra do Chrome fica com o fundo âmbar enquanto a vela está acesa (se a opção estiver ligada). */
+async function syncToolbarIcon() {
+  const [session, config] = await Promise.all([sessions.get(), settings.get()]);
+  await setToolbarIcon(toolbarIconFor(session, config.iconOnCandle, Date.now()));
+}
 
 /** Alinha as regras de rede com a política atual (rotina + Timer) e as permissões de intenção. */
 async function syncBlocking() {
@@ -31,6 +39,7 @@ const syncAll = () =>
   enqueue(async () => {
     await policyService.sync();
     await syncBlocking();
+    await syncToolbarIcon();
     // A medição de uso só roda se algum app tem limite.
     await setTracking((await routine.list()).some((site) => site.enabled && !!site.limitMin));
   });
@@ -100,6 +109,9 @@ chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'local') return;
   const flag = (v: unknown) => (v as Partial<Settings> | undefined)?.routineEnabled;
   const routineToggled = !!changes.settings && flag(changes.settings.oldValue) !== flag(changes.settings.newValue);
+  const iconFlag = (v: unknown) => (v as Partial<Settings> | undefined)?.iconOnCandle;
+  const iconToggled = !!changes.settings && iconFlag(changes.settings.oldValue) !== iconFlag(changes.settings.newValue);
+  if (iconToggled && !changes.activeSession) void enqueue(syncToolbarIcon);
   if (changes.activeSession || changes.routine || changes.usage || changes.releases || routineToggled) void syncAll();
   else if (changes.intents) void enqueue(syncBlocking);
 });

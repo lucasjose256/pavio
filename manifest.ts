@@ -15,7 +15,12 @@ export default defineManifest({
   action: { default_popup: 'src/ui/popup/index.html', default_title: 'Pavio', default_icon: { 16: 'public/icons/icon-16.png', 32: 'public/icons/icon-32.png', 48: 'public/icons/icon-48.png', 128: 'public/icons/icon-128.png' } },
   options_ui: { page: 'src/ui/options/index.html', open_in_tab: true },
   // Alvos dos redirecionamentos: página da vela (bloqueio) e "o que você vai fazer aqui?" (intenção).
-  web_accessible_resources: [{ resources: ['src/ui/blocked/index.html', 'src/ui/intent/index.html'], matches: ['<all_urls>'] }],
+  // As imagens do ícone "vela acesa" só são lidas pelo próprio service worker (chrome.action.setIcon), mas o CRXJS só
+  // as copia para o pacote se estiverem listadas aqui.
+  web_accessible_resources: [
+    { resources: ['src/ui/blocked/index.html', 'src/ui/intent/index.html'], matches: ['<all_urls>'] },
+    { resources: ['public/icons/icon-active-*.png'], matches: ['<all_urls>'] },
+  ],
   // Modo restrito do YouTube/Instagram/X. Declarado aqui (e não como permissão opcional) porque o script precisa
   // estar pronto em document_start; ele não faz nada fora de uma sessão com YouTube "restrito".
   content_scripts: [
