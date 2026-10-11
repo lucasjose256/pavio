@@ -17,6 +17,8 @@ const data: Record<string, unknown> = {
     { id: 'a', domain: 'youtube.com', enabled: true, limitMin: 30, slots: [{ id: 's1', days: [1, 2, 3, 4, 5], startMin: 540, endMin: 1080, mode: 'restricted', restrictedKind: 'youtube' }] },
     { id: 'b', domain: 'instagram.com', enabled: true, limitMin: 30, slots: [] },
     { id: 'c', domain: 'reddit.com', enabled: true, blockAll: true, slots: [] },
+    { id: 'd', domain: 'pinterest.com', enabled: true, limitMin: 20, slots: [] },
+    { id: 'e', domain: 'noticias.uol.com.br', enabled: true, blockAll: true, slots: [] },
   ],
   usage,
   history: params.get('done') ? [{ sessionId: 'h', environmentName: 'Estudo', startedAt: now - 40 * 60_000, endedAt: now - 15 * 60_000, plannedMs: 25 * 60_000, actualMs: 25 * 60_000, outcome: 'completed', blockedAttempts: 2 }] : [],

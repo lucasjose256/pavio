@@ -15,6 +15,7 @@ import { MINUTES_PER_DAY, SNAP_MIN, formatMinutes, layoutLanes, moveSlot, parseT
 import { ensureHostAccess } from '../../platform/chrome/permissions';
 import { featureLabel, pauseUi } from '../i18n/pt-BR';
 import { DAY_SHORT, WEEK_ORDER, formatDays, formatRange, formatWhen } from '../shared/format';
+import { SiteIcon } from '../shared/SiteIcon';
 import { RestrictionPicker } from './RestrictionPicker';
 import { missingAccess } from './access';
 import { services } from './shared';
@@ -465,7 +466,7 @@ export function RoutineTab({ active, view }: { active: boolean; view: RoutineVie
             const on = isBlockedAll(sites, d);
             return (
               <button key={d} class={`tile ${on ? 'on' : ''}`} aria-pressed={on} onClick={() => toggleQuick(d)} title={on ? `Liberar ${d}` : `Bloquear ${d} por inteiro`}>
-                <span class="tile-name">{d}</span>
+                <span class="tile-name"><SiteIcon domain={d} /> {d}</span>
                 <strong>{on ? '🔒 Bloqueado' : 'Bloquear'}</strong>
               </button>
             );
@@ -491,7 +492,7 @@ export function RoutineTab({ active, view }: { active: boolean; view: RoutineVie
             const pct = st ? Math.min(100, (st.usedMs / Math.max(1, st.limitMs)) * 100) : 0;
             return (
               <li key={d} class={`limit-row ${st?.reached ? 'reached' : ''}`}>
-                <span class="limit-name">{d}</span>
+                <span class="limit-name"><SiteIcon domain={d} /> {d}</span>
                 {st ? (
                   <span class="limit-meter" title={`${Math.floor(st.usedMs / 60_000)} de ${st.limitMs / 60_000} min hoje`}>
                     <span class="limit-bar"><i style={{ width: `${pct}%` }} /></span>
@@ -568,7 +569,7 @@ export function RoutineTab({ active, view }: { active: boolean; view: RoutineVie
                           title="Horário separado para cada recurso (feed, Shorts, recomendados…)"
                           onClick={() => setExpanded((cur) => { const n = new Set(cur); if (!n.delete(site.id)) n.add(site.id); return n; })}>{open ? '▾' : '▸'}</button>
                       )}
-                      <button class="rt-site" onClick={() => openNew(site)} title="Adicionar uma faixa neste site">{site.domain}</button>
+                      <button class="rt-site" onClick={() => openNew(site)} title="Adicionar uma faixa neste site"><SiteIcon domain={site.domain} /> {site.domain}</button>
                     </div>
                     {sitePause !== undefined
                       ? <span class="rt-paused-note">⏸ {pauseUi.pausedUntil(untilText(sitePause))} <button class="link" onClick={() => void resume(site)}>{pauseUi.resume}</button></span>

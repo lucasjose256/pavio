@@ -216,11 +216,11 @@ input[type="range"] { accent-color: var(--accent); }
 .daytab.on { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
 .today-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: currentColor; margin-left: 6px; vertical-align: middle; opacity: .7; }
 .rt { display: flex; flex-direction: column; gap: 8px; }
-.rt-axis, .rt-row { display: grid; grid-template-columns: 150px minmax(0, 1fr) 126px; gap: 12px; align-items: center; }
+.rt-axis, .rt-row { display: grid; grid-template-columns: 176px minmax(0, 1fr) 126px; gap: 12px; align-items: center; }
 .rt-axis > div { position: relative; height: 14px; }
 .rt-axis b { position: absolute; transform: translateX(-50%); font-size: 11px; color: var(--muted); font-weight: 500; }
 .rt-label { display: flex; flex-direction: column; min-width: 0; }
-.rt-site { background: transparent; border: 0; padding: 0; text-align: left; font-weight: 600; overflow: hidden; text-overflow: ellipsis; color: var(--text); }
+.rt-site { background: transparent; border: 0; padding: 0; text-align: left; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); }
 .rt-site:hover { color: var(--accent-text); }
 .rt-label small { color: var(--muted); font-size: 11px; }
 .rt-track { position: relative; height: 40px; border-radius: 12px; cursor: crosshair;
@@ -407,3 +407,8 @@ input[type="range"] { accent-color: var(--accent); }
 .offer-toggle > .grow { flex: 1 1 320px; }
 .offer-toggle .section-sub { margin-bottom: 0; max-width: 60ch; }
 .card[hidden] { display: none; }
+
+/* ícone do site antes do nome */
+.rt-site .site-icon, .tile-name .site-icon, .limit-name .site-icon, .app-name .site-icon { margin-right: 2px; }
+.rule .site-icon { margin: 0 auto; }
+.limit-name, .app-name { white-space: nowrap; }

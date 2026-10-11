@@ -9,6 +9,7 @@ import { FEATURE_DEFS, defaultFeatures, featuresOf, serviceKindFor } from '../..
 import { ensureHostAccess, hostPattern } from '../../platform/chrome/permissions';
 import { featureHelp, featureLabel, kindLabel, modeHelp, modeLabel, shopUi, validationMessage } from '../i18n/pt-BR';
 import { Candle } from '../candle/Candle';
+import { SiteIcon } from '../shared/SiteIcon';
 import { services } from './shared';
 
 const MODES: RuleMode[] = ['allowed', 'blocked', 'restricted'];
@@ -232,7 +233,7 @@ export function EnvironmentsTab({ active }: { active: boolean }) {
           <ul class="rules">
             {draft.rules.map((r) => (
               <li key={r.id} class="rule">
-                <span class={`badge m-${r.mode}`} aria-hidden="true">{r.domain[0]?.toUpperCase()}</span>
+                <SiteIcon domain={r.domain} size={26} class={`ring m-${r.mode}`} />
                 <span class="domain">{r.domain}</span>
                 <div class="seg-group" role="group" aria-label={`Regra de ${r.domain}`}>
                   {MODES.map((m) => (

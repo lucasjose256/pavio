@@ -1,0 +1,5 @@
+/* Ícone do site antes do nome. */
+.site-icon { flex: none; display: inline-block; vertical-align: -0.2em; border-radius: 5px; }
+.site-icon.mono { display: inline-grid; place-items: center; color: #fffaf0; font-weight: 700; line-height: 1; }
+.site-icon.ring { box-shadow: 0 0 0 2px var(--c, transparent); border-radius: 50%; }
+.site-icon.mono.ring { border-radius: 50%; }

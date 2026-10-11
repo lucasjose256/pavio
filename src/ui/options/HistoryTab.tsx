@@ -3,6 +3,7 @@ import { formatDuration, summarizeHistory } from '../../core/history';
 import type { HistoryEntry } from '../../core/models';
 import { usageByApp, type UsageData } from '../../core/usage';
 import { Candle } from '../candle/Candle';
+import { SiteIcon } from '../shared/SiteIcon';
 import { services } from './shared';
 
 const weekday = (ts: number) => new Date(ts).toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '');
@@ -106,7 +107,7 @@ export function HistoryTab({ active }: { active: boolean }) {
               const top = apps[0]!.totalMs || 1;
               return (
                 <li key={a.domain}>
-                  <span class="app-name">{a.domain}</span>
+                  <span class="app-name"><SiteIcon domain={a.domain} /> {a.domain}</span>
                   <span class="app-bar"><i style={{ width: `${Math.max(3, (a.totalMs / top) * 100)}%` }} /></span>
                   <span class="app-time">{formatDuration(a.totalMs)}</span>
                   <span class="app-today">hoje {formatDuration(a.todayMs)}</span>
