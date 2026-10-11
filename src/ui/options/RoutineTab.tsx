@@ -3,6 +3,7 @@ import { accessDomains } from '../../core/blocking';
 import { normalizeDomain } from '../../core/matching';
 import type { Release, RestrictionSpec, RoutineSite, RoutineSlot, Strictness } from '../../core/models';
 import { addPause, pauseUntil, pausedUntil, removePause, type PauseTarget } from '../../core/release';
+import { DAY_PRESETS, dayPresetOf, toggleDay } from '../../core/day-presets';
 import { PauseModal, type PauseAnswer } from './PauseModal';
 import { frictionForRelease } from '../../core/friction';
 import { FrictionGate } from '../shared/FrictionGate';
@@ -13,10 +14,9 @@ import { ROUTINE_SUGGESTIONS, SLOT_PRESETS, defaultRoutine } from '../../core/ro
 import { FEATURE_DEFS, featuresOf } from '../../core/restrictions';
 import { MINUTES_PER_DAY, SNAP_MIN, formatMinutes, layoutLanes, moveSlot, parseTime, resizeSlot, segmentsForDay, slotDurationMin, snapMinute, suggestFreeTime } from '../../core/timeslots';
 import { ensureHostAccess } from '../../platform/chrome/permissions';
-import { featureLabel, pauseUi, quickRuleUi } from '../i18n/pt-BR';
+import { featureLabel, pauseUi } from '../i18n/pt-BR';
 import { DAY_SHORT, WEEK_ORDER, formatDays, formatRange, formatWhen } from '../shared/format';
 import { SiteIcon } from '../shared/SiteIcon';
-import { QuickRule } from './QuickRule';
 import { RestrictionPicker } from './RestrictionPicker';
 import { missingAccess } from './access';
 import { services } from './shared';
@@ -251,15 +251,6 @@ export function RoutineTab({ active, view }: { active: boolean; view: RoutineVie
     setDraft(undefined);
     const saved = next.find((x) => x.domain === draft.domain);
     if (andAddAnother && saved) openNew(saved); // abre já a próxima, num horário livre
-  }
-
-  /** "Nova regra": adiciona a faixa ao site (ou cria o site) e já liga os horários, senão a regra não valeria. */
-  async function createQuickRule(domain: string, slot: RoutineSlot): Promise<boolean> {
-    const existing = sites.find((s) => s.domain === domain);
-    const next = existing
-      ? sites.map((s) => (s.id === existing.id ? { ...s, enabled: true, slots: [...s.slots, slot] } : s))
-      : [...sites, { id: randomId(), domain, enabled: true, slots: [slot] }];
-    return commit(next, true, `Regra criada: ${domain}, ${formatDays(slot.days).toLowerCase()}, ${formatRange(slot)}.`);
   }
 
   /** Copia a faixa em edição como um rascunho novo (para a mesma coisa em outros dias ou horários). */
@@ -541,28 +532,6 @@ export function RoutineTab({ active, view }: { active: boolean; view: RoutineVie
       {notice && !draft && <p class={`notice ${notice.kind}`} role="status">{notice.text}</p>}
 
       {view === 'schedule' && (<>
-      {view === 'schedule' && (
-        <QuickRule known={[...new Set([...sites.map((s) => s.domain), ...ROUTINE_SUGGESTIONS])]} onCreate={createQuickRule} />
-      )}
-
-      {view === 'schedule' && sites.some((s) => s.slots.length > 0) && (
-        <section class="card rules-list" aria-label={quickRuleUi.listTitle}>
-          <h3>{quickRuleUi.listTitle}</h3>
-          <ul>
-            {sites.filter((s) => s.slots.length > 0).flatMap((site) => site.slots.map((sl) => {
-              const paused = !!sl.off || pausedUntil(releases, { domain: site.domain, slotId: sl.id }, now) !== undefined;
-              return (
-                <li key={`${site.id}-${sl.id}`} class={paused || !site.enabled ? 'off' : ''}>
-                  <span class="rl-site"><SiteIcon domain={site.domain} /> {site.domain}</span>
-                  <span class="rl-text">{formatDays(sl.days)} · {formatRange(sl)} · {slotLabel(sl)}{paused ? ' · ⏸ pausada' : ''}{!site.enabled ? ' · site desligado' : ''}</span>
-                  <button class="btn btn-ghost" onClick={() => edit(site, sl)}>{quickRuleUi.edit}</button>
-                </li>
-              );
-            }))}
-          </ul>
-        </section>
-      )}
-
       <section class="card">
         <div class="day-bar" role="tablist" aria-label="Dia da semana">
           {WEEK_ORDER.map((d) => (
@@ -572,10 +541,15 @@ export function RoutineTab({ active, view }: { active: boolean; view: RoutineVie
           ))}
         </div>
 
-        <details class="rt-help">
-          <summary>Como usar a linha do tempo</summary>
-          <p class="hint rt-hint">Arraste as <strong>pontas</strong> de uma faixa para ajustar início e fim, arraste a <strong>faixa</strong> para movê-la, ou arraste num <strong>espaço vazio</strong> para criar uma. Clique numa faixa para ver todas as opções. Use a seta <strong>▸</strong> ao lado de YouTube, Instagram, X ou LinkedIn para dar <strong>horários diferentes a cada recurso</strong> (por exemplo, recomendados o dia todo e o feed só em certas horas). Encaixa de 15 em 15 min. Faixas que se cruzam ficam empilhadas, e vale sempre a mais rigorosa.</p>
-        </details>
+        <div class="howto" aria-label="Como montar sua rotina">
+          <h3>Como montar sua rotina</h3>
+          <ol>
+            <li><strong>Crie uma faixa:</strong> arraste num espaço vazio da linha do site (ou clique no <strong>+</strong>). A hora da faixa é a que você desenhou.</li>
+            <li><strong>Escolha os dias e o que fazer:</strong> na janela que abre, marque <em>Dias úteis</em>, <em>Fim de semana</em> ou só um dia, e escolha bloquear ou esconder partes. Salve.</li>
+            <li><strong>Ajuste quando quiser:</strong> arraste as <strong>pontas</strong> para mudar início e fim, ou a <strong>faixa</strong> para movê-la. Clique nela para editar, pausar ou apagar.</li>
+          </ol>
+          <p class="hint">As abas <strong>Seg…Dom</strong> mostram o que vale em cada dia. A seta <strong>▸</strong> ao lado de YouTube, Instagram, X ou LinkedIn dá horários diferentes a cada recurso. Encaixa de 15 em 15 min; faixas que se cruzam ficam empilhadas e vale a mais rigorosa.</p>
+        </div>
         <ul class="rt-legend" aria-label="Legenda de cores">
           <li><i class="dot m-blocked" /> Bloqueado</li>
           <li><i class="dot m-restricted" /> Restrito (esconde partes ou pergunta a intenção)</li>
@@ -660,10 +634,15 @@ export function RoutineTab({ active, view }: { active: boolean; view: RoutineVie
           )}
 
           <span class="lbl gap">Dias</span>
+          <div class="chips tight day-presets">
+            {DAY_PRESETS.map((p) => (
+              <button type="button" key={p.id} class="chip" aria-pressed={dayPresetOf(draft.slot.days) === p.id} onClick={() => patch({ days: p.days })}>{p.label}</button>
+            ))}
+          </div>
           <div class="day-row" role="group" aria-label="Dias da semana">
             {WEEK_ORDER.map((d) => (
               <button type="button" key={d} class="day" aria-pressed={draft.slot.days.includes(d)}
-                onClick={() => patch({ days: draft.slot.days.includes(d) ? draft.slot.days.filter((x) => x !== d) : [...draft.slot.days, d] })}>{DAY_SHORT[d]}</button>
+                onClick={() => patch({ days: toggleDay(draft.slot.days, d) })}>{DAY_SHORT[d]}</button>
             ))}
           </div>
 
