@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { RoutineSite, RoutineSlot } from './models';
-import { activeRules, dropFeature, featureSlotsOf, isBlockedAll, loosensNow, mergeRules, newFeatureSlot, nextBoundary, reshapeFeature, retimeFeature, rulesAnyTime, setBlockAll, quickFeaturesOf, setFeatureOff, setLimit, setQuickFeatures, setSlotOff, protectsNow, validateSite } from './routine';
+import { activeRules, dropFeature, featureSlotsOf, isBlockedAll, loosensNow, mergeRules, newFeatureSlot, nextBoundary, reshapeFeature, retimeFeature, rulesAnyTime, setBlockAll, quickFeaturesOf, quickMode, setFeatureOff, setLimit, setQuickFeatures, setQuickMode, setSlotOff, protectsNow, validateSite } from './routine';
 import { defaultRoutine } from './routine-defaults';
 import { addUsage } from './usage';
 
@@ -404,5 +404,42 @@ describe('bloqueio rápido por partes (quickFeatures)', () => {
     const after = setQuickFeatures(before, 'youtube.com', ['comments'], id);
     expect(loosensNow({ sites: before, enabled: true }, { sites: after, enabled: true }, mon(10))).toBe(true);
     expect(loosensNow({ sites: after, enabled: true }, { sites: before, enabled: true }, mon(10))).toBe(false);
+  });
+});
+
+describe('modo do bloqueio rápido (livre / só partes / tudo)', () => {
+  let n = 0;
+  const id = () => `m${++n}`;
+  it('livre → só partes: já vem com os Shorts no YouTube; sem serviço, "só partes" não existe', () => {
+    let r = setQuickMode([], 'youtube.com', 'parts', id);
+    expect(quickMode(r, 'youtube.com')).toBe('parts');
+    expect(quickFeaturesOf(r, 'youtube.com')).toEqual(['shorts']);
+    expect(quickMode(setQuickMode([], 'reddit.com', 'parts', id), 'reddit.com')).toBe('free');
+    r = setQuickMode([], 'instagram.com', 'parts', id);
+    expect(quickFeaturesOf(r, 'instagram.com')).toEqual(['feed', 'reels', 'explore', 'stories']);
+  });
+  it('tudo vence, mas guarda as partes: voltar a "só partes" as restaura', () => {
+    let r = setQuickFeatures([], 'youtube.com', ['shorts', 'comments'], id);
+    r = setQuickMode(r, 'youtube.com', 'all', id);
+    expect(quickMode(r, 'youtube.com')).toBe('all');
+    r = setQuickMode(r, 'youtube.com', 'parts', id);
+    expect(quickMode(r, 'youtube.com')).toBe('parts');
+    expect(quickFeaturesOf(r, 'youtube.com')).toEqual(['shorts', 'comments']);
+  });
+  it('livre limpa o bloqueio e as partes (e o site vazio sai da lista); mantém faixas e limite', () => {
+    let r = setQuickMode(setQuickMode([], 'youtube.com', 'parts', id), 'youtube.com', 'all', id);
+    expect(setQuickMode(r, 'youtube.com', 'free', id)).toEqual([]);
+    r = [{ id: 'y', domain: 'youtube.com', enabled: true, blockAll: true, quickFeatures: ['shorts'], limitMin: 30, slots: [] }];
+    const freed = setQuickMode(r, 'youtube.com', 'free', id);
+    expect(freed).toHaveLength(1);
+    expect(freed[0]).toMatchObject({ limitMin: 30, blockAll: false });
+    expect('quickFeatures' in freed[0]!).toBe(false);
+    expect(quickMode(freed, 'youtube.com')).toBe('free');
+  });
+  it('tudo num app novo ou desligado o liga', () => {
+    expect(quickMode(setQuickMode([], 'tiktok.com', 'all', id), 'tiktok.com')).toBe('all');
+    const off: RoutineSite[] = [{ id: 'x', domain: 'x.com', enabled: false, slots: [], quickFeatures: ['forYou'] }];
+    expect(quickMode(off, 'x.com')).toBe('free'); // desligado = livre
+    expect(quickMode(setQuickMode(off, 'x.com', 'all', id), 'x.com')).toBe('all');
   });
 });

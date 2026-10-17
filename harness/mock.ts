@@ -28,6 +28,15 @@ const data: Record<string, unknown> = {
       : [],
   historyTotals: params.get('history') ? { sessions: 12, focusedMs: 12 * 3_600_000, completed: 10, abandoned: 2, blockedAttempts: 30 } : undefined,
 };
+if (params.get('quick')) {
+  // Exemplo para o bloqueio rápido: YouTube só com os Shorts, Instagram com Reels e Explorar, TikTok inteiro.
+  const routine = data.routine as { domain: string; quickFeatures?: string[]; blockAll?: boolean; id: string; enabled: boolean; slots: unknown[] }[];
+  for (const site of routine) {
+    if (site.domain === 'youtube.com') site.quickFeatures = ['shorts'];
+    if (site.domain === 'instagram.com') site.quickFeatures = ['reels', 'explore'];
+  }
+  routine.push({ id: 'tt', domain: 'tiktok.com', enabled: true, blockAll: true, slots: [] });
+}
 if (params.get('running')) {
   const env = (data.environments as { id: string }[])[0];
   data.activeSession = { id: 'x', environmentSnapshot: env, startedAt: now - 10 * 60_000, endsAt: now + 15 * 60_000, plannedMs: 25 * 60_000, strictness: 'focus', youtubeAllowlist: [], status: 'active', blockedAttempts: 0 };

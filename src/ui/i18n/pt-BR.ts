@@ -255,9 +255,7 @@ export const newTabUi = {
 
 /** Bloqueio rápido por partes: esconder só o que distrai, sem bloquear o app inteiro. */
 export const quickPartsUi = {
-  title: 'Só esconder partes',
-  sub: 'Em vez de bloquear o app inteiro, esconda só o que distrai. Vale o tempo todo, todos os dias, e o resto do site abre normal.',
-  blockedAbove: 'O app inteiro está bloqueado acima; as partes valem de novo quando você liberá-lo.',
+  modes: { free: 'Livre', parts: 'Só partes', all: 'Bloquear tudo' },
   hints: {
     youtube: 'Os Shorts ficam ocultos de verdade: somem do Início e do menu, e quem abrir um link de Short vê a vela.',
     instagram: 'A pesquisa continua liberada mesmo com o Explorar escondido. Marque "Pesquisa" se quiser escondê-la também.',
@@ -266,5 +264,4 @@ export const quickPartsUi = {
   } as Record<string, string>,
   hidden: (feature: string, site: string) => `${feature} escondido em ${site}.`,
   shown: (feature: string, site: string) => `${feature} liberado em ${site}.`,
-  tilePartial: (n: number) => `${n} ${n === 1 ? 'parte escondida' : 'partes escondidas'}`,
 };

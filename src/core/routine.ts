@@ -119,6 +119,37 @@ export function setQuickFeatures(routine: RoutineSite[], domain: string, feature
   return routine.map((s) => (s.domain === domain ? { ...s, quickFeatures: list, enabled: true } : s));
 }
 
+/** Como o app está no bloqueio rápido: livre, só algumas partes escondidas, ou o app inteiro bloqueado. */
+export type QuickMode = 'free' | 'parts' | 'all';
+
+/** Partes que já vêm marcadas ao escolher "Só partes" num app que ainda não tinha nenhuma (YouTube: só os Shorts). */
+export const QUICK_PARTS_DEFAULT: Record<ServiceKind, string[]> = {
+  youtube: ['shorts'],
+  instagram: ['feed', 'reels', 'explore', 'stories'],
+  x: ['forYou'],
+  linkedin: ['feed'],
+};
+
+export function quickMode(routine: RoutineSite[], domain: string): QuickMode {
+  if (isBlockedAll(routine, domain)) return 'all';
+  return quickFeaturesOf(routine, domain).length > 0 ? 'parts' : 'free';
+}
+
+/**
+ * Troca o modo do app no bloqueio rápido. "Tudo" mantém as partes marcadas guardadas (voltar a "Só partes" as
+ * restaura); "Livre" limpa tudo; "Só partes" só existe para serviços com recursos (YouTube, Instagram, X, LinkedIn).
+ */
+export function setQuickMode(routine: RoutineSite[], domain: string, mode: QuickMode, newId: () => string): RoutineSite[] {
+  if (mode === 'all') return setBlockAll(routine, domain, true, newId);
+  const open = setBlockAll(routine, domain, false, newId);
+  if (mode === 'free') return setQuickFeatures(open, domain, [], newId);
+  const kind = serviceKindFor(domain);
+  if (!kind) return open;
+  const remembered = quickFeaturesOf(routine, domain);
+  const parts = remembered.length > 0 ? remembered : routine.find((s) => s.domain === domain)?.quickFeatures ?? QUICK_PARTS_DEFAULT[kind];
+  return setQuickFeatures(open, domain, parts.length > 0 ? parts : QUICK_PARTS_DEFAULT[kind], newId);
+}
+
 /**
  * Define (ou, com `undefined`, remove) o limite de tempo diário de um app. Site novo entra na rotina sem faixas;
  * definir um limite religa o site; remover o limite de um site que ficou vazio (sem faixas nem bloqueio rápido) o tira da lista.
