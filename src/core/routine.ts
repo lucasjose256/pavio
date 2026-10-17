@@ -11,11 +11,18 @@ import type { UsageData } from './usage';
 type FlatSlot = RoutineSlot & { siteId: string; domain: string };
 
 /** `live` tira as faixas pausadas (`off`) e as de pausa temporária: para o que vale agora. Sem isso, todas (permissões, desenho). */
-const flatten = (routine: RoutineSite[], live?: { now: number; releases: Release[] }): FlatSlot[] =>
+type Live = { now: number; releases: Release[] };
+
+/** Recursos pausados de um site (até religar, ou por um tempo): saem da lista do que é escondido. */
+function offFeaturesNow(site: RoutineSite, live?: Live): Set<string> {
+  const off = new Set(site.offFeatures ?? []);
+  if (live) for (const r of live.releases) if (r.feature !== undefined && r.until > live.now && r.domain === site.domain) off.add(r.feature);
+  return off;
+}
+
+const flatten = (routine: RoutineSite[], live?: Live): FlatSlot[] =>
   routine.filter((s) => s.enabled).flatMap((site) => {
-    // Recursos pausados (até religar ou por um tempo): saem da lista do que a faixa esconde.
-    const off = new Set(site.offFeatures ?? []);
-    if (live) for (const r of live.releases) if (r.feature !== undefined && r.until > live.now && r.domain === site.domain) off.add(r.feature);
+    const off = offFeaturesNow(site, live);
     return site.slots
       .filter((slot) => !live || (!slot.off && !live.releases.some((r) => r.slotId === slot.id && r.until > live.now)))
       .flatMap((slot): FlatSlot[] => {
@@ -49,6 +56,20 @@ function strictestPerDomain(items: { domain: string; spec: RestrictionSpec }[]):
 
 const BLOCKED: RestrictionSpec = { mode: 'blocked' };
 
+/**
+ * Bloqueio rápido por partes: o que cada site esconde SEMPRE (`quickFeatures`), menos os recursos pausados.
+ * Só vale para serviços com recursos (YouTube, Instagram, X, LinkedIn); ids desconhecidos são ignorados.
+ */
+const quickParts = (routine: RoutineSite[], live?: Live) =>
+  routine.filter((s) => s.enabled && !!s.quickFeatures?.length).flatMap((site) => {
+    const kind = serviceOf(site);
+    if (!kind) return [];
+    const known = new Set(FEATURE_DEFS[kind].map((f) => f.id));
+    const off = offFeaturesNow(site, live);
+    const features = site.quickFeatures!.filter((f) => known.has(f) && !off.has(f));
+    return features.length ? [{ domain: site.domain, spec: { mode: 'restricted' as const, restrictedKind: kind, features } }] : [];
+  });
+
 /** Sites com o bloqueio rápido ligado (app inteiro, o tempo todo). */
 const blockedAll = (routine: RoutineSite[]) => routine.filter((s) => s.enabled && s.blockAll).map((s) => ({ domain: s.domain, spec: BLOCKED }));
 
@@ -58,7 +79,7 @@ const blockedAll = (routine: RoutineSite[]) => routine.filter((s) => s.enabled &
  */
 export function activeRules(routine: RoutineSite[], enabled: boolean, now: number, releases: Release[] = []): Rule[] {
   const active = enabled ? occurrencesAround(flatten(routine, { now, releases }), now, 1, 1).filter((o) => o.start <= now && now < o.end) : [];
-  return strictestPerDomain([...active.map((o) => ({ domain: o.slot.domain, spec: spec(o.slot) })), ...blockedAll(routine)]);
+  return strictestPerDomain([...active.map((o) => ({ domain: o.slot.domain, spec: spec(o.slot) })), ...blockedAll(routine), ...quickParts(routine, { now, releases })]);
 }
 
 /** O tratamento mais rigoroso de cada site em QUALQUER faixa, bloqueio rápido ou limite (para pedir as permissões de acesso certas). */
@@ -66,12 +87,37 @@ export function rulesAnyTime(routine: RoutineSite[]): Rule[] {
   // Apps com limite de tempo também entram: ao estourar viram bloqueados, e para isso (e para saber qual aba está em uso)
   // o Pavio precisa do acesso ao site.
   const limited = routine.filter((s) => s.enabled && !!s.limitMin).map((s) => ({ domain: s.domain, spec: BLOCKED }));
-  return strictestPerDomain([...flatten(routine).map((s) => ({ domain: s.domain, spec: spec(s) })), ...blockedAll(routine), ...limited]);
+  return strictestPerDomain([...flatten(routine).map((s) => ({ domain: s.domain, spec: spec(s) })), ...blockedAll(routine), ...quickParts(routine), ...limited]);
 }
 
 /** O app está com o bloqueio rápido ligado? */
 export const isBlockedAll = (routine: RoutineSite[], domain: string): boolean =>
   routine.some((s) => s.domain === domain && s.enabled && !!s.blockAll);
+
+/** Site sem nada configurado (sem faixas, bloqueio rápido, partes nem limite): pode sair da lista. */
+const isEmptySite = (s: RoutineSite): boolean => s.slots.length === 0 && !s.blockAll && !s.limitMin && !s.quickFeatures?.length;
+
+/** Os recursos que o site esconde sempre (bloqueio rápido por partes). */
+export const quickFeaturesOf = (routine: RoutineSite[], domain: string): string[] =>
+  routine.find((s) => s.domain === domain && s.enabled)?.quickFeatures ?? [];
+
+/**
+ * Define quais partes do site ficam escondidas SEMPRE (lista vazia remove). Site novo entra na rotina sem faixas;
+ * marcar uma parte religa o site; ao desmarcar a última, um site que ficou vazio sai da lista.
+ */
+export function setQuickFeatures(routine: RoutineSite[], domain: string, features: string[], newId: () => string): RoutineSite[] {
+  const list = [...new Set(features)];
+  if (list.length === 0) {
+    return routine.flatMap((s) => {
+      if (s.domain !== domain) return [s];
+      const rest: RoutineSite = { ...s };
+      delete rest.quickFeatures;
+      return isEmptySite(rest) ? [] : [rest];
+    });
+  }
+  if (!routine.some((s) => s.domain === domain)) return [...routine, { id: newId(), domain, enabled: true, slots: [], quickFeatures: list }];
+  return routine.map((s) => (s.domain === domain ? { ...s, quickFeatures: list, enabled: true } : s));
+}
 
 /**
  * Define (ou, com `undefined`, remove) o limite de tempo diário de um app. Site novo entra na rotina sem faixas;
@@ -83,7 +129,7 @@ export function setLimit(routine: RoutineSite[], domain: string, limitMin: numbe
       if (s.domain !== domain) return [s];
       const rest: RoutineSite = { ...s };
       delete rest.limitMin;
-      return rest.slots.length === 0 && !rest.blockAll ? [] : [rest];
+      return isEmptySite(rest) ? [] : [rest];
     });
   }
   if (!routine.some((s) => s.domain === domain)) return [...routine, { id: newId(), domain, enabled: true, slots: [], limitMin }];

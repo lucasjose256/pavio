@@ -31,9 +31,10 @@ export const featureLabel: Record<string, Record<string, string>> = {
     stories: 'Stories',
     messages: 'Mensagens',
     posts: 'Perfis e publicações de outras pessoas',
+    search: 'Pesquisa',
   },
-  x: { forYou: 'Aba "Para você"', explore: 'Explorar e tendências' },
-  linkedin: { feed: 'Feed', videos: 'Vídeos', news: 'LinkedIn Notícias', messages: 'Mensagens' },
+  x: { forYou: 'Aba "Para você"', explore: 'Explorar e tendências', notifications: 'Notificações', messages: 'Mensagens' },
+  linkedin: { feed: 'Feed', videos: 'Vídeos', news: 'LinkedIn Notícias', messages: 'Mensagens', jobs: 'Vagas', notifications: 'Notificações', network: 'Minha rede' },
 };
 
 export const featureHelp = 'Marque o que fica escondido durante a sessão. O que não estiver marcado continua liberado.';
@@ -168,6 +169,10 @@ export const blockedWhy: Record<string, string> = {
   messages: 'As mensagens ficam de fora durante a sessão.',
   posts: 'Perfis e publicações ficam de fora durante a sessão.',
   videos: 'Os vídeos ficam de fora durante a sessão.',
+  search: 'A pesquisa fica de fora durante a sessão.',
+  notifications: 'As notificações ficam de fora durante a sessão.',
+  jobs: 'As vagas ficam de fora durante a sessão.',
+  network: 'A rede de contatos fica de fora durante a sessão.',
 };
 
 export const youtubeUi = {
@@ -246,4 +251,20 @@ export const newTabUi = {
   optionHint: 'Ctrl+T e links que abrem em nova aba ficam fechados enquanto a vela vale. Na pausa do Pomodoro volta ao normal. Janelas de login e as páginas do Pavio não são afetadas.',
   popupLabel: 'Fechar abas novas durante esta vela',
   settingNote: 'Valor inicial ao acender a vela; dá para mudar em "Mais opções" do popup.',
+};
+
+/** Bloqueio rápido por partes: esconder só o que distrai, sem bloquear o app inteiro. */
+export const quickPartsUi = {
+  title: 'Só esconder partes',
+  sub: 'Em vez de bloquear o app inteiro, esconda só o que distrai. Vale o tempo todo, todos os dias, e o resto do site abre normal.',
+  blockedAbove: 'O app inteiro está bloqueado acima; as partes valem de novo quando você liberá-lo.',
+  hints: {
+    youtube: 'Os Shorts ficam ocultos de verdade: somem do Início e do menu, e quem abrir um link de Short vê a vela.',
+    instagram: 'A pesquisa continua liberada mesmo com o Explorar escondido. Marque "Pesquisa" se quiser escondê-la também.',
+    x: 'Esconde só o que você marcar; o resto do X abre normal.',
+    linkedin: 'Esconde só o que você marcar; o resto do LinkedIn abre normal.',
+  } as Record<string, string>,
+  hidden: (feature: string, site: string) => `${feature} escondido em ${site}.`,
+  shown: (feature: string, site: string) => `${feature} liberado em ${site}.`,
+  tilePartial: (n: number) => `${n} ${n === 1 ? 'parte escondida' : 'partes escondidas'}`,
 };

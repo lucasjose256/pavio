@@ -64,3 +64,33 @@ describe('linkedinDecision', () => {
     expect(linkedinDecision('/feed/', f('videos')).action).toBe('allow');
   });
 });
+
+describe('pesquisa do Instagram (parte própria)', () => {
+  const hide = (...f: string[]) => new Set(f);
+  it('esconder o Explorar não derruba a pesquisa', () => {
+    expect(instagramDecision('/explore', hide('explore'))).toEqual({ action: 'block', reason: 'explore' });
+    expect(instagramDecision('/explore/search', hide('explore'))).toEqual({ action: 'allow' });
+    expect(instagramDecision('/explore/search/keyword/', hide('feed', 'reels', 'explore', 'stories'))).toEqual({ action: 'allow' });
+    expect(instagramDecision('/explore/tags/foco', hide('explore'))).toEqual({ action: 'block', reason: 'explore' });
+  });
+  it('marcando "Pesquisa" (ou no modo rígido), a pesquisa também fica de fora', () => {
+    expect(instagramDecision('/explore/search', hide('search'))).toEqual({ action: 'block', reason: 'search' });
+    expect(instagramDecision('/explore/search', hide('posts'))).toEqual({ action: 'block', reason: 'search' });
+    expect(instagramDecision('/explore', hide('search'))).toEqual({ action: 'allow' }); // só a pesquisa
+  });
+});
+
+describe('recursos novos de X e LinkedIn (por endereço)', () => {
+  it('X: notificações e mensagens', () => {
+    expect(xDecision('/notifications', new Set(['notifications']))).toEqual({ action: 'block', reason: 'notifications' });
+    expect(xDecision('/notifications', new Set(['explore']))).toEqual({ action: 'allow' });
+    expect(xDecision('/messages/123', new Set(['messages']))).toEqual({ action: 'block', reason: 'messages' });
+    expect(xDecision('/home', new Set(['messages', 'notifications']))).toEqual({ action: 'allow' });
+  });
+  it('LinkedIn: vagas, notificações e minha rede', () => {
+    expect(linkedinDecision('/jobs/view/1', new Set(['jobs']))).toEqual({ action: 'block', reason: 'jobs' });
+    expect(linkedinDecision('/notifications/', new Set(['notifications']))).toEqual({ action: 'block', reason: 'notifications' });
+    expect(linkedinDecision('/mynetwork/', new Set(['network']))).toEqual({ action: 'block', reason: 'network' });
+    expect(linkedinDecision('/jobs', new Set(['feed']))).toEqual({ action: 'allow' });
+  });
+});

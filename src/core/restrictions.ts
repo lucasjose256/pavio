@@ -21,16 +21,22 @@ export const FEATURE_DEFS: Record<ServiceKind, { id: string; hiddenByDefault: bo
     { id: 'stories', hiddenByDefault: true },
     { id: 'messages', hiddenByDefault: false }, // mensagens (DMs): liberadas por padrão
     { id: 'posts', hiddenByDefault: false }, // perfis e publicações de outras pessoas
+    { id: 'search', hiddenByDefault: false }, // a página de pesquisa (/explore/search): liberada a menos que se esconda
   ],
   x: [
     { id: 'forYou', hiddenByDefault: true }, // aba "Para você"
     { id: 'explore', hiddenByDefault: true }, // página Explorar / tendências
+    { id: 'notifications', hiddenByDefault: false },
+    { id: 'messages', hiddenByDefault: false },
   ],
   linkedin: [
     { id: 'feed', hiddenByDefault: true },
     { id: 'videos', hiddenByDefault: true },
     { id: 'news', hiddenByDefault: true }, // "LinkedIn Notícias"
     { id: 'messages', hiddenByDefault: false },
+    { id: 'jobs', hiddenByDefault: false }, // Vagas
+    { id: 'notifications', hiddenByDefault: false },
+    { id: 'network', hiddenByDefault: false }, // Minha rede
   ],
 };
 

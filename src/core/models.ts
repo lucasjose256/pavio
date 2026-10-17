@@ -185,6 +185,11 @@ export interface RoutineSite {
   /** Recursos pausados até a pessoa religar (em todas as faixas do site); os outros seguem escondidos. */
   offFeatures?: string[];
   /**
+   * Bloqueio rápido POR PARTES (YouTube, Instagram, X, LinkedIn): esconde sempre esses recursos (ex.: `shorts`), todos os
+   * dias, o dia todo, sem faixa. Vale mesmo com os horários desligados; o bloqueio do app inteiro (`blockAll`) vence.
+   */
+  quickFeatures?: string[];
+  /**
    * Limite de tempo: minutos por dia que o app pode ser usado (aba ativa e em foco). Estourou, fica bloqueado até a
    * meia-noite. Ausente = sem limite. Vale mesmo com os horários desligados (controle direto, como o bloqueio rápido).
    */

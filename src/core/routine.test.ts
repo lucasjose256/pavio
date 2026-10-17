@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { RoutineSite, RoutineSlot } from './models';
-import { activeRules, dropFeature, featureSlotsOf, isBlockedAll, loosensNow, mergeRules, newFeatureSlot, nextBoundary, reshapeFeature, retimeFeature, rulesAnyTime, setBlockAll, setFeatureOff, setLimit, setSlotOff, protectsNow, validateSite } from './routine';
+import { activeRules, dropFeature, featureSlotsOf, isBlockedAll, loosensNow, mergeRules, newFeatureSlot, nextBoundary, reshapeFeature, retimeFeature, rulesAnyTime, setBlockAll, quickFeaturesOf, setFeatureOff, setLimit, setQuickFeatures, setSlotOff, protectsNow, validateSite } from './routine';
 import { defaultRoutine } from './routine-defaults';
 import { addUsage } from './usage';
 
@@ -351,5 +351,58 @@ describe('pausar só um recurso (offFeatures e pausa por recurso)', () => {
     expect(protectsNow(only, true, mon(10), {}, [], { domain: 'youtube.com', feature: 'shorts' })).toBe(true);
     expect(protectsNow(only, true, mon(19), {}, [], { domain: 'youtube.com', feature: 'shorts' })).toBe(false);
     expect(protectsNow(setFeatureOff(only, 'y', 'shorts', true), true, mon(10), {}, [], { domain: 'youtube.com', feature: 'shorts' })).toBe(false);
+  });
+});
+
+describe('bloqueio rápido por partes (quickFeatures)', () => {
+  const mon = (h: number) => new Date(2026, 9, 5, h).getTime();
+  const sun = (h: number) => new Date(2026, 9, 4, h).getTime();
+  let n = 0;
+  const id = () => `q${++n}`;
+  const yt = (over: Partial<RoutineSite> = {}): RoutineSite => ({ id: 'y', domain: 'youtube.com', enabled: true, slots: [], ...over });
+  const hidden = (r: ReturnType<typeof activeRules>, domain = 'youtube.com') => r.find((x) => x.domain === domain);
+
+  it('esconde as partes sempre: qualquer dia e hora, e mesmo com os horários desligados', () => {
+    const routine = [yt({ quickFeatures: ['shorts'] })];
+    for (const [enabled, when] of [[true, mon(10)], [true, sun(23)], [false, mon(3)]] as const) {
+      expect(hidden(activeRules(routine, enabled, when))).toMatchObject({ mode: 'restricted', restrictedKind: 'youtube', features: ['shorts'] });
+    }
+  });
+  it('soma com as faixas do site (une os recursos) e o bloqueio total vence', () => {
+    const slot: RoutineSlot = { id: 'a', days: [1], startMin: 540, endMin: 1080, mode: 'restricted', restrictedKind: 'youtube', features: ['comments'] };
+    expect(hidden(activeRules([yt({ quickFeatures: ['shorts'], slots: [slot] })], true, mon(10)))?.features?.sort()).toEqual(['comments', 'shorts']);
+    expect(hidden(activeRules([yt({ quickFeatures: ['shorts'], blockAll: true })], true, mon(10)))?.mode).toBe('blocked');
+  });
+  it('pausar um recurso (ou o site) tira só ele; site desligado não esconde nada', () => {
+    const routine = [yt({ quickFeatures: ['shorts', 'comments'] })];
+    expect(hidden(activeRules(setFeatureOff(routine, 'y', 'shorts', true), true, mon(10)))?.features).toEqual(['comments']);
+    const paused = [{ domain: 'youtube.com', feature: 'comments', until: mon(11) }];
+    expect(hidden(activeRules(routine, true, mon(10), paused))?.features).toEqual(['shorts']);
+    expect(activeRules([yt({ enabled: false, quickFeatures: ['shorts'] })], true, mon(10))).toEqual([]);
+  });
+  it('site sem recursos (reddit) e ids desconhecidos são ignorados', () => {
+    expect(activeRules([{ id: 'r', domain: 'reddit.com', enabled: true, slots: [], quickFeatures: ['shorts'] }], true, mon(10))).toEqual([]);
+    expect(activeRules([yt({ quickFeatures: ['naoexiste'] })], true, mon(10))).toEqual([]);
+  });
+  it('setQuickFeatures cria o site, religa, e some quando fica vazio', () => {
+    let r = setQuickFeatures([], 'youtube.com', ['shorts', 'shorts'], id);
+    expect(r).toEqual([{ id: 'q1', domain: 'youtube.com', enabled: true, slots: [], quickFeatures: ['shorts'] }]);
+    r = setQuickFeatures([{ ...r[0]!, enabled: false }], 'youtube.com', ['shorts', 'home'], id);
+    expect(r[0]).toMatchObject({ enabled: true, quickFeatures: ['shorts', 'home'] });
+    expect(setQuickFeatures(r, 'youtube.com', [], id)).toEqual([]);
+    const withSlot: RoutineSite[] = [yt({ quickFeatures: ['shorts'], slots: [{ id: 'a', days: [1], startMin: 0, endMin: 60, mode: 'blocked' }] })];
+    expect(setQuickFeatures(withSlot, 'youtube.com', [], id)).toHaveLength(1); // ainda tem faixa
+    expect(quickFeaturesOf(r, 'youtube.com')).toEqual(['shorts', 'home']);
+  });
+  it('tirar o limite não apaga um site que ainda tem partes escondidas', () => {
+    const r = setLimit([yt({ quickFeatures: ['shorts'], limitMin: 20 })], 'youtube.com', undefined, id);
+    expect(r).toHaveLength(1);
+    expect(r[0]!.quickFeatures).toEqual(['shorts']);
+  });
+  it('loosensNow: desmarcar uma parte que está escondendo agora é afrouxar', () => {
+    const before = [yt({ quickFeatures: ['shorts', 'comments'] })];
+    const after = setQuickFeatures(before, 'youtube.com', ['comments'], id);
+    expect(loosensNow({ sites: before, enabled: true }, { sites: after, enabled: true }, mon(10))).toBe(true);
+    expect(loosensNow({ sites: after, enabled: true }, { sites: before, enabled: true }, mon(10))).toBe(false);
   });
 });

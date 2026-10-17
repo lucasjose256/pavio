@@ -453,3 +453,16 @@ input[type="range"] { accent-color: var(--accent); }
 /* ver mais (Histórico) */
 .more-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-top: 12px; }
 .more-row .hint { margin: 0; flex: 1 1 260px; }
+
+/* bloqueio rápido por partes */
+.parts-list { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; }
+.parts-row { display: grid; grid-template-columns: 170px 1fr; gap: 6px 14px; align-items: start; padding: 14px 0; border-top: 1px solid var(--border); }
+.parts-row:first-child { border-top: 0; }
+.parts-site { font-weight: 600; white-space: nowrap; padding-top: 6px; }
+.parts-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.part-chip { font-size: 13px; padding: 6px 14px; color: var(--text); border-style: solid; }
+.part-chip[aria-pressed="true"] { background: var(--mode-restricted); color: #3b2300; border-color: transparent; font-weight: 650; }
+.part-chip:disabled { opacity: .45; cursor: not-allowed; }
+.parts-hint { grid-column: 2; margin: 0; }
+.parts-row.whole .parts-hint { color: var(--accent-text); }
+@media (max-width: 640px) { .parts-row { grid-template-columns: 1fr; } .parts-hint { grid-column: 1; } }

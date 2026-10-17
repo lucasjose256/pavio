@@ -26,6 +26,8 @@ export function instagramDecision(pathname: string, features: Features): SiteDec
   }
   if (under(path, '/direct')) return features.has('messages') ? { action: 'block', reason: 'messages' } : { action: 'allow' };
   if ((under(path, '/reels') || under(path, '/reel')) && features.has('reels')) return { action: 'block', reason: 'reels' };
+  // A pesquisa é parte própria: esconder o Explorar (a grade) não derruba a pesquisa. `posts` (modo rígido) bloqueia tudo.
+  if (under(path, '/explore/search')) return features.has('search') || features.has('posts') ? { action: 'block', reason: 'search' } : { action: 'allow' };
   if (under(path, '/explore') && features.has('explore')) return { action: 'block', reason: 'explore' };
   if (under(path, '/stories') && features.has('stories')) return { action: 'block', reason: 'stories' };
   if (features.has('posts')) return { action: 'block', reason: 'posts' }; // perfis, /p/…, etc.
@@ -36,6 +38,8 @@ export function instagramDecision(pathname: string, features: Features): SiteDec
 export function xDecision(pathname: string, features: Features): SiteDecision {
   const path = norm(pathname);
   if (features.has('explore') && (under(path, '/explore') || under(path, '/i/trends'))) return { action: 'block', reason: 'explore' };
+  if (features.has('notifications') && under(path, '/notifications')) return { action: 'block', reason: 'notifications' };
+  if (features.has('messages') && under(path, '/messages')) return { action: 'block', reason: 'messages' };
   return { action: 'allow' };
 }
 
@@ -50,6 +54,9 @@ export function linkedinDecision(pathname: string, features: Features): SiteDeci
   }
   if (under(path, '/video') && features.has('videos')) return { action: 'block', reason: 'videos' };
   if (under(path, '/messaging') && features.has('messages')) return { action: 'block', reason: 'messages' };
+  if (under(path, '/jobs') && features.has('jobs')) return { action: 'block', reason: 'jobs' };
+  if (under(path, '/notifications') && features.has('notifications')) return { action: 'block', reason: 'notifications' };
+  if (under(path, '/mynetwork') && features.has('network')) return { action: 'block', reason: 'network' };
   return { action: 'allow' };
 }
 

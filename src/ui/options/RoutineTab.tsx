@@ -9,13 +9,13 @@ import { PauseModal, type PauseAnswer } from './PauseModal';
 import { frictionForRelease } from '../../core/friction';
 import { FrictionGate } from '../shared/FrictionGate';
 import { randomId } from '../../core/ports';
-import { activeRules, dropFeature, featureSlotsOf, isBlockedAll, loosensNow, newFeatureSlot, nextBoundary, reshapeFeature, retimeFeature, protectsNow, rulesAnyTime, serviceOf, setBlockAll, setFeatureOff, setLimit, setSlotOff, validateSlot } from '../../core/routine';
+import { activeRules, dropFeature, featureSlotsOf, isBlockedAll, loosensNow, newFeatureSlot, nextBoundary, reshapeFeature, retimeFeature, protectsNow, quickFeaturesOf, rulesAnyTime, serviceOf, setBlockAll, setFeatureOff, setLimit, setQuickFeatures, setSlotOff, validateSlot } from '../../core/routine';
 import { isValidLimit, limitStatuses, MAX_LIMIT_MIN, type UsageData } from '../../core/usage';
 import { ROUTINE_SUGGESTIONS, SLOT_PRESETS, defaultRoutine } from '../../core/routine-defaults';
-import { FEATURE_DEFS, featuresOf } from '../../core/restrictions';
+import { FEATURE_DEFS, featuresOf, serviceKindFor } from '../../core/restrictions';
 import { MINUTES_PER_DAY, SNAP_MIN, formatMinutes, gapsBetween, layoutLanes, moveSlot, parseTime, resizeSlot, segmentsForDay, slotDurationMin, snapMinute, suggestFreeTime } from '../../core/timeslots';
 import { ensureHostAccess } from '../../platform/chrome/permissions';
-import { featureLabel, pauseUi } from '../i18n/pt-BR';
+import { featureLabel, pauseUi, quickPartsUi } from '../i18n/pt-BR';
 import { DAY_SHORT, WEEK_ORDER, formatDays, formatRange, formatWhen } from '../shared/format';
 import { SiteIcon } from '../shared/SiteIcon';
 import { RestrictionPicker } from './RestrictionPicker';
@@ -36,6 +36,9 @@ interface Draft {
 }
 
 const WEEKDAYS = [1, 2, 3, 4, 5];
+/** Serviços com recursos que dá para esconder, e o domínio usado quando o site ainda não está na rotina. */
+const PART_SERVICES = ['youtube', 'instagram', 'x', 'linkedin'] as const;
+const DEFAULT_DOMAIN: Record<(typeof PART_SERVICES)[number], string> = { youtube: 'youtube.com', instagram: 'instagram.com', x: 'x.com', linkedin: 'linkedin.com' };
 
 /** Com os horários desligados só o bloqueio rápido vale: as faixas não pedem permissão. */
 const effectiveSites = (sites: RoutineSite[], enabled: boolean): RoutineSite[] => (enabled ? sites : sites.map((s) => ({ ...s, slots: [] })));
@@ -336,6 +339,8 @@ export function RoutineTab({ active, view }: { active: boolean; view: RoutineVie
   }
 
   // ---- bloqueio rápido: o app inteiro, sempre ----
+  /** Quantas partes cada site esconde no bloqueio rápido por partes. */
+  const partsCount = new Map(sites.filter((x) => x.enabled && x.quickFeatures?.length).map((x) => [x.domain, x.quickFeatures!.length]));
   const quickDomains = [...new Set([...ROUTINE_SUGGESTIONS, ...sites.map((x) => x.domain)])];
   const quickBlocked = quickDomains.filter((d) => isBlockedAll(sites, d));
   const toggleQuick = (domain: string) => {
@@ -415,9 +420,13 @@ export function RoutineTab({ active, view }: { active: boolean; view: RoutineVie
   const draftSlot = draftSite?.slots.find((sl) => sl.id === draft?.slot.id);
   const allDay = !!draft && draft.slot.startMin === 0 && draft.slot.endMin === MINUTES_PER_DAY;
   const directNow = sites.filter((x) => x.enabled && x.blockAll).map((x) => x.domain);
-  const byHour = activeNow.map((r) => r.domain).filter((d) => !directNow.includes(d));
+  // O que vale pelos horários (sem contar as partes escondidas sempre, que têm a própria frase).
+  const slotRulesNow = activeRules(sites.map((x) => ({ ...x, quickFeatures: undefined })), enabled, now);
+  const byHour = slotRulesNow.map((r) => r.domain).filter((d) => !directNow.includes(d));
+  const alwaysParts = sites.filter((x) => x.enabled && !x.blockAll && x.quickFeatures?.length).map((x) => x.domain);
   const parts = [
     directNow.length ? `bloqueados por inteiro: ${directNow.join(', ')}` : '',
+    alwaysParts.length ? `partes escondidas sempre: ${alwaysParts.join(', ')}` : '',
     byHour.length ? `pelos horários: ${byHour.join(', ')}${boundary ? ` (muda ${formatWhen(boundary, now)})` : ''}` : '',
   ].filter(Boolean);
   const status = parts.length
@@ -548,7 +557,7 @@ export function RoutineTab({ active, view }: { active: boolean; view: RoutineVie
             return (
               <button key={d} class={`tile ${on ? 'on' : ''}`} aria-pressed={on} onClick={() => toggleQuick(d)} title={on ? `Liberar ${d}` : `Bloquear ${d} por inteiro`}>
                 <span class="tile-name"><SiteIcon domain={d} /> {d}</span>
-                <strong>{on ? '🔒 Bloqueado' : 'Bloquear'}</strong>
+                <strong>{on ? '🔒 Bloqueado' : partsCount.get(d) ? quickPartsUi.tilePartial(partsCount.get(d)!) : 'Bloquear'}</strong>
               </button>
             );
           })}
@@ -558,6 +567,39 @@ export function RoutineTab({ active, view }: { active: boolean; view: RoutineVie
           <button class="btn" type="submit">Bloquear</button>
         </form>
       </section>
+      )}
+
+      {view === 'quick' && (
+        <section class="card quick-parts" aria-label={quickPartsUi.title}>
+          <h2 class="section-title">{quickPartsUi.title}</h2>
+          <p class="section-sub">{quickPartsUi.sub}</p>
+          <ul class="parts-list">
+            {PART_SERVICES.map((kind) => {
+              const domain = sites.find((s) => serviceKindFor(s.domain) === kind)?.domain ?? DEFAULT_DOMAIN[kind];
+              const current = quickFeaturesOf(sites, domain);
+              const whole = isBlockedAll(sites, domain);
+              return (
+                <li key={kind} class={`parts-row ${whole ? 'whole' : ''}`}>
+                  <span class="parts-site"><SiteIcon domain={domain} /> {domain}</span>
+                  <div class="parts-chips" role="group" aria-label={`Partes de ${domain}`}>
+                    {FEATURE_DEFS[kind].map((f) => {
+                      const label = featureLabel[kind]?.[f.id] ?? f.id;
+                      const on = current.includes(f.id);
+                      return (
+                        <button key={f.id} type="button" class="chip part-chip" aria-pressed={on} disabled={whole}
+                          onClick={() => void commit(setQuickFeatures(sites, domain, on ? current.filter((x) => x !== f.id) : [...current, f.id], randomId), enabled,
+                            (on ? quickPartsUi.shown : quickPartsUi.hidden)(label, domain))}>
+                          {on ? '✓ ' : ''}{label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p class="hint parts-hint">{whole ? quickPartsUi.blockedAbove : quickPartsUi.hints[kind]}</p>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
       )}
 
       {view === 'limits' && (
