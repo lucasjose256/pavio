@@ -15,6 +15,8 @@ import type { UsageData } from './usage';
 export interface PolicyInput {
   routine: RoutineSite[];
   routineEnabled: boolean;
+  /** Horários pausados até este instante (as faixas não valem; bloqueio rápido, partes e limite seguem). */
+  routinePausedUntil?: number;
   session: Pick<Session, 'status' | 'environmentSnapshot' | 'youtubeAllowlist' | 'pomodoro' | 'endsAt'> | undefined;
   now: number;
   /** Tempo de uso de hoje (limites de tempo dos apps). */
@@ -46,7 +48,8 @@ export function computePolicy(input: PolicyInput): Policy {
  * A pausa do Pomodoro não entra na conta (o horário mostrado é o do fim da vela).
  */
 function endOfRestriction(input: PolicyInput, domain: string, anyRule: boolean): number | undefined {
-  const { routine, routineEnabled, session, usage = {} } = input;
+  const { routine, session, usage = {} } = input;
+  const routineEnabled = input.routineEnabled;
   const releases = activeReleases(input.releases, input.now);
   const limitActive = limitRules(routine, usage, input.now).length > 0;
   const restricted = (policy: Policy) => {
@@ -57,6 +60,7 @@ function endOfRestriction(input: PolicyInput, domain: string, anyRule: boolean):
   for (let step = 0; step < 60; step++) {
     const candidates = [
       nextBoundary(routine, routineEnabled, t, releases),
+      input.routinePausedUntil,
       session?.status === 'active' ? session.endsAt : undefined,
       limitActive ? nextMidnight(t) : undefined,
       ...releases.map((r) => r.until),
@@ -69,6 +73,11 @@ function endOfRestriction(input: PolicyInput, domain: string, anyRule: boolean):
   return undefined;
 }
 
+/** Os horários (faixas) valem agora? Ligados e fora de uma pausa temporária. */
+export function schedulesOn(input: Pick<PolicyInput, 'routineEnabled' | 'routinePausedUntil'>, now: number): boolean {
+  return input.routineEnabled && !(input.routinePausedUntil !== undefined && now < input.routinePausedUntil);
+}
+
 /** Quando a tela de bloqueio pode dizer "volta a liberar": o fim da restrição DESTE site (ou recurso), se houver. */
 export function returnTimeFor(policy: Pick<Policy, 'rules' | 'unblockAt' | 'freeAt'> | undefined, site: string | null, cameFromFeature: boolean): number | undefined {
   if (!policy || !site) return undefined;
@@ -77,7 +86,9 @@ export function returnTimeFor(policy: Pick<Policy, 'rules' | 'unblockAt' | 'free
 }
 
 function policyAt(input: PolicyInput): Policy {
-  const { routine, routineEnabled, session, now, usage = {} } = input;
+  const { routine, session, now, usage = {} } = input;
+  // Pausados por um tempo, os horários contam como desligados até a pausa vencer.
+  const routineEnabled = schedulesOn(input, now);
   const releases = activeReleases(input.releases, now);
   const timer = session?.status === 'active' ? session : undefined;
   const timerEnforcing = !!timer && enforcing(timer);
@@ -94,6 +105,7 @@ function policyAt(input: PolicyInput): Policy {
 
   const changes = [
     nextBoundary(routine, routineEnabled, now, releases),
+    input.routinePausedUntil, // fim da pausa dos horários
     timer?.endsAt,
     timer?.pomodoro?.phaseEndsAt,
     limited.length ? nextMidnight(now) : undefined, // o limite zera à meia-noite

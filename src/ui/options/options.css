@@ -473,3 +473,5 @@ input[type="range"] { accent-color: var(--accent); }
 .part-chip[aria-pressed="true"] { background: var(--mode-restricted); color: #3b2300; border-color: transparent; font-weight: 650; }
 .parts-hint { margin: 8px 0 0; }
 @media (max-width: 640px) { .qa-parts { padding-left: 0; } .qa-main { align-items: flex-start; } }
+
+.master-note { font-size: 12px; color: var(--accent-text); font-weight: 600; }

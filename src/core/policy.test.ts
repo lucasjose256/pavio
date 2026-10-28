@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createBuiltinEnvironment } from './environments';
 import type { RoutineSite, Session } from './models';
-import { blockStillApplies, computePolicy, returnTimeFor } from './policy';
+import { blockStillApplies, computePolicy, returnTimeFor, schedulesOn } from './policy';
 import { pomodoroState } from './pomodoro';
 import { addUsage } from './usage';
 
@@ -259,5 +259,28 @@ describe('pausa de um recurso na política', () => {
     expect(p.nextChange).toBe(until);
     const back = computePolicy({ routine: yt, routineEnabled: true, session: undefined, now: until, releases: [{ domain: 'youtube.com', feature: 'shorts', until }] });
     expect(back.rules.find((r) => r.domain === 'youtube.com')?.features).toEqual(['shorts', 'related', 'comments']);
+  });
+});
+
+describe('horários pausados por um tempo (routinePausedUntil)', () => {
+  it('durante a pausa as faixas não valem; no fim voltam sozinhas (e o fim entra como virada)', () => {
+    const until = mon(10, 30);
+    const paused = computePolicy({ routine, routineEnabled: true, routinePausedUntil: until, session: undefined, now: mon(10) });
+    expect(paused.rules).toEqual([]);
+    expect(paused.nextChange).toBe(until);
+    const back = computePolicy({ routine, routineEnabled: true, routinePausedUntil: until, session: undefined, now: until });
+    expect(back.rules.map((r) => r.domain)).toEqual(['instagram.com']);
+  });
+  it('o bloqueio rápido segue valendo durante a pausa dos horários', () => {
+    const quick: RoutineSite[] = [...routine, { id: 'r', domain: 'reddit.com', enabled: true, slots: [], blockAll: true }];
+    const p = computePolicy({ routine: quick, routineEnabled: true, routinePausedUntil: mon(11), session: undefined, now: mon(10) });
+    expect(p.rules.map((r) => r.domain)).toEqual(['reddit.com']);
+  });
+  it('a tela de bloqueio sabe que volta a liberar só quando a faixa acaba (a pausa não conta para quem está bloqueado)', () => {
+    const p = computePolicy({ routine, routineEnabled: true, routinePausedUntil: mon(9, 30), session: undefined, now: mon(9) });
+    expect(p.rules).toEqual([]); // pausado agora
+    expect(schedulesOn({ routineEnabled: true, routinePausedUntil: mon(9, 30) }, mon(9))).toBe(false);
+    expect(schedulesOn({ routineEnabled: true, routinePausedUntil: mon(9, 30) }, mon(9, 30))).toBe(true);
+    expect(schedulesOn({ routineEnabled: false }, mon(9))).toBe(false);
   });
 });

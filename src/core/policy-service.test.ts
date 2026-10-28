@@ -166,3 +166,14 @@ describe('RoutineRepository', () => {
     expect(await routines.list()).toHaveLength(1);
   });
 });
+
+describe('pausa dos horários no serviço', () => {
+  it('agenda o alarme no fim da pausa e volta a valer depois', async () => {
+    await settings.update({ routineEnabled: true, routinePausedUntil: mon(10, 30) });
+    now = mon(10);
+    expect((await service.sync()).rules).toEqual([]);
+    expect(alarms.get(ROUTINE_ALARM)).toBe(mon(10, 30));
+    now = mon(10, 30);
+    expect((await service.sync()).rules.map((r) => r.domain).sort()).toEqual(['instagram.com', 'reddit.com']);
+  });
+});

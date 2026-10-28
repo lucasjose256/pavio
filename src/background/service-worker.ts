@@ -107,7 +107,8 @@ chrome.tabs.onCreated.addListener((tab) => {
 // Vela (iniciada/encerrada), rotina e o interruptor da rotina só gravam no storage; a reação é aqui.
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'local') return;
-  const flag = (v: unknown) => (v as Partial<Settings> | undefined)?.routineEnabled;
+  const flag = (v: unknown) => { const s = v as Partial<Settings> | undefined; return `${s?.routineEnabled}|${s?.routinePausedUntil}`; };
+  // Ligar/desligar os horários ou pausá-los por um tempo muda o que vale agora.
   const routineToggled = !!changes.settings && flag(changes.settings.oldValue) !== flag(changes.settings.newValue);
   const iconFlag = (v: unknown) => (v as Partial<Settings> | undefined)?.iconOnCandle;
   const iconToggled = !!changes.settings && iconFlag(changes.settings.oldValue) !== iconFlag(changes.settings.newValue);

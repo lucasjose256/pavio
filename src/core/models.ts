@@ -79,6 +79,8 @@ export interface Settings {
   theme: ThemeName;
   /** Faixas de horário da rotina ligadas? (Vem ligado; a rotina nasce vazia. O bloqueio rápido não depende disto.) */
   routineEnabled: boolean;
+  /** Horários pausados por um tempo (15/30 min, fim do dia): até este instante as faixas não valem e depois voltam sozinhas. */
+  routinePausedUntil?: number;
   /**
    * Fricção para liberar algo que protege agora (liberar por um tempo, afrouxar a rotina) e o modo da vela que já vem
    * escolhido no popup. `light` = só confirmar (padrão); `focus` = "Firme": digitar a frase. Sem espera em nenhum caso.

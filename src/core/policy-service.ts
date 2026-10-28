@@ -2,7 +2,7 @@ import { intentDomains } from './blocking';
 import type { IntentService } from './intent-service';
 import type { Policy } from './models';
 import type { Clock, SchedulerPort } from './ports';
-import { computePolicy } from './policy';
+import { computePolicy, schedulesOn } from './policy';
 import type { PolicyRepository, ReleaseRepository, RoutineRepository, SettingsRepository, UsageRepository } from './repositories';
 import { activeReleases } from './release';
 import { nextBoundary } from './routine';
@@ -38,12 +38,13 @@ export class PolicyService {
     // Liberações vencidas saem da lista (só regrava se mudou, para não disparar outro sync à toa).
     const releases = activeReleases(allReleases, now);
     if (releases.length !== allReleases.length) await this.d.releases.save(releases);
-    const policy = computePolicy({ routine, routineEnabled: settings.routineEnabled, session, now, usage, releases });
+    const policy = computePolicy({ routine, routineEnabled: settings.routineEnabled, routinePausedUntil: settings.routinePausedUntil, session, now, usage, releases });
+    const pauseEnd = settings.routinePausedUntil !== undefined && settings.routinePausedUntil > now ? settings.routinePausedUntil : undefined;
     await this.d.policies.set(policy);
     await this.d.intentService.prune(intentDomains(policy.rules));
 
     // Próxima virada: fim/início de faixa, a meia-noite (quando o limite de hoje zera) ou o fim de uma liberação.
-    const candidates = [nextBoundary(routine, settings.routineEnabled, now, releases), policy.limitReached?.length ? nextMidnight(now) : undefined, ...releases.map((r) => r.until)]
+    const candidates = [nextBoundary(routine, schedulesOn(settings, now), now, releases), pauseEnd, policy.limitReached?.length ? nextMidnight(now) : undefined, ...releases.map((r) => r.until)]
       .filter((t): t is number => typeof t === 'number');
     const next = candidates.length ? Math.min(...candidates) : undefined;
     if (next) await this.d.scheduler.schedule(ROUTINE_ALARM, next);

@@ -79,6 +79,9 @@ export type RoutineView = 'schedule' | 'quick' | 'limits';
 export function RoutineTab({ active, view }: { active: boolean; view: RoutineView }) {
   const [sites, setSites] = useState<RoutineSite[]>([]);
   const [enabled, setEnabled] = useState(true);
+  /** Horários pausados por um tempo (fim da pausa), ou undefined. */
+  const [schedPausedUntil, setSchedPausedUntil] = useState<number>();
+  const [pausingSchedules, setPausingSchedules] = useState(false);
   const [day, setDay] = useState(new Date().getDay());
   const [draft, setDraft] = useState<Draft>();
   const [notice, setNotice] = useState<Notice>();
@@ -116,6 +119,7 @@ export function RoutineTab({ active, view }: { active: boolean; view: RoutineVie
     setUsage(used);
     setFriction(settings.friction);
     setEnabled(settings.routineEnabled);
+    setSchedPausedUntil(settings.routinePausedUntil);
     setMissing(await missingAccess(accessDomains({ rules: rulesAnyTime(effectiveSites(list, settings.routineEnabled)) })));
   }
 
@@ -132,8 +136,11 @@ export function RoutineTab({ active, view }: { active: boolean; view: RoutineVie
 
   const today = new Date(now).getDay();
   const nowMin = new Date(now).getHours() * 60 + new Date(now).getMinutes();
-  const activeNow = useMemo(() => activeRules(sites, enabled, now), [sites, enabled, now]);
-  const boundary = useMemo(() => nextBoundary(sites, enabled, now), [sites, enabled, now]);
+  // Os horários valem agora? Ligados e fora de uma pausa temporária.
+  const schedPaused = enabled && schedPausedUntil !== undefined && schedPausedUntil > now;
+  const schedOn = enabled && !schedPaused;
+  const activeNow = useMemo(() => activeRules(sites, schedOn, now), [sites, schedOn, now]);
+  const boundary = useMemo(() => nextBoundary(sites, schedOn, now), [sites, schedOn, now]);
   const unused = ROUTINE_SUGGESTIONS.filter((d) => !sites.some((s) => s.domain === d));
 
   /**
@@ -401,6 +408,31 @@ export function RoutineTab({ active, view }: { active: boolean; view: RoutineVie
     setPausing(undefined);
     setNotice({ kind: 'ok', text: pauseUi.inPause(what, untilText(until)) });
   }
+  /** Interruptor dos horários: desligar abre a janela (15/30 min, fim do dia, até ligar); pausado ou desligado, liga de novo. */
+  async function toggleSchedules() {
+    if (schedOn) return setPausingSchedules(true);
+    if (schedPaused) return resumeSchedules();
+    await services.settings.update({ routinePausedUntil: undefined });
+    await commit(sites, true, 'Horários ligados.');
+  }
+  async function resumeSchedules() {
+    await services.settings.update({ routinePausedUntil: undefined });
+    await reload();
+    setNotice({ kind: 'ok', text: 'Horários ligados de novo.' });
+  }
+  async function pauseSchedules(answer: PauseAnswer) {
+    if (answer.kind === 'manual') {
+      await services.settings.update({ routinePausedUntil: undefined });
+      if (await commit(sites, false, 'Horários desligados. Ligue de novo quando quiser.', true)) setPausingSchedules(false);
+      return;
+    }
+    const until = pauseUntil(answer, Date.now());
+    await services.settings.update({ routinePausedUntil: until });
+    await reload();
+    setPausingSchedules(false);
+    setNotice({ kind: 'ok', text: `Horários pausados até ${untilText(until)}. Depois voltam sozinhos.` });
+  }
+
   async function resume(site: RoutineSite, slot?: RoutineSlot, feature?: string) {
     const target: PauseTarget = { domain: site.domain, ...(slot ? { slotId: slot.id } : {}), ...(feature ? { feature } : {}) };
     await services.releases.save(removePause(await services.releases.list(), target));
@@ -420,7 +452,7 @@ export function RoutineTab({ active, view }: { active: boolean; view: RoutineVie
   const allDay = !!draft && draft.slot.startMin === 0 && draft.slot.endMin === MINUTES_PER_DAY;
   const directNow = sites.filter((x) => x.enabled && x.blockAll).map((x) => x.domain);
   // O que vale pelos horários (sem contar as partes escondidas sempre, que têm a própria frase).
-  const slotRulesNow = activeRules(sites.map((x) => ({ ...x, quickFeatures: undefined })), enabled, now);
+  const slotRulesNow = activeRules(sites.map((x) => ({ ...x, quickFeatures: undefined })), schedOn, now);
   const byHour = slotRulesNow.map((r) => r.domain).filter((d) => !directNow.includes(d));
   const alwaysParts = sites.filter((x) => x.enabled && !x.blockAll && x.quickFeatures?.length).map((x) => x.domain);
   const parts = [
@@ -430,6 +462,8 @@ export function RoutineTab({ active, view }: { active: boolean; view: RoutineVie
   ].filter(Boolean);
   const status = parts.length
     ? `Protegendo agora → ${parts.join(' · ')}.`
+    : schedPaused
+      ? `${pauseUi.schedulesPaused(untilText(schedPausedUntil!))}: só o bloqueio rápido vale.`
     : !enabled
       ? 'Os horários estão desligados: só o bloqueio rápido vale.'
       : boundary
@@ -505,6 +539,11 @@ export function RoutineTab({ active, view }: { active: boolean; view: RoutineVie
 
   return (
     <main class="pane" hidden={!active}>
+      {pausingSchedules && (
+        <PauseModal title={pauseUi.titleSchedules} minutes={[15, 30]} manualLabel={pauseUi.schedulesManual} hint={pauseUi.schedulesHint}
+          cancelLabel={pauseUi.schedulesCancel} verb="Desligar" needsGate={byHour.length > 0} level={friction}
+          onChoose={pauseSchedules} onCancel={() => setPausingSchedules(false)} />
+      )}
       {pausing && (
         <PauseModal
           title={pausing.feature
@@ -529,11 +568,12 @@ export function RoutineTab({ active, view }: { active: boolean; view: RoutineVie
         <div class="grow">
           <h2 class="section-title">Horários</h2>
           <p class="section-sub">Escolha, para cada site, em quais dias e horas ele fica bloqueado ou com partes escondidas. Funciona sozinho, sem acender a vela.</p>
-          <p class={`status-line ${enabled && activeNow.length ? 'on' : ''}`} role="status">{status}</p>
+          <p class={`status-line ${schedOn && activeNow.length ? 'on' : ''}`} role="status">{status}</p>
         </div>
         <label class="master" title="Liga ou desliga as faixas de horário (o bloqueio rápido continua valendo)">
-          <span class="switch"><input type="checkbox" checked={enabled} onChange={() => commit(sites, !enabled, enabled ? 'Horários desligados.' : 'Horários ligados.')} aria-label="Horários ligados" /><span /></span>
-          <strong>Horários {enabled ? 'ligados' : 'desligados'}</strong>
+          <span class="switch"><input type="checkbox" checked={schedOn} onChange={() => void toggleSchedules()} aria-label="Horários ligados" /><span /></span>
+          <strong>{schedPaused ? 'Horários pausados' : `Horários ${enabled ? 'ligados' : 'desligados'}`}</strong>
+          {schedPaused && <small class="master-note">até {untilText(schedPausedUntil!)}</small>}
         </label>
       </section>
       )}
@@ -637,6 +677,12 @@ export function RoutineTab({ active, view }: { active: boolean; view: RoutineVie
       </section>
       )}
 
+      {view === 'schedule' && schedPaused && (
+        <p class="notice warn onboarding">
+          <span><strong>{pauseUi.schedulesPaused(untilText(schedPausedUntil!))}</strong>. As faixas abaixo voltam a valer sozinhas; o bloqueio rápido continua funcionando.</span>
+          <button class="btn btn-primary" onClick={() => void resumeSchedules()}>{pauseUi.schedulesBack}</button>
+        </p>
+      )}
       {view === 'schedule' && !enabled && (
         <p class="notice warn onboarding">
           <span>Os <strong>horários estão desligados</strong>: as faixas abaixo não valem até você ligá-los. O bloqueio rápido continua funcionando.</span>
