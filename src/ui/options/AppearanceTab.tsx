@@ -65,6 +65,15 @@ export function AppearanceTab({ active }: { active: boolean }) {
           </span>
           <span class="icon-preview" aria-hidden="true"><img src="/public/icons/icon-32.png" alt="" /><i>→</i><img src="/public/icons/icon-active-32.png" alt="" /></span>
         </label>
+        <label class="master-row badge-row">
+          <span class="switch"><input type="checkbox" checked={settings.badgeOnCandle} aria-label="Mostrar os minutos no ícone durante a vela"
+            onChange={async () => setSettings(await services.settings.update({ badgeOnCandle: !settings.badgeOnCandle }))} /><span /></span>
+          <span class="opt-text">
+            <strong>Minutos no ícone</strong>
+            <small>Um selo sobre o ícone mostra quanto falta para a vela acabar ("25m", "1h05"). Fica verde na pausa do Pomodoro.</small>
+          </span>
+          <span class="icon-preview badge-preview" aria-hidden="true"><img src="/public/icons/icon-active-32.png" alt="" /><b>25m</b></span>
+        </label>
       </section>
 
       <section class="card">

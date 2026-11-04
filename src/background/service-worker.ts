@@ -6,8 +6,8 @@ import { domainFromIntentAlarm } from '../core/intent-service';
 import { ROUTINE_ALARM } from '../core/policy-service';
 import { POMODORO_ALARM, SESSION_ALARM } from '../core/session-service';
 import { OWN_TAB_MESSAGE, blocksNewTabs, shouldCloseNewTab } from '../core/new-tabs';
-import { toolbarIconFor } from '../core/toolbar-icon';
-import { setToolbarIcon } from '../platform/chrome/toolbar-icon';
+import { candleBadge, toolbarIconFor } from '../core/toolbar-icon';
+import { BADGE_ALARM, setCandleBadge, setToolbarIcon } from '../platform/chrome/toolbar-icon';
 import { INTENT_NOTIFICATION_PREFIX } from '../platform/chrome/notifications';
 import { createServices } from '../platform/chrome/services';
 import { USAGE_ALARM, observeHost, setTracking } from '../platform/chrome/usage-tracker';
@@ -23,7 +23,10 @@ const enqueue = (task: () => Promise<unknown>) =>
 /** O ícone do Pavio na barra do Chrome fica com o fundo âmbar enquanto a vela está acesa (se a opção estiver ligada). */
 async function syncToolbarIcon() {
   const [session, config] = await Promise.all([sessions.get(), settings.get()]);
-  await setToolbarIcon(toolbarIconFor(session, config.iconOnCandle, Date.now()));
+  const now = Date.now();
+  await setToolbarIcon(toolbarIconFor(session, config.iconOnCandle, now));
+  // Selo com os minutos que faltam ("25m", "1h05"), trocado no minuto certo pelo alarme `candle-badge`.
+  await setCandleBadge(candleBadge(session, config.badgeOnCandle, now));
 }
 
 /** Alinha as regras de rede com a política atual (rotina + Timer) e as permissões de intenção. */
@@ -59,6 +62,7 @@ chrome.runtime.onStartup.addListener(() => void boot());
 chrome.alarms.onAlarm.addListener((alarm) => {
   // Fim da vela, troca de fase do Pomodoro e virada de faixa da rotina: tudo passa pelo mesmo sync idempotente.
   if (alarm.name === SESSION_ALARM || alarm.name === POMODORO_ALARM || alarm.name === ROUTINE_ALARM) return void syncAll();
+  if (alarm.name === BADGE_ALARM) return void enqueue(syncToolbarIcon);
   // A cada minuto: soma o tempo do app em uso. Gravar o uso aciona o `syncAll` (via storage.onChanged), que bloqueia ao estourar.
   if (alarm.name === USAGE_ALARM) return void enqueue(async () => void (await usageService.record(await observeHost())));
   const domain = domainFromIntentAlarm(alarm.name);
@@ -110,7 +114,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
   const flag = (v: unknown) => { const s = v as Partial<Settings> | undefined; return `${s?.routineEnabled}|${s?.routinePausedUntil}`; };
   // Ligar/desligar os horários ou pausá-los por um tempo muda o que vale agora.
   const routineToggled = !!changes.settings && flag(changes.settings.oldValue) !== flag(changes.settings.newValue);
-  const iconFlag = (v: unknown) => (v as Partial<Settings> | undefined)?.iconOnCandle;
+  const iconFlag = (v: unknown) => { const s = v as Partial<Settings> | undefined; return `${s?.iconOnCandle}|${s?.badgeOnCandle}`; };
   const iconToggled = !!changes.settings && iconFlag(changes.settings.oldValue) !== iconFlag(changes.settings.newValue);
   if (iconToggled && !changes.activeSession) void enqueue(syncToolbarIcon);
   if (changes.activeSession || changes.routine || changes.usage || changes.releases || routineToggled) void syncAll();
