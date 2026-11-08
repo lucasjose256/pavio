@@ -23,6 +23,7 @@ import { createServices } from '../../platform/chrome/services';
 import { initTheme } from '../shared/theme';
 import { useNow } from '../shared/useNow';
 import { useStorageValue } from '../shared/useStorageValue';
+import { radio, radioKeys } from '../shared/radioGroup';
 
 const services = createServices();
 initTheme();
@@ -94,11 +95,11 @@ function StartForm({ skin }: { skin: string }) {
 
         <div>
           <span class="lbl">Duração</span>
-          <div class="seg wrap" role="group" aria-label="Duração">
+          <div class="seg wrap" role="radiogroup" aria-label="Duração" onKeyDown={radioKeys()}>
             {DURATION_PRESETS_MIN.map((m) => (
-              <button type="button" aria-pressed={!custom && minutes === m} onClick={() => { setCustom(false); chooseMinutes(m); }}>{durationLabel(m)}</button>
+              <button type="button" {...radio(!custom && minutes === m)} onClick={() => { setCustom(false); chooseMinutes(m); }}>{durationLabel(m)}</button>
             ))}
-            <button type="button" aria-pressed={custom} onClick={() => setCustom(true)}>Outro</button>
+            <button type="button" {...radio(custom)} onClick={() => setCustom(true)}>Outro</button>
           </div>
           {custom && (
             <label class="minutes-row">
@@ -121,9 +122,9 @@ function StartForm({ skin }: { skin: string }) {
           <div class="more-body">
             <div>
               <span class="lbl">Ao parar antes da hora</span>
-              <div class="seg" role="group" aria-label="Modo">
-                <button type="button" title="Você pode parar com uma confirmação" aria-pressed={strictness === 'light'} onClick={() => setStrictness('light')}>Leve</button>
-                <button type="button" title="Para apagar antes da hora, digite uma frase" aria-pressed={strictness === 'focus'} onClick={() => setStrictness('focus')}>Foco</button>
+              <div class="seg" role="radiogroup" aria-label="Modo" onKeyDown={radioKeys()}>
+                <button type="button" title="Você pode parar com uma confirmação" {...radio(strictness === 'light')} onClick={() => setStrictness('light')}>Leve</button>
+                <button type="button" title="Para apagar antes da hora, digite uma frase" {...radio(strictness === 'focus')} onClick={() => setStrictness('focus')}>Foco</button>
               </div>
               <span class="hint">{strictness === 'light' ? 'Basta confirmar para apagar a vela.' : 'Para apagar a vela, é preciso digitar uma frase.'}</span>
             </div>

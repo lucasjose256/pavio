@@ -11,6 +11,7 @@ import { featureHelp, featureLabel, kindLabel, modeHelp, modeLabel, newTabUi, sh
 import { Candle } from '../candle/Candle';
 import { SiteIcon } from '../shared/SiteIcon';
 import { services } from './shared';
+import { radio, radioKeys } from '../shared/radioGroup';
 
 const MODES: RuleMode[] = ['allowed', 'blocked', 'restricted'];
 
@@ -244,9 +245,9 @@ export function EnvironmentsTab({ active }: { active: boolean }) {
               <li key={r.id} class="rule">
                 <SiteIcon domain={r.domain} size={26} class={`ring m-${r.mode}`} />
                 <span class="domain">{r.domain}</span>
-                <div class="segmented" role="radiogroup" aria-label={`Regra de ${r.domain}`}>
+                <div class="segmented" role="radiogroup" aria-label={`Regra de ${r.domain}`} onKeyDown={radioKeys()}>
                   {MODES.map((m) => (
-                    <button key={m} type="button" role="radio" class={`m-${m}`} aria-checked={r.mode === m} onClick={() => setMode(r, m)}>{modeLabel[m]}</button>
+                    <button key={m} type="button" class={`m-${m}`} {...radio(r.mode === m)} onClick={() => setMode(r, m)}>{modeLabel[m]}</button>
                   ))}
                 </div>
                 {r.mode === 'restricted' ? (

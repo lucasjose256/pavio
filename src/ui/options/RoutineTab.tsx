@@ -22,6 +22,7 @@ import { SiteIcon } from '../shared/SiteIcon';
 import { RestrictionPicker } from './RestrictionPicker';
 import { missingAccess } from './access';
 import { services } from './shared';
+import { radio, radioKeys } from '../shared/radioGroup';
 
 type Notice = { kind: 'ok' | 'warn' | 'error'; text: string };
 
@@ -77,6 +78,8 @@ function slotLabel(slot: RoutineSlot): string {
 export type RoutineView = 'schedule' | 'quick' | 'limits';
 
 const HOWTO_KEY = 'pavio.howto';
+/** No bloqueio rápido escolher grava na hora (e pode pedir fricção): a seta só move o foco; Espaço/Enter escolhe. */
+const QUICK_KEYS = radioKeys(false);
 /** Cor do modo no seletor segmentado do bloqueio rápido (Livre fica neutro). */
 const MODE_CLASS: Record<QuickMode, string> = { free: '', parts: 'm-restricted', all: 'm-blocked' };
 
@@ -625,9 +628,9 @@ export function RoutineTab({ active, view }: { active: boolean; view: RoutineVie
               <li key={d} class={`qa-row mode-${mode}`}>
                 <div class="qa-main">
                   <span class="qa-name"><SiteIcon domain={d} /> {d}</span>
-                  <div class="segmented" role="radiogroup" aria-label={`Bloqueio de ${d}`}>
+                  <div class="segmented" role="radiogroup" aria-label={`Bloqueio de ${d}`} onKeyDown={QUICK_KEYS}>
                     {modes.map((m) => (
-                      <button key={m.id} type="button" role="radio" aria-checked={mode === m.id} class={MODE_CLASS[m.id]} title={m.hint}
+                      <button key={m.id} type="button" {...radio(mode === m.id)} class={MODE_CLASS[m.id]} title={m.hint}
                         onClick={() => mode !== m.id && void setMode(d, m.id)}>{m.label}</button>
                     ))}
                   </div>

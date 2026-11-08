@@ -1,5 +1,5 @@
-.fgate { display: flex; flex-direction: column; gap: 12px; width: min(420px, 100%); }
-.fgate-phrase { display: flex; flex-direction: column; gap: 6px; text-align: left; font-size: 14px; color: var(--muted); }
+.fgate { display: flex; flex-direction: column; gap: var(--sp-3); width: min(420px, 100%); }
+.fgate-phrase { display: flex; flex-direction: column; gap: 6px; text-align: left; font-size: var(--fs-base); color: var(--muted); }
 .fgate-phrase q { color: var(--text); font-weight: 600; }
 .fgate-phrase .field { width: 100%; }
 .fgate-buttons { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }

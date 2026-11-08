@@ -1,6 +1,7 @@
 import { FEATURE_DEFS, defaultSpec, featuresOf, serviceKindFor, specToggleFeature, specWithKind, specWithMode } from '../../core/restrictions';
 import type { RestrictedKind, RestrictionSpec } from '../../core/models';
 import { featureHelp, featureLabel, kindLabel, modeLabel } from '../i18n/pt-BR';
+import { radio, radioKeys } from '../shared/radioGroup';
 
 interface Props {
   domain: string;
@@ -19,9 +20,9 @@ export function RestrictionPicker({ domain, spec, onChange }: Props) {
 
   return (
     <div class="picker">
-      <div class="segmented" role="radiogroup" aria-label="O que fazer com o site">
+      <div class="segmented" role="radiogroup" aria-label="O que fazer com o site" onKeyDown={radioKeys()}>
         {MODES.map((m) => (
-          <button key={m} type="button" role="radio" class={`m-${m}`} aria-checked={spec.mode === m} onClick={() => onChange(spec.mode ? specWithMode(spec as RestrictionSpec, domain, m) : defaultSpec(domain, m))}>
+          <button key={m} type="button" class={`m-${m}`} {...radio(spec.mode === m, !spec.mode && m === MODES[0])} onClick={() => onChange(spec.mode ? specWithMode(spec as RestrictionSpec, domain, m) : defaultSpec(domain, m))}>
             {modeLabel[m]}
           </button>
         ))}

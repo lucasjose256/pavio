@@ -4,6 +4,7 @@ import type { Strictness } from '../../core/models';
 import { PAUSE_MINUTES, type PauseChoice } from '../../core/release';
 import { pauseUi } from '../i18n/pt-BR';
 import { FrictionGate } from '../shared/FrictionGate';
+import { radio, radioKeys } from '../shared/radioGroup';
 
 /** "manual" = desligar até a pessoa religar (sem prazo). */
 export type PauseAnswer = PauseChoice | { kind: 'manual' };
@@ -37,9 +38,9 @@ export function PauseModal({ title, needsGate, level, onChoose, onCancel, minute
       <div class="modal-card">
         <h3>{title}</h3>
         <p class="hint">{hint}</p>
-        <div class="pause-choices" role="radiogroup" aria-label="Por quanto tempo">
+        <div class="pause-choices" role="radiogroup" aria-label="Por quanto tempo" onKeyDown={radioKeys()}>
           {CHOICES.map((c) => (
-            <button key={key(c)} type="button" role="radio" aria-checked={key(c) === key(choice)} class="chip" onClick={() => setChoice(c)}>{label(c)}</button>
+            <button key={key(c)} type="button" {...radio(key(c) === key(choice))} class="chip" onClick={() => setChoice(c)}>{label(c)}</button>
           ))}
         </div>
         <FrictionGate steps={needsGate ? frictionForRelease(level) : []} action={`${verb} · ${label(choice)}`} cancelLabel={cancelLabel}

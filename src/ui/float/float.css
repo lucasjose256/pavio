@@ -1,12 +1,12 @@
 /* Janela da vela: ocupa a janela toda, sem a moldura do popup. */
 html, body { height: 100%; }
 body { width: auto; padding: 0; background: var(--bg); }
-.popup.float { margin: 0; min-height: 100%; border: 0; border-radius: 0; justify-content: center; padding: 18px 16px; }
+.popup.float { margin: 0; min-height: 100%; border: 0; border-radius: 0; justify-content: center; padding: var(--sp-5) var(--sp-4); }
 .float-actions { display: flex; flex-direction: column; gap: 6px; width: 100%; margin-top: 6px; }
 .float-actions .btn { width: 100%; }
 /* Picture-in-Picture: só a vela e o tempo */
-.popup.float.mini { gap: 4px; padding: 10px; cursor: default; }
-.mini .time { font-size: 34px; }
-.mini .sub { font-size: 12px; }
+.popup.float.mini { gap: var(--sp-1); padding: 10px; cursor: default; }
+.mini .time { font-size: var(--fs-4xl); }
+.mini .sub { font-size: var(--fs-sm); }
 .pip-note { margin: 0; text-align: center; }
-.float-actions .notice { margin: 4px 0 0; font-size: 12px; text-align: left; }
+.float-actions .notice { margin: var(--sp-1) 0 0; font-size: var(--fs-sm); text-align: left; }
