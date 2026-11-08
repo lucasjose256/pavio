@@ -19,9 +19,9 @@ export function RestrictionPicker({ domain, spec, onChange }: Props) {
 
   return (
     <div class="picker">
-      <div class="seg-group" role="group" aria-label="O que fazer com o site">
+      <div class="segmented" role="radiogroup" aria-label="O que fazer com o site">
         {MODES.map((m) => (
-          <button key={m} type="button" class={`seg-btn m-${m}`} aria-pressed={spec.mode === m} onClick={() => onChange(spec.mode ? specWithMode(spec as RestrictionSpec, domain, m) : defaultSpec(domain, m))}>
+          <button key={m} type="button" role="radio" class={`m-${m}`} aria-checked={spec.mode === m} onClick={() => onChange(spec.mode ? specWithMode(spec as RestrictionSpec, domain, m) : defaultSpec(domain, m))}>
             {modeLabel[m]}
           </button>
         ))}
@@ -37,7 +37,7 @@ export function RestrictionPicker({ domain, spec, onChange }: Props) {
             <div class="features inline" role="group" aria-label={`O que esconder em ${domain}`}>
               <span class="features-label" title={featureHelp}>Esconder:</span>
               {FEATURE_DEFS[kind].map((f) => (
-                <button key={f.id} type="button" class="feat" aria-pressed={featuresOf(spec).has(f.id)} onClick={() => onChange(specToggleFeature(spec as RestrictionSpec, f.id))}>
+                <button key={f.id} type="button" class="chip is-feature" aria-pressed={featuresOf(spec).has(f.id)} onClick={() => onChange(specToggleFeature(spec as RestrictionSpec, f.id))}>
                   {featureLabel[kind]?.[f.id] ?? f.id}
                 </button>
               ))}

@@ -69,7 +69,7 @@ export const FeatureEditor = forwardRef<HTMLElement, Props>(function FeatureEdit
       </div>
       <div class="day-row" role="group" aria-label="Dias da semana">
         {WEEK_ORDER.map((d) => (
-          <button type="button" key={d} class="day" aria-pressed={value.days.includes(d)} onClick={() => set({ days: toggleDay(value.days, d) })}>{DAY_SHORT[d]}</button>
+          <button type="button" key={d} class="day-btn" aria-pressed={value.days.includes(d)} onClick={() => set({ days: toggleDay(value.days, d) })}>{DAY_SHORT[d]}</button>
         ))}
       </div>
 

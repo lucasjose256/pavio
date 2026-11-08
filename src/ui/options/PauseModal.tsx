@@ -39,7 +39,7 @@ export function PauseModal({ title, needsGate, level, onChoose, onCancel, minute
         <p class="hint">{hint}</p>
         <div class="pause-choices" role="radiogroup" aria-label="Por quanto tempo">
           {CHOICES.map((c) => (
-            <button key={key(c)} type="button" role="radio" aria-checked={key(c) === key(choice)} class="chip pause-chip" onClick={() => setChoice(c)}>{label(c)}</button>
+            <button key={key(c)} type="button" role="radio" aria-checked={key(c) === key(choice)} class="chip" onClick={() => setChoice(c)}>{label(c)}</button>
           ))}
         </div>
         <FrictionGate steps={needsGate ? frictionForRelease(level) : []} action={`${verb} · ${label(choice)}`} cancelLabel={cancelLabel}

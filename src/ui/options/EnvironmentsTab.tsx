@@ -244,9 +244,9 @@ export function EnvironmentsTab({ active }: { active: boolean }) {
               <li key={r.id} class="rule">
                 <SiteIcon domain={r.domain} size={26} class={`ring m-${r.mode}`} />
                 <span class="domain">{r.domain}</span>
-                <div class="seg-group" role="group" aria-label={`Regra de ${r.domain}`}>
+                <div class="segmented" role="radiogroup" aria-label={`Regra de ${r.domain}`}>
                   {MODES.map((m) => (
-                    <button key={m} class={`seg-btn m-${m}`} aria-pressed={r.mode === m} onClick={() => setMode(r, m)}>{modeLabel[m]}</button>
+                    <button key={m} type="button" role="radio" class={`m-${m}`} aria-checked={r.mode === m} onClick={() => setMode(r, m)}>{modeLabel[m]}</button>
                   ))}
                 </div>
                 {r.mode === 'restricted' ? (
@@ -262,7 +262,7 @@ export function EnvironmentsTab({ active }: { active: boolean }) {
                   <div class="features" role="group" aria-label={`O que esconder em ${r.domain}`}>
                     <span class="features-label">Esconder:</span>
                     {FEATURE_DEFS[r.restrictedKind].map((f) => (
-                      <button key={f.id} type="button" class="feat" aria-pressed={featuresOf(r).has(f.id)} onClick={() => toggleFeature(r, f.id)}>
+                      <button key={f.id} type="button" class="chip is-feature" aria-pressed={featuresOf(r).has(f.id)} onClick={() => toggleFeature(r, f.id)}>
                         {featureLabel[r.restrictedKind!]?.[f.id] ?? f.id}
                       </button>
                     ))}
@@ -288,7 +288,7 @@ export function EnvironmentsTab({ active }: { active: boolean }) {
             <div class="chips">
               <span class="hint">Sugestões:</span>
               {suggestions.map((s) => (
-                <button key={s.domain} class="chip" onClick={() => addRule(s.domain, 'blocked')}>+ {s.name}</button>
+                <button key={s.domain} class="chip is-add" onClick={() => addRule(s.domain, 'blocked')}>+ {s.name}</button>
               ))}
             </div>
           )}

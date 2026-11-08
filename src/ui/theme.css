@@ -8,6 +8,7 @@
   --text: #4a3426;
   /* contrastes AA: --muted ≥ 5:1 no fundo/superfícies; texto do botão principal 5:1; --border-strong ≥ 3:1 (campos e controles) */
   --border-strong: #9a8262;
+  --switch-thumb: #fffaf0;
   --muted: #755f4c;
   --accent: #a9541f;
   --accent-hover: #934919;
@@ -18,12 +19,18 @@
   --glow: rgba(255, 170, 80, 0.32);
   --shadow: 0 1px 0 rgba(255, 255, 255, 0.7) inset, 0 10px 28px -14px rgba(120, 80, 30, 0.35);
   --radius: 18px;
+  --shadow-sm: 0 2px 6px -2px rgba(80, 50, 20, .45);
+  --shadow-lift: 0 8px 18px -6px rgba(80, 50, 20, .6);
+  --shadow-lg: 0 14px 34px -10px rgba(80, 50, 20, .45);
   /* botões, abas e seletores: um raio só (etiquetas e interruptores seguem em pílula) */
   --r-control: 10px;
   /* cores dos tipos de regra */
   --mode-allowed: #1f9d55;
   --mode-blocked: #c0453a; /* terracota-vermelho: lê como "bloqueado" sem gritar; texto claro 5:1 */
   --mode-restricted: #f59e0b;
+  /* texto sobre blocos coloridos (faixas, modo marcado, bolinha do modo) */
+  --on-mode: #ffffff;
+  --on-restricted: #2b1a00;
   /* cores das faixas de horário */
   --blk-1: #c4672a; --blk-2: #5f8a54; --blk-3: #b8860b; --blk-4: #8a5a7a;
   --min-line: #4a3426;
@@ -31,6 +38,17 @@
   --font-body: ui-rounded, 'SF Pro Rounded', 'Nunito', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-display: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
   font-family: var(--font-body);
+
+  /* ---- escalas (iguais nos dois temas) ---- */
+  /* texto */
+  --fs-2xs: 10px; --fs-xs: 11px; --fs-sm: 12px; --fs-md: 13px; --fs-base: 14px; --fs-lg: 15px;
+  --fs-xl: 18px; --fs-2xl: 21px; --fs-3xl: 24px; --fs-4xl: 32px; --fs-5xl: 44px;
+  /* espaçamento (base 4) */
+  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 20px; --sp-6: 24px; --sp-8: 32px;
+  /* cantos */
+  --r-sm: 6px; --r-md: 12px; --r-lg: 14px; --r-pill: 999px;
+  /* movimento */
+  --dur-fast: .15s; --dur: .2s; --dur-slow: .4s;
 }
 :root[data-theme='night'] {
   color-scheme: dark;
@@ -54,6 +72,8 @@
   --mode-allowed: #4ade80;
   --mode-blocked: #ff5a4e;
   --mode-restricted: #fbbf24;
+  --on-mode: #2a0a05;
+  --on-restricted: #2b1a00;
   --blk-1: #f2a266; --blk-2: #8fc482; --blk-3: #e6c15a; --blk-4: #c99ab8;
 }
 
@@ -67,7 +87,7 @@ button { cursor: pointer; }
 
 .btn {
   background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--r-control);
-  padding: 9px 18px; transition: background .2s, border-color .2s, transform .1s;
+  padding: 9px 18px; transition: background var(--dur), border-color var(--dur), transform .1s;
 }
 /* links com cara de botão (lojas, "Abrir site") */
 a.btn { color: var(--text); text-decoration: none; display: inline-block; }
@@ -82,9 +102,12 @@ a.btn-primary { color: var(--accent-ink); }
 .btn:disabled { opacity: .5; cursor: not-allowed; }
 .field {
   background: var(--surface); border: 1px solid var(--border-strong); border-radius: 12px; padding: 9px 12px;
-  transition: border-color .2s;
+  transition: border-color var(--dur);
 }
 .field:hover { border-color: var(--text); }
+.field:disabled { background: var(--surface-2); color: var(--muted); cursor: not-allowed; }
+.field:disabled:hover { border-color: var(--border-strong); }
+.field[aria-invalid="true"] { border-color: var(--danger); }
 
 /* ---- Pomodoro (popup e horários) ---- */
 .pomo { border: 1px solid var(--border); border-radius: 14px; padding: 10px 12px; background: var(--surface); }
@@ -100,8 +123,10 @@ a.btn-primary { color: var(--accent-ink); }
 /* interruptor (opções e popup) */
 .switch { position: relative; width: 44px; height: 26px; flex: none; }
 .switch input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
-.switch span { position: absolute; inset: 0; border-radius: 999px; background: var(--border-strong); transition: background .2s; pointer-events: none; }
-.switch span::after { content: ''; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fffaf0; transition: transform .2s; }
+.switch span { position: absolute; inset: 0; border-radius: 999px; background: var(--border-strong); transition: background var(--dur); pointer-events: none; }
+.switch span::after { content: ''; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: var(--switch-thumb); transition: transform var(--dur); }
 .switch input:checked + span { background: var(--accent); }
 .switch input:checked + span::after { transform: translateX(18px); }
+.switch input:disabled { cursor: not-allowed; }
+.switch input:disabled + span { opacity: .5; }
 .switch input:focus-visible + span { outline: 3px solid color-mix(in srgb, var(--accent) 55%, transparent); outline-offset: 2px; }

@@ -77,6 +77,8 @@ function slotLabel(slot: RoutineSlot): string {
 export type RoutineView = 'schedule' | 'quick' | 'limits';
 
 const HOWTO_KEY = 'pavio.howto';
+/** Cor do modo no seletor segmentado do bloqueio rápido (Livre fica neutro). */
+const MODE_CLASS: Record<QuickMode, string> = { free: '', parts: 'm-restricted', all: 'm-blocked' };
 
 export function RoutineTab({ active, view }: { active: boolean; view: RoutineView }) {
   const [sites, setSites] = useState<RoutineSite[]>([]);
@@ -623,9 +625,9 @@ export function RoutineTab({ active, view }: { active: boolean; view: RoutineVie
               <li key={d} class={`qa-row mode-${mode}`}>
                 <div class="qa-main">
                   <span class="qa-name"><SiteIcon domain={d} /> {d}</span>
-                  <div class="mode-seg" role="radiogroup" aria-label={`Bloqueio de ${d}`}>
+                  <div class="segmented" role="radiogroup" aria-label={`Bloqueio de ${d}`}>
                     {modes.map((m) => (
-                      <button key={m.id} type="button" role="radio" aria-checked={mode === m.id} class={`mode-${m.id}`} title={m.hint}
+                      <button key={m.id} type="button" role="radio" aria-checked={mode === m.id} class={MODE_CLASS[m.id]} title={m.hint}
                         onClick={() => mode !== m.id && void setMode(d, m.id)}>{m.label}</button>
                     ))}
                   </div>
@@ -637,10 +639,10 @@ export function RoutineTab({ active, view }: { active: boolean; view: RoutineVie
                         const label = featureLabel[kind]?.[f.id] ?? f.id;
                         const on = current.includes(f.id);
                         return (
-                          <button key={f.id} type="button" class="chip part-chip" aria-pressed={on}
+                          <button key={f.id} type="button" class="chip is-feature" aria-pressed={on}
                             onClick={() => void commit(setQuickFeatures(sites, d, on ? current.filter((x) => x !== f.id) : [...current, f.id], randomId), enabled,
                               (on ? quickPartsUi.shown : quickPartsUi.hidden)(label, d))}>
-                            {on ? '✓ ' : ''}{label}
+                            {label}
                           </button>
                         );
                       })}
@@ -720,7 +722,7 @@ export function RoutineTab({ active, view }: { active: boolean; view: RoutineVie
       <section class="card">
         <div class="day-bar" role="tablist" aria-label="Dia da semana">
           {WEEK_ORDER.map((d) => (
-            <button key={d} role="tab" class={`daytab ${day === d ? 'on' : ''}`} aria-selected={day === d} onClick={() => setDay(d)}>
+            <button key={d} role="tab" class="day-btn" aria-selected={day === d} onClick={() => setDay(d)}>
               {DAY_SHORT[d]}{d === today && <i class="today-dot" title="Hoje" />}
             </button>
           ))}
@@ -815,7 +817,7 @@ export function RoutineTab({ active, view }: { active: boolean; view: RoutineVie
         {unused.length > 0 && (
           <div class="chips">
             <span class="hint">Sugestões:</span>
-            {unused.map((d) => <button key={d} class="chip" onClick={() => addSite(d)}>+ {d}</button>)}
+            {unused.map((d) => <button key={d} class="chip is-add" onClick={() => addSite(d)}>+ {d}</button>)}
           </div>
         )}
       </section>
@@ -827,11 +829,11 @@ export function RoutineTab({ active, view }: { active: boolean; view: RoutineVie
             <div class="site-slots" role="group" aria-label={`Faixas de ${draft.domain}`}>
               <span class="lbl">Faixas deste site</span>
               {draftSite.slots.map((sl) => (
-                <button key={sl.id} type="button" class={`slot-chip m-${sl.mode} ${sl.off || pausedUntil(releases, { domain: draftSite.domain, slotId: sl.id }, now) ? 'paused' : ''}`} aria-pressed={!draft.isNewSlot && draft.slot.id === sl.id} onClick={() => edit(draftSite, sl)}>
+                <button key={sl.id} type="button" class={`chip is-slot m-${sl.mode} ${sl.off || pausedUntil(releases, { domain: draftSite.domain, slotId: sl.id }, now) ? 'paused' : ''}`} aria-pressed={!draft.isNewSlot && draft.slot.id === sl.id} onClick={() => edit(draftSite, sl)}>
                   <i class="dot" /> {sl.off || pausedUntil(releases, { domain: draftSite.domain, slotId: sl.id }, now) ? '⏸ ' : ''}{formatDays(sl.days)} · {formatRange(sl)} · {slotLabel(sl)}
                 </button>
               ))}
-              <button type="button" class="slot-chip add" aria-pressed={draft.isNewSlot} onClick={() => openNew(draftSite)}>+ Nova faixa</button>
+              <button type="button" class="chip is-slot is-add" aria-pressed={draft.isNewSlot} onClick={() => openNew(draftSite)}>+ Nova faixa</button>
             </div>
           )}
 
@@ -843,7 +845,7 @@ export function RoutineTab({ active, view }: { active: boolean; view: RoutineVie
           </div>
           <div class="day-row" role="group" aria-label="Dias da semana">
             {WEEK_ORDER.map((d) => (
-              <button type="button" key={d} class="day" aria-pressed={draft.slot.days.includes(d)}
+              <button type="button" key={d} class="day-btn" aria-pressed={draft.slot.days.includes(d)}
                 onClick={() => patch({ days: toggleDay(draft.slot.days, d) })}>{DAY_SHORT[d]}</button>
             ))}
           </div>
