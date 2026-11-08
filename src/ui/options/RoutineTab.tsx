@@ -60,7 +60,7 @@ const slotErrorText = (code: string): string =>
     'time:same': 'O início e o fim não podem ser iguais.',
     'time:range': 'Horário inválido.',
     'kind:missing': 'Escolha como restringir.',
-    'mode:invalid': 'Escolha o que fazer com o site: Bloqueado ou Restrito.',
+    'mode:invalid': 'Escolha o que fazer com o site (Bloqueado ou Restrito).',
   })[code] ?? 'Faixa inválida.';
 
 /** Rótulo curto do que a faixa faz. */
@@ -438,7 +438,7 @@ export function RoutineTab({ active, view }: { active: boolean; view: RoutineVie
     await services.settings.update({ routinePausedUntil: until });
     await reload();
     setPausingSchedules(false);
-    setNotice({ kind: 'ok', text: `Horários pausados até ${untilText(until)}. Depois voltam sozinhos.` });
+    setNotice({ kind: 'ok', text: `Horários desligados até ${untilText(until)}. Depois voltam sozinhos.` });
   }
 
   async function resume(site: RoutineSite, slot?: RoutineSlot, feature?: string) {
@@ -738,7 +738,7 @@ export function RoutineTab({ active, view }: { active: boolean; view: RoutineVie
         </details>
         <ul class="rt-legend" aria-label="Legenda de cores">
           <li><i class="dot m-blocked" /> Bloqueado</li>
-          <li><i class="dot m-restricted" /> Restrito (esconde partes ou pergunta a intenção)</li>
+          <li><i class="dot m-restricted" /> Restrito: esconde partes ou pergunta antes</li>
           <li><i class="swatch-ghost" /> Rascunho (ainda não salvo)</li>
         </ul>
         <div class="rt" aria-label={`Rotina de ${DAY_SHORT[day]}`}>
@@ -769,7 +769,7 @@ export function RoutineTab({ active, view }: { active: boolean; view: RoutineVie
                     {sitePause !== undefined
                       ? <span class="rt-paused-note">⏸ {pauseUi.pausedUntil(untilText(sitePause))} <button class="link" onClick={() => void resume(site)}>{pauseUi.resume}</button></span>
                       : locked ? <small>bloqueio rápido</small>
-                        : site.slots.length === 0 && <small>{quickFeaturesOf(sites, site.domain).length > 0 ? 'só partes · sempre' : 'sem faixas'}</small>}
+                        : site.slots.length === 0 && <small>{quickFeaturesOf(sites, site.domain).length > 0 ? 'partes escondidas · sempre' : 'sem faixas'}</small>}
                   </div>
                   {renderTrack(site, site.slots)}
                   <div class="rt-actions">

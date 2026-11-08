@@ -18,6 +18,8 @@
   --glow: rgba(255, 170, 80, 0.32);
   --shadow: 0 1px 0 rgba(255, 255, 255, 0.7) inset, 0 10px 28px -14px rgba(120, 80, 30, 0.35);
   --radius: 18px;
+  /* botões, abas e seletores: um raio só (etiquetas e interruptores seguem em pílula) */
+  --r-control: 10px;
   /* cores dos tipos de regra */
   --mode-allowed: #1f9d55;
   --mode-blocked: #c0453a; /* terracota-vermelho: lê como "bloqueado" sem gritar; texto claro 5:1 */
@@ -64,7 +66,7 @@ button { cursor: pointer; }
 ::selection { background: color-mix(in srgb, var(--accent) 30%, transparent); }
 
 .btn {
-  background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px;
+  background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--r-control);
   padding: 9px 18px; transition: background .2s, border-color .2s, transform .1s;
 }
 /* links com cara de botão (lojas, "Abrir site") */

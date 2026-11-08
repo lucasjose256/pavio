@@ -227,7 +227,7 @@ export const pauseUi = {
   schedulesHint: 'Por quanto tempo? As faixas param de valer; o bloqueio rápido e os limites continuam. Depois os horários voltam sozinhos.',
   schedulesManual: 'Até eu ligar novamente',
   schedulesCancel: 'Manter ligados',
-  schedulesPaused: (until: string) => `Horários pausados até ${until}`,
+  schedulesPaused: (until: string) => `Horários desligados até ${until}`,
   schedulesBack: 'Ligar agora',
   featureHint: 'Só este recurso sai do bloqueio; os outros continuam escondidos.',
   pauseFeature: 'Pausar este recurso',
@@ -261,7 +261,7 @@ export const newTabUi = {
 
 /** Bloqueio rápido por partes: esconder só o que distrai, sem bloquear o app inteiro. */
 export const quickPartsUi = {
-  modes: { free: 'Livre', parts: 'Só partes', all: 'Bloquear tudo' },
+  modes: { free: 'Livre', parts: 'Esconder partes', all: 'Bloquear tudo' },
   hints: {
     youtube: 'Os Shorts ficam ocultos de verdade: somem do Início e do menu, e quem abrir um link de Short vê a vela.',
     instagram: 'A pesquisa continua liberada mesmo com o Explorar escondido. Marque "Pesquisa" se quiser escondê-la também.',
