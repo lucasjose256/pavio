@@ -76,8 +76,16 @@ function slotLabel(slot: RoutineSlot): string {
 /** As três telas de bloqueio dividem o mesmo estado (e o mesmo `commit`): horários, bloqueio rápido e limite de tempo. */
 export type RoutineView = 'schedule' | 'quick' | 'limits';
 
+const HOWTO_KEY = 'pavio.howto';
+
 export function RoutineTab({ active, view }: { active: boolean; view: RoutineView }) {
   const [sites, setSites] = useState<RoutineSite[]>([]);
+  /** "Como montar sua rotina": aberto até a pessoa recolher (lembrado neste navegador). */
+  const [howtoOpen, setHowtoOpen] = useState(() => { try { return localStorage.getItem(HOWTO_KEY) !== 'closed'; } catch { return true; } });
+  const rememberHowto = (open: boolean) => {
+    setHowtoOpen(open);
+    try { localStorage.setItem(HOWTO_KEY, open ? 'open' : 'closed'); } catch { /* sem armazenamento: só nesta visita */ }
+  };
   const [enabled, setEnabled] = useState(true);
   /** Horários pausados por um tempo (fim da pausa), ou undefined. */
   const [schedPausedUntil, setSchedPausedUntil] = useState<number>();
@@ -496,10 +504,21 @@ export function RoutineTab({ active, view }: { active: boolean; view: RoutineVie
       );
     }
 
+    // Partes do bloqueio rápido (Shorts, Reels…) valem sempre: aparecem como fundo listrado, por baixo das faixas.
+    const service = serviceOf(site);
+    const always = site.enabled ? quickFeaturesOf(sites, site.domain).filter((f) => !site.offFeatures?.includes(f) && (!feature || f === feature)) : [];
+    const alwaysNames = always.map((f) => (service && featureLabel[service]?.[f]) ?? f);
+    const alwaysText = feature ? 'Escondido o tempo todo' : `${alwaysNames.join(', ')}: escondido o tempo todo`;
+
     return (
       <div class="rt-track" style={{ height: `${trackH}px` }} title="Arraste num espaço vazio para criar uma faixa; clique para uma de 2 h"
         onPointerDown={(e) => onTrackDown(site, e, feature)} onPointerMove={(e) => onTrackMove(site, e, feature)}
         onPointerUp={() => void onTrackUp(site, feature)} onPointerCancel={() => { setGesture(undefined); setPreview(undefined); }}>
+        {always.length > 0 && (
+          <div class="rt-always" title={`Bloqueio rápido: ${alwaysNames.join(', ')} ficam escondidos todos os dias, o dia todo (mude na aba Bloqueio rápido)`}>
+            <span>{alwaysText}</span>
+          </div>
+        )}
         {placed.items.map((seg) => {
           const slot = slots.find((sl) => sl.id === seg.slotId)!;
           const dragging = here(drag) && !!drag && 'slotId' in drag && drag.slotId === slot.id && drag.moved;
@@ -707,15 +726,16 @@ export function RoutineTab({ active, view }: { active: boolean; view: RoutineVie
           ))}
         </div>
 
-        <div class="howto" aria-label="Como montar sua rotina">
-          <h3>Como montar sua rotina</h3>
+        <details class="howto" open={sites.length === 0 || howtoOpen}
+          onToggle={(e) => { const o = (e.currentTarget as HTMLDetailsElement).open; if (sites.length > 0) rememberHowto(o); }}>
+          <summary><h3>Como montar sua rotina</h3></summary>
           <ol>
             <li><strong>Crie uma faixa:</strong> arraste num espaço vazio da linha do site (ou clique no <strong>+</strong>). A hora da faixa é a que você desenhou.</li>
             <li><strong>Escolha os dias e o que fazer:</strong> na janela que abre, marque <em>Dias úteis</em>, <em>Fim de semana</em> ou só um dia, e escolha bloquear ou esconder partes. Quer <em>intervalos</em> no mesmo dia (9h–12h e 14h–18h)? Use <strong>+ Adicionar outro horário</strong>. Salve.</li>
             <li><strong>Ajuste quando quiser:</strong> arraste as <strong>pontas</strong> para mudar início e fim, ou a <strong>faixa</strong> para movê-la. Clique nela para editar, pausar ou apagar.</li>
           </ol>
           <p class="hint">As abas <strong>Seg…Dom</strong> mostram o que vale em cada dia. A seta <strong>▸</strong> ao lado de YouTube, Instagram, X ou LinkedIn dá horários diferentes a cada recurso: arraste na barra do recurso <em>ou</em> clique nela (ou no <strong>+</strong>) para digitar dias e horário. Encaixa de 15 em 15 min; faixas que se cruzam ficam empilhadas e vale a mais rigorosa.</p>
-        </div>
+        </details>
         <ul class="rt-legend" aria-label="Legenda de cores">
           <li><i class="dot m-blocked" /> Bloqueado</li>
           <li><i class="dot m-restricted" /> Restrito (esconde partes ou pergunta a intenção)</li>
@@ -748,7 +768,8 @@ export function RoutineTab({ active, view }: { active: boolean; view: RoutineVie
                     </div>
                     {sitePause !== undefined
                       ? <span class="rt-paused-note">⏸ {pauseUi.pausedUntil(untilText(sitePause))} <button class="link" onClick={() => void resume(site)}>{pauseUi.resume}</button></span>
-                      : locked ? <small>bloqueio rápido</small> : site.slots.length === 0 && <small>sem faixas</small>}
+                      : locked ? <small>bloqueio rápido</small>
+                        : site.slots.length === 0 && <small>{quickFeaturesOf(sites, site.domain).length > 0 ? 'só partes · sempre' : 'sem faixas'}</small>}
                   </div>
                   {renderTrack(site, site.slots)}
                   <div class="rt-actions">
@@ -757,7 +778,6 @@ export function RoutineTab({ active, view }: { active: boolean; view: RoutineVie
                       <input type="checkbox" checked={site.enabled} onChange={() => toggleSite(site)} aria-label={`${site.domain} na rotina`} />
                       <span />
                     </label>
-                    <button class="btn btn-ghost x" aria-label={`Tirar ${site.domain} da rotina`} onClick={() => removeSite(site)}>✕</button>
                   </div>
                 </div>
                 {open && service && FEATURE_DEFS[service].map((f) => {
@@ -889,6 +909,12 @@ export function RoutineTab({ active, view }: { active: boolean; view: RoutineVie
             <span class="grow" />
             {!draft.isNewSlot && <button class="btn btn-ghost btn-danger" onClick={deleteSlot}>Apagar faixa</button>}
           </div>
+          {draftSite && (
+            <p class="remove-site">
+              <button class="link danger" onClick={() => void (async () => { if (await removeSite(draftSite)) { setDraft(undefined); setNotice(undefined); } })()}>Tirar {draftSite.domain} da rotina</button>
+              <span class="hint"> · apaga todas as faixas, o bloqueio rápido e o limite deste site</span>
+            </p>
+          )}
         </section>
       )}
 

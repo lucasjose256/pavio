@@ -210,7 +210,7 @@ input[type="range"] { accent-color: var(--accent); }
 .daytab.on { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
 .today-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: currentColor; margin-left: 6px; vertical-align: middle; opacity: .7; }
 .rt { display: flex; flex-direction: column; gap: 8px; }
-.rt-axis, .rt-row { display: grid; grid-template-columns: 176px minmax(0, 1fr) 126px; gap: 12px; align-items: center; }
+.rt-axis, .rt-row { display: grid; grid-template-columns: 176px minmax(0, 1fr) 92px; gap: 12px; align-items: center; }
 .rt-axis > div { position: relative; height: 14px; }
 .rt-axis b { position: absolute; transform: translateX(-50%); font-size: 11px; color: var(--muted); font-weight: 500; }
 .rt-label { display: flex; flex-direction: column; min-width: 0; }
@@ -234,7 +234,7 @@ input[type="range"] { accent-color: var(--accent); }
 .accent { color: var(--accent-text); }
 .check.inline { margin-top: 0; }
 .footnote { margin-top: 4px; }
-@media (max-width: 780px) { .rt-axis, .rt-row { grid-template-columns: 96px minmax(0, 1fr) 104px; gap: 8px; } .rt-seg span { display: none; } }
+@media (max-width: 780px) { .rt-axis, .rt-row { grid-template-columns: 96px minmax(0, 1fr) 84px; gap: 8px; } .rt-seg span { display: none; } }
 .rt + .add { margin-top: 20px; }
 
 /* ---- arrastar na linha do tempo ---- */
@@ -409,7 +409,20 @@ input[type="range"] { accent-color: var(--accent); }
 
 /* ---- como montar a rotina ---- */
 .howto { background: var(--bg); border: 1px solid var(--border); border-radius: 14px; padding: 14px 18px 8px; margin: 4px 0 14px; }
-.howto h3 { margin: 0 0 6px; font-size: 17px; }
+.howto h3 { margin: 0; font-size: 17px; display: inline; }
+.howto summary { cursor: pointer; padding: 2px 0 8px; list-style: none; display: flex; align-items: center; gap: 8px; }
+.howto summary::-webkit-details-marker { display: none; }
+.howto summary::after { content: '▾'; color: var(--muted); font-size: 13px; transition: transform .15s; }
+.howto:not([open]) summary::after { transform: rotate(-90deg); }
+.howto:not([open]) { padding-bottom: 6px; }
+.howto summary:hover h3 { color: var(--accent-text); }
+/* partes do bloqueio rápido: valem sempre, ficam por baixo das faixas */
+.rt-always { position: absolute; inset: 4px; border-radius: 9px; pointer-events: none; display: flex; align-items: center; padding: 0 10px;
+  background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--mode-restricted) 30%, transparent) 0 8px, color-mix(in srgb, var(--mode-restricted) 16%, transparent) 8px 16px);
+  border: 1px solid color-mix(in srgb, var(--mode-restricted) 70%, transparent); color: var(--text); font-size: 12px; font-weight: 600; }
+.rt-always span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.remove-site { margin: 10px 0 0; font-size: 13px; }
+.link.danger { color: var(--danger); }
 .howto ol { margin: 0 0 8px; padding-left: 20px; display: flex; flex-direction: column; gap: 5px; font-size: 14px; line-height: 1.5; }
 .howto .hint { margin: 0 0 8px; }
 .day-presets { margin: 0 0 8px; }

@@ -20,7 +20,7 @@
   --radius: 18px;
   /* cores dos tipos de regra */
   --mode-allowed: #1f9d55;
-  --mode-blocked: #dc2626;
+  --mode-blocked: #c0453a; /* terracota-vermelho: lê como "bloqueado" sem gritar; texto claro 5:1 */
   --mode-restricted: #f59e0b;
   /* cores das faixas de horário */
   --blk-1: #c4672a; --blk-2: #5f8a54; --blk-3: #b8860b; --blk-4: #8a5a7a;
