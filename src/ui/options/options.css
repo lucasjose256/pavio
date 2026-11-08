@@ -147,7 +147,7 @@ body { min-height: 100vh; background: radial-gradient(ellipse 70% 28% at 50% 0%,
 .theme-card.on { border-color: var(--accent); }
 .swatch { display: flex; gap: 6px; margin-bottom: 8px; padding: 10px; border-radius: 12px; }
 .swatch i { width: 24px; height: 24px; border-radius: 50%; }
-.swatch.cream { background: #fbf3e4; } .swatch.cream i:nth-child(1) { background: #fffaf0; border: 1px solid #e6d4b5; } .swatch.cream i:nth-child(2) { background: #4a3426; } .swatch.cream i:nth-child(3) { background: #c4672a; }
+.swatch.cream { background: #fbf3e4; } .swatch.cream i:nth-child(1) { background: #fffaf0; border: 1px solid #e6d4b5; } .swatch.cream i:nth-child(2) { background: #4a3426; } .swatch.cream i:nth-child(3) { background: #a9541f; }
 .swatch.night { background: #1d1713; } .swatch.night i:nth-child(1) { background: #322920; } .swatch.night i:nth-child(2) { background: #f3e6d0; } .swatch.night i:nth-child(3) { background: #f2b361; }
 .skins { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr)); gap: 14px; margin-top: 14px; }
 .skin { background: var(--bg); border: 2px solid var(--border); border-radius: var(--radius); padding: 16px 10px 12px;

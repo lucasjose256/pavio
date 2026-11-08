@@ -11,7 +11,7 @@ export async function setToolbarIcon(icon: ToolbarIcon): Promise<void> {
 
 /** Alarme que troca o número do selo no minuto exato (o Chrome atrasa alarmes para no mínimo ~30 s). */
 export const BADGE_ALARM = 'candle-badge';
-const BADGE_COLORS = { focus: '#c4672a', break: '#4f7a45' } as const;
+const BADGE_COLORS = { focus: '#a9541f', break: '#4f7a45' } as const;
 
 /** Mostra (ou tira) o selo com os minutos da vela e agenda a próxima troca. */
 export async function setCandleBadge(badge: CandleBadge): Promise<void> {

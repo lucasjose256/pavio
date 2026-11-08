@@ -14,8 +14,8 @@ function themeColors() {
   return {
     bg: body.backgroundColor && body.backgroundColor !== 'rgba(0, 0, 0, 0)' ? body.backgroundColor : '#fbf3e4',
     text: root.getPropertyValue('--text').trim() || '#4a3426',
-    muted: root.getPropertyValue('--muted').trim() || '#8a7460',
-    accent: root.getPropertyValue('--accent-text').trim() || '#a8531c',
+    muted: root.getPropertyValue('--muted').trim() || '#755f4c',
+    accent: root.getPropertyValue('--accent-text').trim() || '#9e4f1b',
     vars: root,
   };
 }
