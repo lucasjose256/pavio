@@ -8,10 +8,13 @@ body { width: 300px; padding: 5px; background: var(--surface-2); }
 .popup .btn { padding: 9px var(--sp-4); }
 .popup .btn-primary { box-shadow: none; }
 .popup-candle { width: 120px; }
-.popup-candle.small { width: 64px; }
+.popup-candle.small { width: 88px; margin-bottom: calc(-1 * var(--sp-1)); }
 .popup-candle.compact { width: 84px; }
 .run-actions { display: flex; flex-direction: column; gap: 6px; width: 100%; margin-top: var(--sp-1); }
 .run-actions .btn { width: 100%; }
+/* parar antes da hora: possível, mas a ação mais discreta da tela */
+.stop-link { align-self: center; background: none; border: 0; padding: var(--sp-1) var(--sp-2); font-size: var(--fs-sm); color: var(--muted); }
+.stop-link:hover { color: var(--text); text-decoration: underline; }
 
 .form { width: 100%; display: flex; flex-direction: column; gap: var(--sp-4); }
 .full { width: 100%; }

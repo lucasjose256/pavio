@@ -189,7 +189,7 @@ export const shopUi = {
   intro: 'Acender uma vela antes de começar é um sinal simples para o corpo: agora é hora de focar. O cheiro vira um atalho, e com o tempo o foco chega mais rápido. Escolhemos algumas que combinam com o Pavio.',
   moments: {
     before: { kicker: 'Ritual de foco', line: 'Acenda uma de verdade também: o cheiro avisa que agora é hora de focar.' },
-    during: { kicker: 'Enquanto a chama queima', line: 'Uma vela de verdade ao lado deixa o ritual completo.' },
+    during: { kicker: 'Para acompanhar', line: 'Uma vela de verdade ao lado deixa o ritual completo.' },
     after: { kicker: 'Vela concluída', line: 'Que tal fazer disso um ritual? Uma vela de verdade marca o começo do próximo foco.' },
   },
   see: (store: string) => `Ver no ${store}`,
