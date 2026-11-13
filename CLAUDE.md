@@ -133,6 +133,8 @@ O que vale **agora** é a **Política** = regras da rotina ativas agora + regras
 - `store/README.md` é o roteiro (pendências do dono: e-mail de contato na política, hospedar `privacy-policy.html`, conta de desenvolvedor, versão 1.0.0; riscos de revisão). `listing.pt-BR.md`, `privacy-practices.md` (justificativas e instruções ao revisor), `privacy-policy.md` → `node scripts/make-privacy-html.mjs`. Capturas 1280×800 e banners em `store/assets/` (JPEG sem transparência).
 - **Se mudar permissões, content scripts ou o que a extensão guarda/lê, atualize `privacy-practices.md` e `privacy-policy.md` junto.**
 
+- **README** (`README.md`, imagens em `docs/images/`): capturas do harness com o Chrome headless (`--force-device-scale-factor=2`, `--virtual-time-budget=4000`), cortadas e salvas em JPEG. Mudou uma tela de forma visível? Refaça a captura correspondente.
+
 ## Como verificar sem o Chrome real (e o que ainda não foi)
 - Lógica: `npm test` (24 arquivos, ~210 testes). Telas: `npm run harness` → `http://localhost:5199/harness/options.html` (`chrome` simulado em memória com dados de exemplo em `harness/mock.ts`; `?theme=night`, `?skin=jar`, `?running=1`, hash = seção) no navegador do app ou Chrome headless (`--screenshot`, 1280×800; o headless não encolhe abaixo de ~500 px, use o navegador do app para celular).
 - O Chrome estável não carrega extensões por linha de comando: **alarmes, notificações, DNR, content scripts e troca de fases do Pomodoro só se confirmam com a extensão carregada** (`chrome://extensions` › Carregar sem compactação › `dist/`). Pendente de confirmação real: modo intenção, rotina nos horários, seletores de Instagram/X/LinkedIn.
