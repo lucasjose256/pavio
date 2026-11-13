@@ -27,11 +27,13 @@ export function ShopNudge({ skin, running }: { skin: string; running: boolean })
   const copy = shopUi.moments[moment];
   return (
     <aside class={`nudge ${moment}`} aria-label="Sugestão de vela">
-      <span class="nudge-kicker">{copy.kicker}</span>
+      <span class="nudge-head">
+        <span class="nudge-kicker">{copy.kicker}</span>
+        <span class="tag-ad" title={`Link de afiliado do ${STORE_LABEL[offer.store]}`}>afiliado</span>
+      </span>
       <span class="nudge-line">{copy.line}</span>
       <span class="nudge-foot">
         <ShopLink offer={offer} class="nudge-link">{offer.name} ↗</ShopLink>
-        <span class="tag-ad" title={`Link de afiliado do ${STORE_LABEL[offer.store]}`}>afiliado</span>
         <button class="nudge-off" onClick={async () => setSettings(await services.settings.update({ shopInPopup: false }))}>{shopUi.hide}</button>
       </span>
     </aside>

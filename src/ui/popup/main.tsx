@@ -164,8 +164,8 @@ function Running({ session, skin, now }: { session: Session; skin: string; now: 
     <>
       <RunningCandle session={session} skin={skin} now={now} />
       <div class="run-actions">
-        <button class="btn btn-primary" onClick={keepOpen} title="Abre a vela numa janelinha que não fecha sozinha">Manter a vela aberta</button>
-        <button class="btn btn-ghost" onClick={stop}>Preciso parar antes da hora</button>
+        <button class="btn" onClick={keepOpen} title="Abre a vela numa janelinha que não fecha sozinha">Manter a vela aberta</button>
+        <button class="stop-link" onClick={stop}>Preciso parar antes da hora</button>
       </div>
     </>
   );

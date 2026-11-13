@@ -1,11 +1,15 @@
 /* Sugestão de vela de verdade no popup: um cartão pequeno e quente, sem cor de alerta, sem animação. */
 .nudge { width: 100%; display: flex; flex-direction: column; gap: 2px; padding: 10px var(--sp-3); border-radius: var(--r, var(--r-control)); text-align: left;
   background: radial-gradient(ellipse 60% 120% at 0% 0%, var(--glow), transparent 70%), var(--surface); border: 1px solid var(--border); }
-.nudge-kicker { font-size: var(--fs-xs); font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--accent-text); }
-.nudge-line { font-family: var(--font-display); font-size: var(--fs-base); line-height: 1.35; color: var(--text); }
+.nudge-head { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); }
+.nudge-kicker { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: var(--fs-xs); font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--accent-text); }
+.nudge-line { font-family: var(--font-display); font-size: var(--fs-md); line-height: 1.35; color: var(--text); }
 .nudge-foot { display: flex; align-items: center; gap: var(--sp-2); margin-top: var(--sp-1); font-size: var(--fs-sm); }
-.nudge-link { color: var(--accent-text); font-weight: 600; text-decoration: none; }
+.nudge-link { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--accent-text); font-weight: 600; text-decoration: none; }
 .nudge-link:hover { text-decoration: underline; }
-.nudge .tag-ad { font-size: var(--fs-2xs); font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); border: 1px solid var(--border); border-radius: var(--r-sm); padding: 0 5px; }
-.nudge-off { margin-left: auto; background: none; border: 0; padding: 0; font-size: var(--fs-xs); color: var(--muted); text-decoration: underline; }
+.nudge .tag-ad { flex: none; font-size: var(--fs-2xs); font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); border: 1px solid var(--border); border-radius: var(--r-sm); padding: 0 5px; }
+.nudge-off { flex: none; background: none; border: 0; padding: 0; font-size: var(--fs-xs); color: var(--muted); text-decoration: underline; }
 .nudge-off:hover { color: var(--text); }
+/* com a vela acesa a vela é a protagonista: sem a frase, só o convite numa linha */
+.nudge.during .nudge-line { display: none; }
+.nudge.during { padding: var(--sp-2) var(--sp-3); }
