@@ -4,6 +4,8 @@
  * (Última revisão: YouTube validado no site real na etapa 6; Instagram e X na etapa 7 — ver notas em cada bloco.)
  */
 
+import { instagramSearchOpen } from '../core/sites';
+
 const hide = (selectors: readonly string[]) => `${selectors.join(',\n')} { display: none !important; }`;
 
 export const youtube = {
@@ -78,9 +80,13 @@ export const instagram = {
   },
 } as const;
 
+/**
+ * Com a pesquisa liberada, o atalho do Explorar fica visível: no layout estreito ele é o único caminho para
+ * pesquisar, e a página dele é trocada pela pesquisa (`instagramDecision`).
+ */
 export const instagramCss = (features: ReadonlySet<string>): string =>
   (['reels', 'explore', 'messages'] as const)
-    .filter((f) => features.has(f))
+    .filter((f) => features.has(f) && (f !== 'explore' || !instagramSearchOpen(features)))
     .map((f) => hide(instagram.navLinks[f]))
     .join('\n');
 

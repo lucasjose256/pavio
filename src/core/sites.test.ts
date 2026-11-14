@@ -18,7 +18,6 @@ describe('instagramDecision (padrão: feed, Reels, Explorar e Stories escondidos
   it('o início é o feed: sem feed vai para as mensagens', () => {
     expect(instagramDecision('/', DEFAULT_IG)).toEqual({ action: 'redirect', to: '/direct/inbox/' });
     expect(instagramDecision('/', f('reels'))).toEqual({ action: 'allow' }); // feed liberado
-    expect(instagramDecision('/', f('feed', 'messages'))).toEqual({ action: 'block', reason: 'feed' }); // sem para onde ir
   });
   it('recurso desligado não bloqueia', () => {
     expect(instagramDecision('/reels/', f('feed')).action).toBe('allow');
@@ -26,6 +25,23 @@ describe('instagramDecision (padrão: feed, Reels, Explorar e Stories escondidos
   });
   it('mensagens podem ser escondidas', () => {
     expect(instagramDecision('/direct/inbox/', f('messages'))).toEqual({ action: 'block', reason: 'messages' });
+  });
+  it('pesquisa liberada com o feed e o Explorar escondidos', () => {
+    expect(instagramDecision('/explore/search/', DEFAULT_IG).action).toBe('allow');
+    expect(instagramDecision('/explore/search/keyword/', DEFAULT_IG).action).toBe('allow');
+    // o atalho "Pesquisar" do layout estreito abre /explore/: vira a página só de pesquisa
+    expect(instagramDecision('/explore/', DEFAULT_IG)).toEqual({ action: 'redirect', to: '/explore/search/' });
+    expect(instagramDecision('/explore/tags/x/', DEFAULT_IG)).toEqual({ action: 'block', reason: 'explore' });
+    expect(instagramDecision('/explore/locations/1/', DEFAULT_IG).action).toBe('block');
+    // sem feed nem mensagens, o início leva à pesquisa
+    expect(instagramDecision('/', f('feed', 'messages'))).toEqual({ action: 'redirect', to: '/explore/search/' });
+  });
+  it('com "Pesquisa" marcada (ou no modo rígido), a pesquisa e o Explorar ficam bloqueados', () => {
+    const noSearch = f('feed', 'reels', 'explore', 'stories', 'search');
+    expect(instagramDecision('/explore/search/', noSearch)).toEqual({ action: 'block', reason: 'search' });
+    expect(instagramDecision('/explore/', noSearch)).toEqual({ action: 'block', reason: 'explore' });
+    expect(instagramDecision('/explore/search/', f('feed', 'posts')).action).toBe('block');
+    expect(instagramDecision('/', f('feed', 'messages', 'search'))).toEqual({ action: 'block', reason: 'feed' });
   });
   it('"posts" é o modo rígido: só mensagens e login passam', () => {
     const strict = f('feed', 'reels', 'explore', 'stories', 'posts');
@@ -68,7 +84,7 @@ describe('linkedinDecision', () => {
 describe('pesquisa do Instagram (parte própria)', () => {
   const hide = (...f: string[]) => new Set(f);
   it('esconder o Explorar não derruba a pesquisa', () => {
-    expect(instagramDecision('/explore', hide('explore'))).toEqual({ action: 'block', reason: 'explore' });
+    expect(instagramDecision('/explore', hide('explore'))).toEqual({ action: 'redirect', to: '/explore/search/' });
     expect(instagramDecision('/explore/search', hide('explore'))).toEqual({ action: 'allow' });
     expect(instagramDecision('/explore/search/keyword/', hide('feed', 'reels', 'explore', 'stories'))).toEqual({ action: 'allow' });
     expect(instagramDecision('/explore/tags/foco', hide('explore'))).toEqual({ action: 'block', reason: 'explore' });

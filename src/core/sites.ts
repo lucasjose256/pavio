@@ -12,6 +12,11 @@ export type SiteDecision =
 const norm = (pathname: string) => pathname.replace(/\/+$/, '') || '/';
 const under = (path: string, prefix: string) => path === prefix || path.startsWith(`${prefix}/`);
 
+/** Página de pesquisa do Instagram (sem a grade do Explorar). */
+export const INSTAGRAM_SEARCH = '/explore/search/';
+/** A pesquisa do Instagram está liberada? Só some com "Pesquisa" marcada ou no modo rígido (`posts`). */
+export const instagramSearchOpen = (features: Features) => !features.has('search') && !features.has('posts');
+
 /**
  * Instagram: cada recurso escondido bloqueia a sua parte. Início = feed. `posts` (perfis e publicações de
  * outros) é o modo mais rígido: só passa o que não é conteúdo (mensagens e entrada na conta).
@@ -22,12 +27,17 @@ export function instagramDecision(pathname: string, features: Features): SiteDec
 
   if (path === '/') {
     if (!features.has('feed')) return { action: 'allow' };
-    return features.has('messages') ? { action: 'block', reason: 'feed' } : { action: 'redirect', to: '/direct/inbox/' };
+    // Sem o feed, o início leva às mensagens; sem mensagens, à pesquisa (se liberada).
+    if (!features.has('messages')) return { action: 'redirect', to: '/direct/inbox/' };
+    return instagramSearchOpen(features) ? { action: 'redirect', to: INSTAGRAM_SEARCH } : { action: 'block', reason: 'feed' };
   }
   if (under(path, '/direct')) return features.has('messages') ? { action: 'block', reason: 'messages' } : { action: 'allow' };
   if ((under(path, '/reels') || under(path, '/reel')) && features.has('reels')) return { action: 'block', reason: 'reels' };
   // A pesquisa é parte própria: esconder o Explorar (a grade) não derruba a pesquisa. `posts` (modo rígido) bloqueia tudo.
-  if (under(path, '/explore/search')) return features.has('search') || features.has('posts') ? { action: 'block', reason: 'search' } : { action: 'allow' };
+  if (under(path, '/explore/search')) return instagramSearchOpen(features) ? { action: 'allow' } : { action: 'block', reason: 'search' };
+  // No layout estreito, "Pesquisar" abre /explore/ (barra de busca em cima da grade): com o Explorar escondido e a
+  // pesquisa liberada, a grade dá lugar à página só de pesquisa. Tags, lugares etc. do Explorar continuam bloqueados.
+  if (path === '/explore' && features.has('explore') && instagramSearchOpen(features)) return { action: 'redirect', to: INSTAGRAM_SEARCH };
   if (under(path, '/explore') && features.has('explore')) return { action: 'block', reason: 'explore' };
   if (under(path, '/stories') && features.has('stories')) return { action: 'block', reason: 'stories' };
   if (features.has('posts')) return { action: 'block', reason: 'posts' }; // perfis, /p/…, etc.

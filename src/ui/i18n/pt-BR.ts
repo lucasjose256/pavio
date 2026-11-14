@@ -264,7 +264,7 @@ export const quickPartsUi = {
   modes: { free: 'Livre', parts: 'Esconder partes', all: 'Bloquear tudo' },
   hints: {
     youtube: 'Os Shorts ficam ocultos de verdade: somem do Início e do menu, e quem abrir um link de Short vê a vela.',
-    instagram: 'A pesquisa continua liberada mesmo com o Explorar escondido. Marque "Pesquisa" se quiser escondê-la também.',
+    instagram: 'Dá para esconder o feed e continuar pesquisando: com "Pesquisa" desmarcada, a busca fica liberada (o Explorar vira só a página de pesquisa, sem a grade). Marque "Pesquisa" se quiser escondê-la também.',
     x: 'Esconde só o que você marcar; o resto do X abre normal.',
     linkedin: 'Esconde só o que você marcar; o resto do LinkedIn abre normal.',
   } as Record<string, string>,

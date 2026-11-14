@@ -30,6 +30,9 @@ describe('CSS por recurso', () => {
   it('Instagram: atalhos do menu só dos recursos escondidos', () => {
     expect(instagramCss(new Set(['feed', 'reels', 'explore', 'stories']))).toContain('a[href="/reels/"]');
     expect(instagramCss(new Set(['reels']))).not.toContain('/explore');
+    // pesquisa liberada: o atalho do Explorar fica (leva à pesquisa); com "Pesquisa" marcada, some
+    expect(instagramCss(new Set(['feed', 'explore']))).not.toContain('/explore');
+    expect(instagramCss(new Set(['explore', 'search']))).toContain('a[href^="/explore"]');
     expect(instagramCss(new Set(['feed']))).toBe('');
     expect(instagramCss(new Set(['messages']))).toContain('/direct/');
   });
